@@ -9,9 +9,11 @@ import SwiftUI
 
 @main
 struct RamStatsApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-        }
+  @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
+  var body: some Scene {
+    Settings {
+      EmptyView()
     }
+  }
 }

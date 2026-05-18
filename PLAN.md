@@ -42,6 +42,14 @@ Acceptance criteria:
 - Left click opens popover
 - Right click shows context menu
 
+Task 1 TODO:
+
+- [x] Switch SwiftUI app entry to menu bar lifecycle (`NSApplicationDelegateAdaptor`)
+- [x] Add `NSStatusBar` item with placeholder usage text
+- [x] Add `NSPopover` container and connect left-click toggle behavior
+- [x] Add context menu on right-click or option-click
+- [x] Set app utility mode (hide dock icon)
+
 Review gate:
 
 - Stop and request review before Task 2.
@@ -233,7 +241,7 @@ Review gate:
 
 ## Task Tracking Checklist
 
-- [ ] Task 1 - Scaffold Menu Bar App
+- [x] Task 1 - Scaffold Menu Bar App
 - [ ] Task 2 - Build Memory and Process Data Services
 - [ ] Task 3 - Implement MVVM State and Sampling
 - [ ] Task 4 - Build Popup Layout (MVP)
