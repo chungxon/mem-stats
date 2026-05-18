@@ -111,6 +111,16 @@ Acceptance criteria:
 - Old samples are removed automatically
 - No aggressive redraw loops
 
+Task 3 TODO:
+
+- [x] Add `MemoryVM` with bounded history buffer (`maxSamples = 120`)
+- [x] Add `ProcessVM` for top-process state and user selection consistency
+- [x] Add shared `RamStatsAppState` to coordinate sampling and services
+- [x] Implement 5s sampling when popover is open
+- [x] Implement 15s sampling when popover is closed
+- [x] Wire popover open/close lifecycle to sampling mode
+- [x] Add tests for bounded history and sampling interval behavior
+
 Review gate:
 
 - Stop and request review before Task 4.
@@ -252,7 +262,7 @@ Review gate:
 
 - [x] Task 1 - Scaffold Menu Bar App
 - [x] Task 2 - Build Memory and Process Data Services
-- [ ] Task 3 - Implement MVVM State and Sampling
+- [x] Task 3 - Implement MVVM State and Sampling
 - [ ] Task 4 - Build Popup Layout (MVP)
 - [ ] Task 5 - Donut and Process Filtering Interactions
 - [ ] Task 6 - History Chart and Pressure/Swap Tracking

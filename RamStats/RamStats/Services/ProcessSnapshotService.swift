@@ -1,7 +1,7 @@
 import Foundation
 
-protocol ProcessSnapshotProviding {
-  func fetchTopProcesses(limit: Int) throws -> [ProcessSnapshot]
+protocol ProcessSnapshotProviding: Sendable {
+  nonisolated func fetchTopProcesses(limit: Int) throws -> [ProcessSnapshot]
 }
 
 enum ProcessSnapshotServiceError: Error {
@@ -10,7 +10,7 @@ enum ProcessSnapshotServiceError: Error {
 }
 
 struct ProcessSnapshotService: ProcessSnapshotProviding {
-  func fetchTopProcesses(limit: Int = 20) throws -> [ProcessSnapshot] {
+  nonisolated func fetchTopProcesses(limit: Int = 20) throws -> [ProcessSnapshot] {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/bin/ps")
     process.arguments = ["-axo", "user=,pid=,rss=,comm="]

@@ -1,8 +1,46 @@
+import Foundation
 import Testing
 
 @testable import RamStats
 
 struct RamStatsTests {
+  @MainActor @Test func memoryViewModelKeepsBoundedHistory() {
+    let vm = MemoryViewModel(maxSamples: 3)
+    let baseStats = MemoryStats(
+      totalBytes: 1000,
+      usedBytes: 500,
+      freeBytes: 500,
+      activeBytes: 100,
+      inactiveBytes: 100,
+      wiredBytes: 100,
+      compressedBytes: 100,
+      swapUsedBytes: 100,
+      pressureLevel: .normal
+    )
+
+    vm.apply(stats: baseStats, sampledAt: Date(timeIntervalSince1970: 1))
+    vm.apply(stats: baseStats, sampledAt: Date(timeIntervalSince1970: 2))
+    vm.apply(stats: baseStats, sampledAt: Date(timeIntervalSince1970: 3))
+    vm.apply(stats: baseStats, sampledAt: Date(timeIntervalSince1970: 4))
+
+    #expect(vm.history.count == 3)
+    #expect(vm.history[0].timestamp == Date(timeIntervalSince1970: 2))
+    #expect(vm.history[2].timestamp == Date(timeIntervalSince1970: 4))
+  }
+
+  @MainActor @Test func processViewModelResetsMissingSelectedUser() {
+    let vm = ProcessViewModel()
+    vm.selectedUser = "alice"
+
+    vm.apply(
+      snapshots: [
+        ProcessSnapshot(user: "bob", pid: 1, rssBytes: 1024, command: "/bin/test")
+      ]
+    )
+
+    #expect(vm.selectedUser == nil)
+  }
+
   @Test func parseProcessOutputSortsByRSSDescending() {
     let output = """
       son 100 400 /usr/bin/vim
@@ -38,5 +76,12 @@ struct RamStatsTests {
     #expect(stats.totalBytes > 0)
     #expect(stats.usedBytes <= stats.totalBytes)
     #expect(stats.freeBytes <= stats.totalBytes)
+  }
+
+  @MainActor @Test func appStateUsesExpectedSamplingIntervals() {
+    let appState = RamStatsAppState(startSampling: false)
+
+    #expect(appState.samplingInterval(for: .active) == 5)
+    #expect(appState.samplingInterval(for: .idle) == 15)
   }
 }

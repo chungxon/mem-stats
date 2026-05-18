@@ -1,10 +1,11 @@
 import AppKit
 import SwiftUI
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   private let openAtLoginKey = "openAtLogin"
   private let popover = NSPopover()
   private var statusItem: NSStatusItem?
+  private let appState = RamStatsAppState()
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     NSApp.setActivationPolicy(.accessory)
@@ -15,8 +16,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
   private func configurePopover() {
     popover.behavior = .transient
+    popover.delegate = self
     popover.contentSize = NSSize(width: 360, height: 480)
-    popover.contentViewController = NSHostingController(rootView: PopoverRootView())
+    popover.contentViewController = NSHostingController(
+      rootView: PopoverRootView(appState: appState)
+    )
   }
 
   private func configureStatusItem() {
@@ -93,5 +97,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   @objc
   private func quitApp() {
     NSApp.terminate(nil)
+  }
+
+  func popoverWillShow(_ notification: Notification) {
+    appState.setPopoverPresented(true)
+  }
+
+  func popoverDidClose(_ notification: Notification) {
+    appState.setPopoverPresented(false)
   }
 }

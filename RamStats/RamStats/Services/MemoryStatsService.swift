@@ -1,8 +1,8 @@
 import Darwin
 import Foundation
 
-protocol MemoryStatsProviding {
-  func fetchMemoryStats() throws -> MemoryStats
+protocol MemoryStatsProviding: Sendable {
+  nonisolated func fetchMemoryStats() throws -> MemoryStats
 }
 
 enum MemoryStatsServiceError: Error {
@@ -13,7 +13,7 @@ enum MemoryStatsServiceError: Error {
 }
 
 struct MemoryStatsService: MemoryStatsProviding {
-  func fetchMemoryStats() throws -> MemoryStats {
+  nonisolated func fetchMemoryStats() throws -> MemoryStats {
     let totalBytes = try totalRAMBytes()
     let pageSize = try hostPageSize()
     let vmStats = try vmStatistics()
