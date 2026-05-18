@@ -1,0 +1,243 @@
+# Ram Stats - Project Plan
+
+## Goal
+
+Build a lightweight macOS menu bar app that monitors RAM usage by user, memory pressure, swap, short history, and top processes in a single native popover UI.
+
+## Working Rules
+
+- Scope first, optimize early for low overhead.
+- Keep native macOS UI style and solid colors.
+- After each task: stop, send update, and wait for review before continuing.
+
+## High-Level Milestones
+
+1. Project scaffold and menu bar shell
+2. System data collection layer
+3. State management and sampling engine
+4. Popup UI foundation
+5. Charting and interactions
+6. Context menu and app lifecycle features
+7. Performance hardening
+8. QA, lint, and release prep
+
+## Task Breakdown
+
+### Task 1 - Scaffold Menu Bar App
+
+Objective:
+
+- Create macOS SwiftUI app skeleton with `NSStatusBar` item and `NSPopover`.
+- Open popover on click and context menu on right-click or option-click.
+
+Deliverables:
+
+- Basic runnable app shell
+- Menu bar icon + placeholder percent text
+- Empty popover container view
+
+Acceptance criteria:
+
+- App launches without dock icon (menu bar utility mode)
+- Left click opens popover
+- Right click shows context menu
+
+Review gate:
+
+- Stop and request review before Task 2.
+
+---
+
+### Task 2 - Build Memory and Process Data Services
+
+Objective:
+
+- Implement data collectors:
+  - `host_statistics64` for memory stats
+  - `sysctl` for total RAM
+  - `ps -axo user,pid,rss,command` for process snapshots
+
+Deliverables:
+
+- `MemoryStatsService`
+- `ProcessSnapshotService`
+- Parsed models for memory/process entities
+
+Acceptance criteria:
+
+- Services return valid values on local machine
+- Process list sorted by RSS desc
+- Result capped to top 20 processes
+
+Review gate:
+
+- Stop and request review before Task 3.
+
+---
+
+### Task 3 - Implement MVVM State and Sampling
+
+Objective:
+
+- Create `MemoryVM`, `ProcessVM`, and shared app state.
+- Add periodic sampling with lightweight scheduling.
+
+Deliverables:
+
+- 5s sampling while popover is open
+- 15s sampling in idle mode (popover closed)
+- Bounded history buffer (`maxSamples = 120`)
+
+Acceptance criteria:
+
+- UI-bound state updates correctly
+- Old samples are removed automatically
+- No aggressive redraw loops
+
+Review gate:
+
+- Stop and request review before Task 4.
+
+---
+
+### Task 4 - Build Popup Layout (MVP)
+
+Objective:
+
+- Implement single popup layout with three main sections:
+  - Header
+  - Donut chart area
+  - History + top process area
+
+Deliverables:
+
+- Header with actions:
+  - Open Activity Monitor
+  - Open options/context menu
+- Native spacing and typography
+
+Acceptance criteria:
+
+- Layout is stable on common macOS scaling
+- Uses solid colors and native material style
+- No heavy custom visual effects
+
+Review gate:
+
+- Stop and request review before Task 5.
+
+---
+
+### Task 5 - Donut and Process Filtering Interactions
+
+Objective:
+
+- Render RAM-by-user donut with free-memory slice.
+- Add interactive selection/filtering behavior.
+
+Deliverables:
+
+- User slices sorted by memory desc
+- Merge tiny slices (<2%) into "Others"
+- Click slice to set/reset `selectedUser`
+- Process list filtered by selected user
+
+Acceptance criteria:
+
+- Selection and reset behavior works reliably
+- If selected user disappears, state auto-resets
+- Process filtering is instant (no full recompute)
+
+Review gate:
+
+- Stop and request review before Task 6.
+
+---
+
+### Task 6 - History Chart and Pressure/Swap Tracking
+
+Objective:
+
+- Plot short-term memory metrics using native Charts.
+
+Deliverables:
+
+- History lines for:
+  - Total used RAM
+  - Swap used
+  - Memory pressure
+- Optional selected-user history overlay
+
+Acceptance criteria:
+
+- Chart updates only on new sample ticks
+- History remains bounded in memory
+- Data remains readable and consistent
+
+Review gate:
+
+- Stop and request review before Task 7.
+
+---
+
+### Task 7 - Context Menu, Login Item, and App Options
+
+Objective:
+
+- Add utility actions and lifecycle features.
+
+Deliverables:
+
+- Context menu entries:
+  - Open at Login
+  - About
+  - Quit
+- Open at login integration via `SMAppService.mainApp.register()`
+- Toggle persistence in `UserDefaults`
+
+Acceptance criteria:
+
+- Toggle state persists after relaunch
+- App can be quit cleanly from menu
+- About action is available
+
+Review gate:
+
+- Stop and request review before Task 8.
+
+---
+
+### Task 8 - Performance Hardening and Final QA
+
+Objective:
+
+- Minimize overhead and finalize release readiness.
+
+Deliverables:
+
+- Debounced UI updates with threshold:
+  - `max(100MB, 1-2% total RAM)`
+- Background sampling on utility QoS
+- System user filtering defaults (`_*`, optional `root`)
+- Final lint/build/test verification
+
+Acceptance criteria:
+
+- Stable runtime with low CPU impact
+- No obvious redraw/perf spikes
+- Lint and test commands pass
+
+Review gate:
+
+- Stop and request final review and sign-off.
+
+## Task Tracking Checklist
+
+- [ ] Task 1 - Scaffold Menu Bar App
+- [ ] Task 2 - Build Memory and Process Data Services
+- [ ] Task 3 - Implement MVVM State and Sampling
+- [ ] Task 4 - Build Popup Layout (MVP)
+- [ ] Task 5 - Donut and Process Filtering Interactions
+- [ ] Task 6 - History Chart and Pressure/Swap Tracking
+- [ ] Task 7 - Context Menu, Login Item, and App Options
+- [ ] Task 8 - Performance Hardening and Final QA
