@@ -4,6 +4,39 @@ import Testing
 @testable import RamStats
 
 struct RamStatsTests {
+  @Test func donutBuilderMergesTinyUsersAndKeepsFreeLast() {
+    let snapshots = [
+      ProcessSnapshot(user: "alice", pid: 1, rssBytes: 500, command: "/a"),
+      ProcessSnapshot(user: "bob", pid: 2, rssBytes: 30, command: "/b"),
+      ProcessSnapshot(user: "carol", pid: 3, rssBytes: 10, command: "/c"),
+    ]
+
+    let slices = DonutDataBuilder.buildSlices(
+      totalBytes: 1_000,
+      freeBytes: 400,
+      snapshots: snapshots,
+      tinyThreshold: 0.05
+    )
+
+    #expect(slices.count == 3)
+    #expect(slices[0].label == "alice")
+    #expect(slices[1].label == "Others")
+    #expect(slices[2].label == "Free")
+    #expect(slices[2].bytes == 400)
+  }
+
+  @Test func donutSelectionPicksExpectedSlice() {
+    let slices = [
+      DonutSlice(id: "a", label: "A", category: .user("a"), bytes: 300, fractionOfTotal: 0.3),
+      DonutSlice(id: "b", label: "B", category: .user("b"), bytes: 200, fractionOfTotal: 0.2),
+      DonutSlice(id: "f", label: "Free", category: .free, bytes: 500, fractionOfTotal: 0.5),
+    ]
+
+    let picked = DonutDataBuilder.sliceForSelection(angleValue: 450, in: slices)
+
+    #expect(picked?.label == "B")
+  }
+
   @MainActor @Test func memoryViewModelKeepsBoundedHistory() {
     let vm = MemoryViewModel(maxSamples: 3)
     let baseStats = MemoryStats(
@@ -39,6 +72,21 @@ struct RamStatsTests {
     )
 
     #expect(vm.selectedUser == nil)
+  }
+
+  @MainActor @Test func processViewModelFiltersBySelectedUser() {
+    let vm = ProcessViewModel()
+    vm.apply(
+      snapshots: [
+        ProcessSnapshot(user: "alice", pid: 1, rssBytes: 1024, command: "/bin/a"),
+        ProcessSnapshot(user: "bob", pid: 2, rssBytes: 2048, command: "/bin/b"),
+      ]
+    )
+
+    vm.selectedUser = "alice"
+
+    #expect(vm.visibleProcesses.count == 1)
+    #expect(vm.visibleProcesses.first?.user == "alice")
   }
 
   @Test func parseProcessOutputSortsByRSSDescending() {

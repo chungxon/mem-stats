@@ -184,6 +184,17 @@ Acceptance criteria:
 - If selected user disappears, state auto-resets
 - Process filtering is instant (no full recompute)
 
+Task 5 TODO:
+
+- [x] Build RAM-by-user donut data pipeline from process snapshots plus free-memory slice
+- [x] Sort user slices by memory descending
+- [x] Merge tiny slices (`<2%`) into `Others`
+- [x] Keep `Free` as final slice in donut
+- [x] Add slice click behavior to set/reset `selectedUser`
+- [x] Filter process list by selected user in real time
+- [x] Auto-reset selection when selected user disappears from slices
+- [x] Add tests for donut merge/selection mapping and process filtering behavior
+
 Review gate:
 
 - Stop and request review before Task 6.
@@ -273,7 +284,7 @@ Review gate:
 - [x] Task 2 - Build Memory and Process Data Services
 - [x] Task 3 - Implement MVVM State and Sampling
 - [x] Task 4 - Build Popup Layout (MVP)
-- [ ] Task 5 - Donut and Process Filtering Interactions
+- [x] Task 5 - Donut and Process Filtering Interactions
 - [ ] Task 6 - History Chart and Pressure/Swap Tracking
 - [ ] Task 7 - Context Menu, Login Item, and App Options
 - [ ] Task 8 - Performance Hardening and Final QA
