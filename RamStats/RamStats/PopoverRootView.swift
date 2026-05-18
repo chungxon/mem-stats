@@ -334,19 +334,29 @@ struct PopoverRootView: View {
   }
 
   private func updateSelection(for angle: Double?) {
+    guard let angle else {
+      if processVM.selectedUser != nil {
+        processVM.selectedUser = nil
+      }
+      return
+    }
+
     guard let pickedSlice = DonutDataBuilder.sliceForSelection(angleValue: angle, in: donutSlices)
     else {
+      if processVM.selectedUser != nil {
+        processVM.selectedUser = nil
+      }
       return
     }
 
     guard case .user(let user) = pickedSlice.category else {
+      if processVM.selectedUser != nil {
+        processVM.selectedUser = nil
+      }
       return
     }
 
-    if processVM.selectedUser == user {
-      processVM.selectedUser = nil
-      selectedAngleValue = nil
-    } else {
+    if processVM.selectedUser != user {
       processVM.selectedUser = user
     }
   }
@@ -363,7 +373,6 @@ struct PopoverRootView: View {
 
     if !hasMatchingSlice {
       processVM.selectedUser = nil
-      selectedAngleValue = nil
     }
   }
 
