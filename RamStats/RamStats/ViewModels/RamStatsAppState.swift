@@ -98,7 +98,7 @@ final class RamStatsAppState: ObservableObject {
 
         switch processResult {
         case .success(let processes):
-          processVM.apply(snapshots: processes)
+          processVM.apply(snapshots: processes, sampledAt: sampledAt)
         case .failure(let error):
           messages.append("Process: \(error.localizedDescription)")
         }

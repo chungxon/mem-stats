@@ -221,6 +221,16 @@ Acceptance criteria:
 - History remains bounded in memory
 - Data remains readable and consistent
 
+Task 6 TODO:
+
+- [x] Replace history placeholder with native `Charts` line chart
+- [x] Plot total used RAM series from bounded memory history
+- [x] Plot swap-used series from bounded memory history
+- [x] Plot memory-pressure series with consistent scaling for readability
+- [x] Add optional selected-user history overlay when a user is selected
+- [x] Keep chart updates driven by sampling ticks only (history append path)
+- [x] Add tests for selected-user history tracking with bounded samples
+
 Review gate:
 
 - Stop and request review before Task 7.
@@ -285,6 +295,6 @@ Review gate:
 - [x] Task 3 - Implement MVVM State and Sampling
 - [x] Task 4 - Build Popup Layout (MVP)
 - [x] Task 5 - Donut and Process Filtering Interactions
-- [ ] Task 6 - History Chart and Pressure/Swap Tracking
+- [x] Task 6 - History Chart and Pressure/Swap Tracking
 - [ ] Task 7 - Context Menu, Login Item, and App Options
 - [ ] Task 8 - Performance Hardening and Final QA

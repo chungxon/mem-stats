@@ -63,6 +63,15 @@ struct PopoverRootView: View {
     }
   }
 
+  private var historyScaleUpperBound: Double {
+    if let totalBytes = memoryVM.currentStats?.totalBytes, totalBytes > 0 {
+      return Double(totalBytes)
+    }
+
+    let maxUsed = memoryVM.history.map(\.usedBytes).max() ?? 1
+    return Double(maxUsed)
+  }
+
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       headerSection
@@ -171,9 +180,75 @@ struct PopoverRootView: View {
         }
         .font(.footnote)
 
-        Text("History chart area (Task 6)")
-          .font(.footnote)
-          .foregroundStyle(.secondary)
+        if memoryVM.history.isEmpty {
+          Text("Collecting history data...")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, minHeight: 120, alignment: .center)
+        } else {
+          Chart {
+            ForEach(Array(memoryVM.history.enumerated()), id: \.offset) { _, sample in
+              LineMark(
+                x: .value("Time", sample.timestamp),
+                y: .value("Used RAM", Double(sample.usedBytes))
+              )
+              .foregroundStyle(Color.blue)
+              .lineStyle(StrokeStyle(lineWidth: 2))
+              .interpolationMethod(.monotone)
+            }
+
+            ForEach(Array(memoryVM.history.enumerated()), id: \.offset) { _, sample in
+              LineMark(
+                x: .value("Time", sample.timestamp),
+                y: .value("Swap Used", Double(sample.swapUsedBytes))
+              )
+              .foregroundStyle(Color.orange)
+              .lineStyle(StrokeStyle(lineWidth: 2))
+              .interpolationMethod(.monotone)
+            }
+
+            ForEach(Array(memoryVM.history.enumerated()), id: \.offset) { _, sample in
+              LineMark(
+                x: .value("Time", sample.timestamp),
+                y: .value("Pressure", scaledPressureValue(for: sample.pressureLevel))
+              )
+              .foregroundStyle(Color.red)
+              .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+              .interpolationMethod(.stepCenter)
+            }
+
+            if processVM.selectedUser != nil {
+              ForEach(Array(processVM.selectedUserHistory.enumerated()), id: \.offset) {
+                _, sample in
+                LineMark(
+                  x: .value("Time", sample.timestamp),
+                  y: .value("Selected User", Double(sample.rssBytes))
+                )
+                .foregroundStyle(Color.teal)
+                .lineStyle(StrokeStyle(lineWidth: 2))
+                .interpolationMethod(.monotone)
+              }
+            }
+          }
+          .chartLegend(.hidden)
+          .chartYScale(domain: 0...historyScaleUpperBound)
+          .chartXAxis(.hidden)
+          .chartYAxis {
+            AxisMarks(position: .leading, values: .automatic(desiredCount: 4))
+          }
+          .frame(height: 130)
+
+          HStack(spacing: 10) {
+            legendItem(color: .blue, label: "Used")
+            legendItem(color: .orange, label: "Swap")
+            legendItem(color: .red, label: "Pressure")
+            if processVM.selectedUser != nil {
+              legendItem(color: .teal, label: "Selected")
+            }
+            Spacer()
+          }
+          .font(.caption)
+        }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
     } label: {
@@ -306,5 +381,29 @@ struct PopoverRootView: View {
   private func formatGigabytes(_ bytes: UInt64) -> String {
     let gb = Double(bytes) / 1_073_741_824
     return String(format: "%.1f GB", gb)
+  }
+
+  private func scaledPressureValue(for level: MemoryPressureLevel) -> Double {
+    let base = historyScaleUpperBound
+
+    switch level {
+    case .normal:
+      return base * 0.25
+    case .warning:
+      return base * 0.6
+    case .critical:
+      return base
+    }
+  }
+
+  @ViewBuilder
+  private func legendItem(color: Color, label: String) -> some View {
+    HStack(spacing: 4) {
+      RoundedRectangle(cornerRadius: 2)
+        .fill(color)
+        .frame(width: 10, height: 10)
+      Text(label)
+        .foregroundStyle(.secondary)
+    }
   }
 }

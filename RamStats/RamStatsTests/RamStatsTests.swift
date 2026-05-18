@@ -89,6 +89,35 @@ struct RamStatsTests {
     #expect(vm.visibleProcesses.first?.user == "alice")
   }
 
+  @MainActor @Test func processViewModelTracksSelectedUserHistoryWithBounds() {
+    let vm = ProcessViewModel(maxSamples: 2)
+
+    vm.apply(
+      snapshots: [
+        ProcessSnapshot(user: "alice", pid: 1, rssBytes: 100, command: "/bin/a")
+      ],
+      sampledAt: Date(timeIntervalSince1970: 1)
+    )
+    vm.apply(
+      snapshots: [
+        ProcessSnapshot(user: "alice", pid: 1, rssBytes: 200, command: "/bin/a")
+      ],
+      sampledAt: Date(timeIntervalSince1970: 2)
+    )
+    vm.apply(
+      snapshots: [
+        ProcessSnapshot(user: "alice", pid: 1, rssBytes: 300, command: "/bin/a")
+      ],
+      sampledAt: Date(timeIntervalSince1970: 3)
+    )
+
+    vm.selectedUser = "alice"
+
+    #expect(vm.selectedUserHistory.count == 2)
+    #expect(vm.selectedUserHistory[0].timestamp == Date(timeIntervalSince1970: 2))
+    #expect(vm.selectedUserHistory[1].rssBytes == 300)
+  }
+
   @Test func parseProcessOutputSortsByRSSDescending() {
     let output = """
       son 100 400 /usr/bin/vim
