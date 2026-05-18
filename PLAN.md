@@ -77,6 +77,15 @@ Acceptance criteria:
 - Process list sorted by RSS desc
 - Result capped to top 20 processes
 
+Task 2 TODO:
+
+- [x] Add memory model and process model for service outputs
+- [x] Implement `MemoryStatsService` using `host_statistics64`, `sysctl hw.memsize`, and `vm.swapusage`
+- [x] Implement `ProcessSnapshotService` using `ps -axo user,pid,rss,command`
+- [x] Ensure process snapshots are sorted by RSS descending
+- [x] Cap process snapshots to top 20 entries
+- [x] Add parser/service tests for core acceptance behavior
+
 Review gate:
 
 - Stop and request review before Task 3.
@@ -242,7 +251,7 @@ Review gate:
 ## Task Tracking Checklist
 
 - [x] Task 1 - Scaffold Menu Bar App
-- [ ] Task 2 - Build Memory and Process Data Services
+- [x] Task 2 - Build Memory and Process Data Services
 - [ ] Task 3 - Implement MVVM State and Sampling
 - [ ] Task 4 - Build Popup Layout (MVP)
 - [ ] Task 5 - Donut and Process Filtering Interactions
