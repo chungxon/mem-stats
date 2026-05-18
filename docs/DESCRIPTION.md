@@ -1,18 +1,20 @@
-# 🧭 Product Definition
+# 🧭 Ram Stats
+
+Similar to iStats, but focused on **memory monitoring** for multiple users.
 
 A **menu bar macOS app** that shows:
 
-* RAM usage by **user (donut chart)**
-* **Memory pressure + swap**
-* **History timeline**
-* **Top processes (global or per selected user)**
-* **Quick kill process**
+* Runs continuously with **minimal CPU + memory overhead**
+* Shows **RAM by user (donut)**, **swap**, **pressure**
+* Provides **short-term history (bounded window)**
+* Show **Top processes (global or per selected user)**
+* Has **native macOS UX (no custom-heavy UI nonsense)**
 
 All inside **one popup window**.
 
 ---
 
-# 🧱 1. Architecture Overview
+## 1. Architecture Overview
 
 ### Stack
 
@@ -22,18 +24,18 @@ All inside **one popup window**.
 
   * `host_statistics64` → memory stats
   * `sysctl` → total RAM
-  * `libproc` OR `ps` → processes
+  * `ps -axo user,pid,rss,command` → processes
 * State:
 
   * `ObservableObject` (single source of truth)
 
 ---
 
-# 🪟 2. UI Layout (Single Popup)
+## 2. UI Layout (Single Popup)
 
-```
+```text
 ┌──────────────────────────────────┐
-│ [Open Activity Monitor]   [Quit] │
+│ [|||]                        [⚙] |
 ├──────────────────────────────────┤
 │                                  │
 │          Donut Chart             │
@@ -43,15 +45,57 @@ All inside **one popup window**.
 │        History Chart             │
 ├──────────────────────────────────┤
 │        Top Processes             │
-│ (filtered by selected user)      │
+│   (filtered by selected user)    │
 └──────────────────────────────────┘
 ```
 
 ---
 
-# 🎯 3. Core UX Behavior
+## 3. Menu Bar
 
-## 3.1 Header
+### Menu Bar Item
+
+* Default:
+
+  * Icon + % usage
+  * Color reflects **memory pressure**
+
+    * 🟢 / 🟡 / 🔴
+
+* Click:
+  → show **popover (main UI)**
+
+* Right-click OR option-click:
+  → show **context menu**
+
+---
+
+### Context Menu
+
+```text
+• Open at Login [✓]
+• About
+• Quit
+```
+
+#### Implementation
+
+* Use:
+
+  * `SMAppService.mainApp.register()` → run at login
+* Persist toggle via:
+
+  * `UserDefaults`
+
+---
+
+## 4. Popup UI
+
+### Header
+
+```text
+[Activity Monitor Icon]          [Options Icon (gear icon)]
+```
 
 * Left: **Open Activity Monitor**
 
@@ -61,57 +105,126 @@ All inside **one popup window**.
     open -a "Activity Monitor"
     ```
 
-* Right: **Quit**
+* Right: ***Open Context Menu**
 
 ---
 
-## 3.2 Donut Chart (Key Interaction)
+## 5. Performance-first Design (VERY IMPORTANT)
+
+This is where most people mess up.
+
+### 5.1 Sampling Strategy
+
+DO NOT run everything every second.
+
+#### Suggested
+
+```text
+Memory stats: every 5s
+Process list: every 5s
+UI refresh: every 5s
+```
+
+👉 Process parsing is the expensive part.
+
+---
+
+### 5.2 Avoid heavy SwiftUI redraw
+
+* Use:
+
+  * `@Published` minimal fields
+* Split ViewModels:
+
+  * `MemoryVM`
+  * `ProcessVM`
+
+---
+
+### 5.3 Limit process list size
+
+* Only keep:
+
+  * top 20 processes
+* Not full list
+
+---
+
+### 5.4 Avoid constant grouping
+
+* Cache last result
+* Only recompute when process list updates
+
+---
+
+## 6. Donut Chart
 
 ### Data
 
 * Each slice = **user total RAM**
 * Last slice = **Free memory**
+* If slice < 2% → merge into "Others"
+* Sort users by memory DESC
 
 ### Center label
 
 * Default: `% used RAM`
-* On hover/press:
-  → show: `Used / Total (GB)`
+* On hover:
+  → show tooltip: `Used / Total (GB)`
 
 ### Interaction
 
-* Hover / long press on slice:
+* Hover on slice:
 
+  * highlight slice
+  * dim others
   * show tooltip:
 
     * user name
     * memory (GB)
     * %
+
 * Click slice:
 
   * set `selectedUser`
   * filter process list
 
+* Click again:
+
+  * reset filter
+  * If selectedUser no longer exists → auto reset selection
+
 ---
 
-## 3.3 History Chart
+## 7. History Chart
 
-### Metrics
+### Metrics (In-memory)
 
 * Total used RAM
 * Swap used
 * Memory pressure
-* Optional: per-user lines (toggle)
+* selected user only (if any)
 
 ### Time ranges
 
-* last 5 min
-* last 1 hour
-* last 24h (optional later)
+Don’t sample processes too frequently -> 5-10s interval
+
+* Keep last:
+
+```swift
+let maxSamples = 120 // ~10 minutes if 5s interval
+```
+
+### Behavior
+
+* Auto-drop old data
+* No persistence (MVP)
+
+👉 DO NOT store long-term → keeps app light
 
 ---
 
-## 3.4 Top Processes
+## 8. Process List
 
 ### Default
 
@@ -119,7 +232,7 @@ All inside **one popup window**.
 
 ### When user selected
 
-* Filter:
+* Filter instantly (no recompute)
 
   ```swift
   process.user == selectedUser
@@ -134,142 +247,35 @@ All inside **one popup window**.
 
 ### Sorting
 
-* By memory DESC
-
-### Interaction
-
-* Click process:
-
-  * confirm dialog:
-
-    * “Kill process?”
-* Action:
-
-  ```swift
-  kill(pid, SIGKILL)
-  ```
+* Always by memory DESC
 
 ---
 
-# ⚙️ 4. Data Model
+## 9. Native macOS Design Rules
 
-```swift
-struct MemoryStats {
-    let total: UInt64
-    let used: UInt64
-    let free: UInt64
-    let compressed: UInt64
-    let swapUsed: UInt64
-    let pressure: Double
-}
+### Follow Apple style strictly
 
-struct ProcessInfo {
-    let pid: Int
-    let user: String
-    let name: String
-    let memory: UInt64 // bytes
-}
+* Use:
 
-struct UserMemory {
-    let user: String
-    let totalMemory: UInt64
-}
+  * `.ultraThinMaterial`
+  * `.sidebar`
+  * `.regularMaterial`
+* Font:
 
-struct Snapshot {
-    let timestamp: Date
-    let totalUsed: UInt64
-    let swapUsed: UInt64
-    let pressure: Double
-    let perUser: [UserMemory]
-}
-```
+  * `.system(.body)`
+* Spacing:
+
+  * 8pt grid
+
+### Avoid UI
+
+* flashy gradients
+* custom UI libraries
+* over-animation
 
 ---
 
-# 🔄 5. Data Flow
-
-### Sampling loop
-
-```swift
-Timer (every 2 seconds)
-  → fetchMemoryStats()
-  → fetchProcesses()
-  → groupByUser()
-  → computePressure()
-  → appendSnapshot()
-  → publish state
-```
-
----
-
-# 🧠 6. Memory Calculation
-
-## 6.1 Total memory
-
-```swift
-sysctl("hw.memsize")
-```
-
----
-
-## 6.2 Used memory
-
-```swift
-used = active + wired + compressed
-```
-
----
-
-## 6.3 Pressure (custom logic)
-
-```swift
-pressure = used / total
-```
-
-Mapping:
-
-* `< 0.6` → green
-* `< 0.8` → yellow
-* `>= 0.8` → red
-
----
-
-# 🧩 7. Process Collection
-
-## Option A (MVP – fast)
-
-```bash
-ps -axo user,pid,rss,comm
-```
-
-Parse:
-
-* RSS = KB → convert to bytes
-
----
-
-## Option B (advanced – later)
-
-* `proc_pidinfo`
-* more accurate but complex
-
----
-
-# 🧮 8. Grouping Logic
-
-```swift
-Dictionary(grouping: processes, by: \.user)
-  .map {
-    UserMemory(
-      user: $0.key,
-      totalMemory: $0.value.reduce(0) { $0 + $1.memory }
-    )
-  }
-```
-
----
-
-# 📊 9. Charts Implementation
+## 10. Charts Implementation
 
 ## Donut Chart
 
@@ -285,7 +291,7 @@ Dictionary(grouping: processes, by: \.user)
 
 * Use:
 
-  * `Charts` framework (macOS 13+)
+  * native `Charts` framework
 * Lines:
 
   * total usage
@@ -294,138 +300,113 @@ Dictionary(grouping: processes, by: \.user)
 
 ---
 
-# 💾 10. History Storage
+## 11. Power & Resource Optimization
 
-### In-memory (MVP)
+Critical for long-running app
 
-* Keep last:
+### 11.1 Use background QoS
 
-  * 300 samples (≈10 min)
-
-### Optional upgrade
-
-* SQLite
-* persist across sessions
+```swift
+DispatchQueue.global(qos: .utility)
+```
 
 ---
 
-# 🔔 11. Optional Enhancements (Recommended)
+### 11.2 Debounce updates
 
-## 11.1 Alert system
+* Only update UI if:
+
+  * diff > threshold
+  * threshold = max(100MB, 1–2% of total RAM)
+
+---
+
+### 11.3 Lazy load UI sections
+
+* Chart:
+
+  * render only when visible
+
+---
+
+## 12. Permissions & Stability
+
+### Avoid API
+
+* private APIs → App Store rejection
+
+---
+
+## 13. Project Structure
+
+* Clean Architecture:
+
+* MVVM pattern:
+
+---
+
+## 14. Additional Improvements (Recommended)
+
+### 14.1 Idle mode optimization
+
+* When popup closed:
+
+  * reduce sampling:
+
+    ```text
+    Memory stats: every 15s
+    Process list: every 15s
+    UI refresh: every 15s
+    ```
+
+### 14.2 Smart highlighting
+
+* Highlight:
+
+  * user using >50% RAM
+
+### 14.3 Memory leak hint
+
+* Detect:
+
+  * continuous growth over N samples
+  * detect sudden jump per user
+
+### 14.4 Alert system
 
 * Notify when:
 
   * pressure = red
   * swap > threshold
 
----
+### 14.5 Exclude system users
 
-## 11.2 Memory spike detection
+Don’t show ALL users in history chart to avoid noise.
 
-* detect sudden jump per user
-
----
-
-## 11.3 Menu bar mini indicator
-
-* Show:
-
-  * RAM %
-  * color (pressure)
+* default hidden:
+  * _*
+  * root (optional)
 
 ---
 
-## 11.4 Hover preview (pro UX)
+## 🚀 Final Scope (Clean & Sharp)
 
-* Hover donut slice:
+### Core
 
-  * highlight slice
-  * dim others
+* Menu bar app
+* Donut (RAM by user + free)
+* Memory pressure + swap
+* Short history (bounded)
+* Top processes (filterable)
 
----
+### System
 
-## 11.5 Exclude system users
+* Lightweight sampling
+* Run at login
+* Context menu
 
-* hide:
+### Note
 
-  * `_windowserver`
-  * `_kernel`
-
----
-
-# 🔐 12. Permissions & Safety
-
-* Killing process:
-
-  * may require:
-
-    ```bash
-    sudo
-    ```
-
-* For MVP:
-
-  * allow killing only same-user processes
-
----
-
-# 🧱 13. Project Structure
-
-```
-/App
-  MenuBarApp.swift
-
-/Core
-  MemoryService.swift
-  ProcessService.swift
-  PressureCalculator.swift
-
-/Models
-  MemoryStats.swift
-  ProcessInfo.swift
-  UserMemory.swift
-  Snapshot.swift
-
-/ViewModels
-  DashboardViewModel.swift
-
-/UI
-  PopupView.swift
-  DonutChartView.swift
-  HistoryChartView.swift
-  ProcessListView.swift
-```
-
----
-
-# 🚀 14. Build Roadmap
-
-## Phase 1 (MVP)
-
-* menu bar app
-* fetch memory + processes
-* show table (no charts yet)
-
-## Phase 2
-
-* donut chart + selection logic
-
-## Phase 3
-
-* history chart
-
-## Phase 4
-
-* process kill + confirmation
-
-## Phase 5
-
-* polish UX (hover, animation, color)
-
----
-
-# ⚠️ Important Notes
-
-* RSS is approximate (good enough)
-* macOS memory compression affects accuracy
-* shared memory (Chrome, Electron) may double count
+* RAM per user is approximated using RSS
+* Shared memory may be double-counted
+* Values are indicative, not exact
