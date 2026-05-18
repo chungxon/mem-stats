@@ -145,7 +145,7 @@ UI refresh: every 5s
 
 * Only keep:
 
-  * top 20 processes
+  * top 8 processes
 * Not full list
 
 ---

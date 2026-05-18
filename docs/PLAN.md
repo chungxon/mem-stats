@@ -75,7 +75,7 @@ Acceptance criteria:
 
 - Services return valid values on local machine
 - Process list sorted by RSS desc
-- Result capped to top 20 processes
+- Result capped to top 8 processes
 
 Task 2 TODO:
 
@@ -83,7 +83,7 @@ Task 2 TODO:
 - [x] Implement `MemoryStatsService` using `host_statistics64`, `sysctl hw.memsize`, and `vm.swapusage`
 - [x] Implement `ProcessSnapshotService` using `ps -axo user,pid,rss,command`
 - [x] Ensure process snapshots are sorted by RSS descending
-- [x] Cap process snapshots to top 20 entries
+- [x] Cap process snapshots to top 8 entries
 - [x] Add parser/service tests for core acceptance behavior
 
 Review gate:

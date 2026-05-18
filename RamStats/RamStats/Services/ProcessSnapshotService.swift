@@ -11,7 +11,7 @@ enum ProcessSnapshotServiceError: Error {
 
 struct ProcessSnapshotService: ProcessSnapshotProviding {
   nonisolated func fetchTopProcesses(
-    limit: Int = 20,
+    limit: Int = 8,
     includeRootUser: Bool = false
   ) throws -> [ProcessSnapshot] {
     let process = Process()
@@ -47,7 +47,7 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
 enum ProcessSnapshotParser {
   static func parse(
     psOutput: String,
-    limit: Int = 20,
+    limit: Int = 8,
     includeRootUser: Bool = false
   ) -> [ProcessSnapshot] {
     let parsed =

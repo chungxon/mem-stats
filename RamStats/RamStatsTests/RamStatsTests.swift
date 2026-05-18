@@ -144,7 +144,7 @@ struct RamStatsTests {
       son 44 650 /Applications/Xcode.app
       """
 
-    let snapshots = ProcessSnapshotParser.parse(psOutput: output, limit: 20)
+    let snapshots = ProcessSnapshotParser.parse(psOutput: output, limit: 8)
 
     #expect(snapshots.count == 2)
     #expect(snapshots[0].pid == 44)
@@ -158,13 +158,13 @@ struct RamStatsTests {
       son 44 650 /Applications/Xcode.app
       """
 
-    let defaultFiltered = ProcessSnapshotParser.parse(psOutput: output, limit: 20)
+    let defaultFiltered = ProcessSnapshotParser.parse(psOutput: output, limit: 8)
     #expect(defaultFiltered.count == 1)
     #expect(defaultFiltered[0].user == "son")
 
     let withRoot = ProcessSnapshotParser.parse(
       psOutput: output,
-      limit: 20,
+      limit: 8,
       includeRootUser: true
     )
     #expect(withRoot.count == 2)
@@ -178,9 +178,9 @@ struct RamStatsTests {
     }
     let output = lines.joined(separator: "\n")
 
-    let snapshots = ProcessSnapshotParser.parse(psOutput: output, limit: 20)
+    let snapshots = ProcessSnapshotParser.parse(psOutput: output, limit: 8)
 
-    #expect(snapshots.count == 20)
+    #expect(snapshots.count == 8)
     #expect(snapshots.first?.pid == 30)
     #expect(snapshots.last?.pid == 11)
   }
