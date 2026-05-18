@@ -258,6 +258,16 @@ Acceptance criteria:
 - App can be quit cleanly from menu
 - About action is available
 
+Task 7 TODO:
+
+- [x] Add context menu entries: `Open at Login`, `About`, `Quit`
+- [x] Implement login-item integration using `SMAppService.mainApp.register()/unregister()`
+- [x] Persist `Open at Login` state in `UserDefaults`
+- [x] Sync persisted state from system login-item status on launch
+- [x] Keep `Quit` action terminating app cleanly
+- [x] Keep `About` action available from context menu
+- [x] Add tests for login-item state sync and toggle persistence
+
 Review gate:
 
 - Stop and request review before Task 8.
@@ -296,5 +306,5 @@ Review gate:
 - [x] Task 4 - Build Popup Layout (MVP)
 - [x] Task 5 - Donut and Process Filtering Interactions
 - [x] Task 6 - History Chart and Pressure/Swap Tracking
-- [ ] Task 7 - Context Menu, Login Item, and App Options
+- [x] Task 7 - Context Menu, Login Item, and App Options
 - [ ] Task 8 - Performance Hardening and Final QA

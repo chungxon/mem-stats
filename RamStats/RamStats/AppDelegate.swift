@@ -2,14 +2,15 @@ import AppKit
 import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
-  private let openAtLoginKey = "openAtLogin"
   private let popover = NSPopover()
   private var statusItem: NSStatusItem?
   private let appState = RamStatsAppState()
+  private let loginItemService = LoginItemService()
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     NSApp.setActivationPolicy(.accessory)
 
+    loginItemService.syncWithSystem()
     configurePopover()
     configureStatusItem()
   }
@@ -80,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
       keyEquivalent: ""
     )
     openAtLogin.target = self
-    openAtLogin.state = UserDefaults.standard.bool(forKey: openAtLoginKey) ? .on : .off
+    openAtLogin.state = loginItemService.isEnabled ? .on : .off
 
     let about = NSMenuItem(title: "About", action: #selector(showAbout), keyEquivalent: "")
     about.target = self
@@ -96,9 +97,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
   @objc
   private func toggleOpenAtLogin(_ sender: NSMenuItem) {
-    let newValue = !UserDefaults.standard.bool(forKey: openAtLoginKey)
-    UserDefaults.standard.set(newValue, forKey: openAtLoginKey)
-    sender.state = newValue ? .on : .off
+    do {
+      let enabled = try loginItemService.toggle()
+      sender.state = enabled ? .on : .off
+    } catch {
+      sender.state = loginItemService.isEnabled ? .on : .off
+      presentLoginItemError(error)
+    }
   }
 
   @objc
@@ -126,6 +131,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   @objc
   private func quitApp() {
     NSApp.terminate(nil)
+  }
+
+  private func presentLoginItemError(_ error: Error) {
+    let alert = NSAlert()
+    alert.alertStyle = .warning
+    alert.messageText = "Could not update Open at Login"
+    alert.informativeText = error.localizedDescription
+    alert.addButton(withTitle: "OK")
+    alert.runModal()
   }
 
   func popoverWillShow(_ notification: Notification) {

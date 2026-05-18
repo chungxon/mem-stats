@@ -1,9 +1,28 @@
 import Foundation
+import ServiceManagement
 import Testing
 
 @testable import RamStats
 
 struct RamStatsTests {
+  private final class MockLoginItemRegistrant: LoginItemRegistrant {
+    var status: SMAppService.Status
+    var didRegister = false
+    var didUnregister = false
+
+    init(status: SMAppService.Status = .notRegistered) {
+      self.status = status
+    }
+
+    func register() throws {
+      didRegister = true
+    }
+
+    func unregister() throws {
+      didUnregister = true
+    }
+  }
+
   @Test func donutBuilderMergesTinyUsersAndKeepsFreeLast() {
     let snapshots = [
       ProcessSnapshot(user: "alice", pid: 1, rssBytes: 500, command: "/a"),
@@ -160,5 +179,36 @@ struct RamStatsTests {
 
     #expect(appState.samplingInterval(for: .active) == 5)
     #expect(appState.samplingInterval(for: .idle) == 15)
+  }
+
+  @Test func loginItemServiceSyncsAndPersistsState() {
+    let defaults = UserDefaults(suiteName: "RamStatsTests.LoginItem.Sync")!
+    defaults.removePersistentDomain(forName: "RamStatsTests.LoginItem.Sync")
+
+    let registrant = MockLoginItemRegistrant(status: .enabled)
+    let service = LoginItemService(defaults: defaults, registrant: registrant)
+
+    service.syncWithSystem()
+
+    #expect(service.isEnabled == true)
+    #expect(defaults.bool(forKey: "openAtLogin") == true)
+  }
+
+  @Test func loginItemServiceToggleCallsRegisterAndUnregister() throws {
+    let defaults = UserDefaults(suiteName: "RamStatsTests.LoginItem.Toggle")!
+    defaults.removePersistentDomain(forName: "RamStatsTests.LoginItem.Toggle")
+
+    let registrant = MockLoginItemRegistrant(status: .notRegistered)
+    let service = LoginItemService(defaults: defaults, registrant: registrant)
+
+    let enabled = try service.toggle()
+    #expect(enabled == true)
+    #expect(registrant.didRegister == true)
+    #expect(defaults.bool(forKey: "openAtLogin") == true)
+
+    let disabled = try service.toggle()
+    #expect(disabled == false)
+    #expect(registrant.didUnregister == true)
+    #expect(defaults.bool(forKey: "openAtLogin") == false)
   }
 }
