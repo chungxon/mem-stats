@@ -149,6 +149,15 @@ Acceptance criteria:
 - Uses solid colors and native material style
 - No heavy custom visual effects
 
+Task 4 TODO:
+
+- [x] Build popup header with native typography and balanced spacing
+- [x] Add header action to open Activity Monitor
+- [x] Add header action to open options/context menu
+- [x] Add three-section popup structure: RAM area, history area, top process area
+- [x] Use native solid-color surfaces (`windowBackground`/`controlBackground`) without heavy effects
+- [x] Keep layout stable for common macOS scaling in fixed popover bounds
+
 Review gate:
 
 - Stop and request review before Task 5.
@@ -263,7 +272,7 @@ Review gate:
 - [x] Task 1 - Scaffold Menu Bar App
 - [x] Task 2 - Build Memory and Process Data Services
 - [x] Task 3 - Implement MVVM State and Sampling
-- [ ] Task 4 - Build Popup Layout (MVP)
+- [x] Task 4 - Build Popup Layout (MVP)
 - [ ] Task 5 - Donut and Process Filtering Interactions
 - [ ] Task 6 - History Chart and Pressure/Swap Tracking
 - [ ] Task 7 - Context Menu, Login Item, and App Options

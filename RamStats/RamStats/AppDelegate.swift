@@ -17,9 +17,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   private func configurePopover() {
     popover.behavior = .transient
     popover.delegate = self
-    popover.contentSize = NSSize(width: 360, height: 480)
+    popover.contentSize = NSSize(width: 380, height: 540)
     popover.contentViewController = NSHostingController(
-      rootView: PopoverRootView(appState: appState)
+      rootView: PopoverRootView(
+        appState: appState,
+        onOpenActivityMonitor: { [weak self] in
+          self?.openActivityMonitor()
+        },
+        onOpenOptionsMenu: { [weak self] in
+          self?.showContextMenuFromPopover()
+        }
+      )
     )
   }
 
@@ -58,6 +66,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
   }
 
+  private func showContextMenuFromPopover() {
+    guard let button = statusItem?.button else { return }
+    showContextMenu(from: button)
+  }
+
   private func showContextMenu(from button: NSStatusBarButton) {
     let menu = NSMenu()
 
@@ -92,6 +105,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   private func showAbout() {
     NSApp.orderFrontStandardAboutPanel(nil)
     NSApp.activate(ignoringOtherApps: true)
+  }
+
+  private func openActivityMonitor() {
+    guard
+      let activityMonitorURL = NSWorkspace.shared.urlForApplication(
+        withBundleIdentifier: "com.apple.ActivityMonitor"
+      )
+    else {
+      return
+    }
+
+    let configuration = NSWorkspace.OpenConfiguration()
+    NSWorkspace.shared.openApplication(
+      at: activityMonitorURL,
+      configuration: configuration
+    )
   }
 
   @objc
