@@ -1,7 +1,7 @@
 import Foundation
 
 protocol ProcessSnapshotProviding: Sendable {
-  nonisolated func fetchTopProcesses(limit: Int) throws -> [ProcessSnapshot]
+  nonisolated func fetchTopProcesses(limit: Int, includeRootUser: Bool) throws -> [ProcessSnapshot]
 }
 
 enum ProcessSnapshotServiceError: Error {
@@ -10,7 +10,10 @@ enum ProcessSnapshotServiceError: Error {
 }
 
 struct ProcessSnapshotService: ProcessSnapshotProviding {
-  nonisolated func fetchTopProcesses(limit: Int = 20) throws -> [ProcessSnapshot] {
+  nonisolated func fetchTopProcesses(
+    limit: Int = 20,
+    includeRootUser: Bool = false
+  ) throws -> [ProcessSnapshot] {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/bin/ps")
     process.arguments = ["-axo", "user=,pid=,rss=,comm="]
@@ -33,16 +36,25 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
       throw ProcessSnapshotServiceError.utf8DecodeFailed
     }
 
-    return ProcessSnapshotParser.parse(psOutput: output, limit: limit)
+    return ProcessSnapshotParser.parse(
+      psOutput: output,
+      limit: limit,
+      includeRootUser: includeRootUser
+    )
   }
 }
 
 enum ProcessSnapshotParser {
-  static func parse(psOutput: String, limit: Int = 20) -> [ProcessSnapshot] {
+  static func parse(
+    psOutput: String,
+    limit: Int = 20,
+    includeRootUser: Bool = false
+  ) -> [ProcessSnapshot] {
     let parsed =
       psOutput
       .split(whereSeparator: \.isNewline)
       .compactMap(parseLine)
+      .filter { shouldInclude(user: $0.user, includeRootUser: includeRootUser) }
       .sorted { lhs, rhs in
         if lhs.rssBytes == rhs.rssBytes {
           return lhs.pid < rhs.pid
@@ -72,5 +84,17 @@ enum ProcessSnapshotParser {
       rssBytes: rssKilobytes * 1024,
       command: command
     )
+  }
+
+  private static func shouldInclude(user: String, includeRootUser: Bool) -> Bool {
+    if user.hasPrefix("_") {
+      return false
+    }
+
+    if !includeRootUser && user == "root" {
+      return false
+    }
+
+    return true
   }
 }

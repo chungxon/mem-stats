@@ -82,7 +82,9 @@ final class RamStatsAppState: ObservableObject {
       let sampledAt = Date()
 
       let memoryResult = Result { try memoryService.fetchMemoryStats() }
-      let processResult = Result { try processService.fetchTopProcesses(limit: 20) }
+      let processResult = Result {
+        try processService.fetchTopProcesses(limit: 20, includeRootUser: false)
+      }
 
       Task { @MainActor [weak self] in
         guard let self else { return }

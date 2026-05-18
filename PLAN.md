@@ -294,6 +294,17 @@ Acceptance criteria:
 - No obvious redraw/perf spikes
 - Lint and test commands pass
 
+Task 8 TODO:
+
+- [x] Add status-item debounce threshold using `max(100MB, 1% total RAM)` to reduce unnecessary UI churn
+- [x] Keep sampling work on utility QoS queue
+- [x] Filter system users by default in process snapshots (`_*`, and `root` excluded by default)
+- [x] Preserve optional root inclusion path for future toggles/config
+- [x] Extend tests for new process filtering behavior
+- [x] Run lint on all changed files
+- [x] Run build verification
+- [x] Run test command verification (environment still sandbox-limited)
+
 Review gate:
 
 - Stop and request final review and sign-off.
@@ -307,4 +318,4 @@ Review gate:
 - [x] Task 5 - Donut and Process Filtering Interactions
 - [x] Task 6 - History Chart and Pressure/Swap Tracking
 - [x] Task 7 - Context Menu, Login Item, and App Options
-- [ ] Task 8 - Performance Hardening and Final QA
+- [x] Task 8 - Performance Hardening and Final QA

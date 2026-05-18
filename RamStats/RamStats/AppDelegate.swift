@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
@@ -6,6 +7,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   private var statusItem: NSStatusItem?
   private let appState = RamStatsAppState()
   private let loginItemService = LoginItemService()
+  private var cancellables: Set<AnyCancellable> = []
+  private var lastDisplayedUsedBytes: UInt64?
+  private var lastDisplayedPressureLevel: MemoryPressureLevel?
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     NSApp.setActivationPolicy(.accessory)
@@ -13,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     loginItemService.syncWithSystem()
     configurePopover()
     configureStatusItem()
+    observeMemoryStats()
   }
 
   private func configurePopover() {
@@ -42,8 +47,69 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     button.target = self
     button.action = #selector(handleStatusItemClick)
     button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+    button.contentTintColor = .systemGreen
 
     statusItem = item
+  }
+
+  private func observeMemoryStats() {
+    appState.memoryVM.$currentStats
+      .compactMap { $0 }
+      .sink { [weak self] stats in
+        self?.updateStatusItemIfNeeded(with: stats)
+      }
+      .store(in: &cancellables)
+  }
+
+  private func updateStatusItemIfNeeded(with stats: MemoryStats) {
+    guard let button = statusItem?.button else { return }
+
+    let shouldUpdate = shouldRefreshStatus(
+      currentUsedBytes: stats.usedBytes,
+      totalBytes: stats.totalBytes,
+      pressureLevel: stats.pressureLevel
+    )
+
+    guard shouldUpdate else { return }
+
+    let usagePercent =
+      stats.totalBytes > 0
+      ? Int((Double(stats.usedBytes) / Double(stats.totalBytes) * 100).rounded())
+      : 0
+    button.title = "RAM \(usagePercent)%"
+    button.contentTintColor = color(for: stats.pressureLevel)
+
+    lastDisplayedUsedBytes = stats.usedBytes
+    lastDisplayedPressureLevel = stats.pressureLevel
+  }
+
+  private func shouldRefreshStatus(
+    currentUsedBytes: UInt64,
+    totalBytes: UInt64,
+    pressureLevel: MemoryPressureLevel
+  ) -> Bool {
+    if lastDisplayedUsedBytes == nil {
+      return true
+    }
+
+    if lastDisplayedPressureLevel != pressureLevel {
+      return true
+    }
+
+    guard let previousUsedBytes = lastDisplayedUsedBytes else {
+      return true
+    }
+
+    let delta =
+      currentUsedBytes > previousUsedBytes
+      ? currentUsedBytes - previousUsedBytes
+      : previousUsedBytes - currentUsedBytes
+
+    let onePercentThreshold = totalBytes / 100
+    let minimumThreshold = UInt64(100 * 1024 * 1024)
+    let threshold = max(minimumThreshold, onePercentThreshold)
+
+    return delta >= threshold
   }
 
   @objc
@@ -140,6 +206,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     alert.informativeText = error.localizedDescription
     alert.addButton(withTitle: "OK")
     alert.runModal()
+  }
+
+  private func color(for pressure: MemoryPressureLevel) -> NSColor {
+    switch pressure {
+    case .normal:
+      return .systemGreen
+    case .warning:
+      return .systemYellow
+    case .critical:
+      return .systemRed
+    }
   }
 
   func popoverWillShow(_ notification: Notification) {

@@ -146,10 +146,30 @@ struct RamStatsTests {
 
     let snapshots = ProcessSnapshotParser.parse(psOutput: output, limit: 20)
 
-    #expect(snapshots.count == 3)
-    #expect(snapshots[0].pid == 1)
-    #expect(snapshots[1].pid == 44)
-    #expect(snapshots[2].pid == 100)
+    #expect(snapshots.count == 2)
+    #expect(snapshots[0].pid == 44)
+    #expect(snapshots[1].pid == 100)
+  }
+
+  @Test func parseProcessOutputFiltersUnderscoreUsersAndCanIncludeRoot() {
+    let output = """
+      _windowserver 10 500 /System/Library/windowserver
+      root 1 900 /sbin/launchd
+      son 44 650 /Applications/Xcode.app
+      """
+
+    let defaultFiltered = ProcessSnapshotParser.parse(psOutput: output, limit: 20)
+    #expect(defaultFiltered.count == 1)
+    #expect(defaultFiltered[0].user == "son")
+
+    let withRoot = ProcessSnapshotParser.parse(
+      psOutput: output,
+      limit: 20,
+      includeRootUser: true
+    )
+    #expect(withRoot.count == 2)
+    #expect(withRoot[0].user == "root")
+    #expect(withRoot[1].user == "son")
   }
 
   @Test func parseProcessOutputCapsAtLimit() {
