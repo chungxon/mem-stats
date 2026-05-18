@@ -9,6 +9,7 @@ final class ProcessViewModel: ObservableObject {
     let rssBytes: UInt64
   }
 
+  @Published private(set) var allProcesses: [ProcessSnapshot] = []
   @Published private(set) var topProcesses: [ProcessSnapshot] = []
   @Published var selectedUser: String?
 
@@ -19,8 +20,9 @@ final class ProcessViewModel: ObservableObject {
     self.maxSamples = max(maxSamples, 1)
   }
 
-  func apply(snapshots: [ProcessSnapshot], sampledAt: Date = Date()) {
-    topProcesses = snapshots
+  func apply(snapshots: [ProcessSnapshot], topLimit: Int = 8, sampledAt: Date = Date()) {
+    allProcesses = snapshots
+    topProcesses = Array(snapshots.prefix(max(topLimit, 0)))
 
     var rssByUser: [String: UInt64] = [:]
     for snapshot in snapshots {
@@ -36,7 +38,7 @@ final class ProcessViewModel: ObservableObject {
       userHistoryByUser[user] = history
     }
 
-    if let selectedUser, !snapshots.contains(where: { $0.user == selectedUser }) {
+    if let selectedUser, !allProcesses.contains(where: { $0.user == selectedUser }) {
       self.selectedUser = nil
     }
   }

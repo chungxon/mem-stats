@@ -9,13 +9,21 @@ struct DonutDataBuilder {
   ) -> [DonutSlice] {
     guard totalBytes > 0 else { return [] }
 
+    let cappedFreeBytes = min(freeBytes, totalBytes)
+    let targetUsedBytes = totalBytes - cappedFreeBytes
+
     var perUserBytes: [String: UInt64] = [:]
     for process in snapshots {
       perUserBytes[process.user, default: 0] += process.rssBytes
     }
 
-    var userSlices =
-      perUserBytes
+    let normalizedPerUserBytes = normalizePerUserBytes(
+      perUserBytes,
+      targetUsedBytes: targetUsedBytes
+    )
+
+    let userSlices =
+      normalizedPerUserBytes
       .map { user, bytes in
         DonutSlice(
           id: "user:\(user)",
@@ -55,7 +63,20 @@ struct DonutDataBuilder {
       )
     }
 
-    let cappedFreeBytes = min(freeBytes, totalBytes)
+    let accountedUsedBytes = stableUserSlices.reduce(UInt64(0)) { $0 + $1.bytes }
+    if targetUsedBytes > accountedUsedBytes {
+      let unattributedBytes = targetUsedBytes - accountedUsedBytes
+      stableUserSlices.append(
+        DonutSlice(
+          id: "unattributed",
+          label: "Unattributed Used",
+          category: .unattributed,
+          bytes: unattributedBytes,
+          fractionOfTotal: Double(unattributedBytes) / Double(totalBytes)
+        )
+      )
+    }
+
     stableUserSlices.append(
       DonutSlice(
         id: "free",
@@ -67,6 +88,52 @@ struct DonutDataBuilder {
     )
 
     return stableUserSlices
+  }
+
+  private static func normalizePerUserBytes(
+    _ perUserBytes: [String: UInt64],
+    targetUsedBytes: UInt64
+  ) -> [String: UInt64] {
+    let totalMeasuredBytes = perUserBytes.values.reduce(UInt64(0), +)
+    guard totalMeasuredBytes > 0, targetUsedBytes > 0 else {
+      return [:]
+    }
+
+    if totalMeasuredBytes <= targetUsedBytes {
+      return perUserBytes
+    }
+
+    let scale = Double(targetUsedBytes) / Double(totalMeasuredBytes)
+    var normalized: [String: UInt64] = [:]
+    var totalNormalized: UInt64 = 0
+
+    for (user, bytes) in perUserBytes {
+      let scaled = UInt64((Double(bytes) * scale).rounded(.down))
+      normalized[user] = scaled
+      totalNormalized += scaled
+    }
+
+    var remainder = targetUsedBytes - totalNormalized
+    if remainder > 0 {
+      let sortedUsers = perUserBytes.keys.sorted {
+        let lhsBytes = normalized[$0, default: 0]
+        let rhsBytes = normalized[$1, default: 0]
+        if lhsBytes == rhsBytes {
+          return $0 < $1
+        }
+        return lhsBytes > rhsBytes
+      }
+
+      var index = 0
+      while remainder > 0, !sortedUsers.isEmpty {
+        let user = sortedUsers[index % sortedUsers.count]
+        normalized[user, default: 0] += 1
+        remainder -= 1
+        index += 1
+      }
+    }
+
+    return normalized.filter { $0.value > 0 }
   }
 
   static func sliceForSelection(angleValue: Double?, in slices: [DonutSlice]) -> DonutSlice? {

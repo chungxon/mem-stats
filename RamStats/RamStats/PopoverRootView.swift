@@ -30,7 +30,7 @@ struct PopoverRootView: View {
     return DonutDataBuilder.buildSlices(
       totalBytes: stats.totalBytes,
       freeBytes: stats.freeBytes,
-      snapshots: processVM.topProcesses,
+      snapshots: processVM.allProcesses,
       tinyThreshold: 0.02
     )
   }
@@ -382,6 +382,8 @@ struct PopoverRootView: View {
       return Color.green
     case .others:
       return Color.gray
+    case .unattributed:
+      return Color.secondary
     case .user(let user):
       let palette: [Color] = [.blue, .orange, .mint, .indigo, .teal, .cyan, .pink, .brown]
       let index = abs(user.hashValue) % palette.count

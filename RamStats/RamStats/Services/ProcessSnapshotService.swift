@@ -1,6 +1,7 @@
 import Foundation
 
 protocol ProcessSnapshotProviding: Sendable {
+  nonisolated func fetchProcesses(includeRootUser: Bool) throws -> [ProcessSnapshot]
   nonisolated func fetchTopProcesses(limit: Int, includeRootUser: Bool) throws -> [ProcessSnapshot]
 }
 
@@ -10,10 +11,28 @@ enum ProcessSnapshotServiceError: Error {
 }
 
 struct ProcessSnapshotService: ProcessSnapshotProviding {
+  nonisolated func fetchProcesses(includeRootUser: Bool = false) throws -> [ProcessSnapshot] {
+    let output = try runPSCommand()
+    return ProcessSnapshotParser.parse(
+      psOutput: output,
+      limit: nil,
+      includeRootUser: includeRootUser
+    )
+  }
+
   nonisolated func fetchTopProcesses(
     limit: Int = 8,
     includeRootUser: Bool = false
   ) throws -> [ProcessSnapshot] {
+    let output = try runPSCommand()
+    return ProcessSnapshotParser.parse(
+      psOutput: output,
+      limit: limit,
+      includeRootUser: includeRootUser
+    )
+  }
+
+  private nonisolated func runPSCommand() throws -> String {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/bin/ps")
     process.arguments = ["-axo", "user=,pid=,rss=,comm="]
@@ -36,18 +55,14 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
       throw ProcessSnapshotServiceError.utf8DecodeFailed
     }
 
-    return ProcessSnapshotParser.parse(
-      psOutput: output,
-      limit: limit,
-      includeRootUser: includeRootUser
-    )
+    return output
   }
 }
 
 enum ProcessSnapshotParser {
   static func parse(
     psOutput: String,
-    limit: Int = 8,
+    limit: Int? = 8,
     includeRootUser: Bool = false
   ) -> [ProcessSnapshot] {
     let parsed =
@@ -62,7 +77,11 @@ enum ProcessSnapshotParser {
         return lhs.rssBytes > rhs.rssBytes
       }
 
-    return Array(parsed.prefix(max(limit, 0)))
+    if let limit {
+      return Array(parsed.prefix(max(limit, 0)))
+    }
+
+    return parsed
   }
 
   private static func parseLine(_ line: Substring) -> ProcessSnapshot? {

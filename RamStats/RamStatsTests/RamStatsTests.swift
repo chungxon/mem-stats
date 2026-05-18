@@ -37,11 +37,32 @@ struct RamStatsTests {
       tinyThreshold: 0.05
     )
 
-    #expect(slices.count == 3)
+    #expect(slices.count == 4)
     #expect(slices[0].label == "alice")
     #expect(slices[1].label == "Others")
-    #expect(slices[2].label == "Free")
-    #expect(slices[2].bytes == 400)
+    #expect(slices[2].label == "Unattributed Used")
+    #expect(slices[2].bytes == 60)
+    #expect(slices[3].label == "Free")
+    #expect(slices[3].bytes == 400)
+  }
+
+  @Test func donutBuilderNormalizesUserBytesWhenMeasuredExceedsUsed() {
+    let snapshots = [
+      ProcessSnapshot(user: "alice", pid: 1, rssBytes: 800, command: "/a"),
+      ProcessSnapshot(user: "bob", pid: 2, rssBytes: 600, command: "/b"),
+    ]
+
+    let slices = DonutDataBuilder.buildSlices(
+      totalBytes: 1_000,
+      freeBytes: 600,
+      snapshots: snapshots
+    )
+
+    let totalSliceBytes = slices.reduce(UInt64(0)) { $0 + $1.bytes }
+    let hasUnattributed = slices.contains { $0.category == .unattributed }
+
+    #expect(totalSliceBytes == 1_000)
+    #expect(hasUnattributed == false)
   }
 
   @Test func donutSelectionPicksExpectedSlice() {
@@ -183,6 +204,20 @@ struct RamStatsTests {
     #expect(snapshots.count == 8)
     #expect(snapshots.first?.pid == 30)
     #expect(snapshots.last?.pid == 11)
+  }
+
+  @Test func parseProcessOutputReturnsAllWhenNoLimitProvided() {
+    let output = """
+      son 100 400 /usr/bin/vim
+      son 44 650 /Applications/Xcode.app
+      son 45 300 /Applications/Code.app
+      """
+
+    let snapshots = ProcessSnapshotParser.parse(psOutput: output, limit: nil)
+
+    #expect(snapshots.count == 3)
+    #expect(snapshots.first?.pid == 44)
+    #expect(snapshots.last?.pid == 45)
   }
 
   @Test func memoryStatsServiceReturnsPositiveTotals() throws {

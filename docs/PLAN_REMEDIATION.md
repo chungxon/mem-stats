@@ -20,10 +20,10 @@ Objective:
 
 TODO:
 
-- [ ] Tách nguồn dữ liệu donut khỏi `topProcesses` hiển thị.
-- [ ] Bổ sung phần "Unattributed/Other Used" để tổng slice hợp lệ khi thiếu coverage từ process list.
-- [ ] Giữ quy tắc sort + merge tiny slices + free slice cuối.
-- [ ] Bổ sung test cho tổng fraction/slice consistency.
+- [x] Tách nguồn dữ liệu donut khỏi `topProcesses` hiển thị.
+- [x] Bổ sung phần "Unattributed/Other Used" để tổng slice hợp lệ khi thiếu coverage từ process list.
+- [x] Giữ quy tắc sort + merge tiny slices + free slice cuối.
+- [x] Bổ sung test cho tổng fraction/slice consistency.
 
 Acceptance Criteria:
 

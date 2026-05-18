@@ -4,6 +4,7 @@ struct DonutSlice: Identifiable, Equatable {
   enum Category: Equatable {
     case user(String)
     case others
+    case unattributed
     case free
   }
 

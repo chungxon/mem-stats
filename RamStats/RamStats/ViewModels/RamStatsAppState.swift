@@ -83,7 +83,7 @@ final class RamStatsAppState: ObservableObject {
 
       let memoryResult = Result { try memoryService.fetchMemoryStats() }
       let processResult = Result {
-        try processService.fetchTopProcesses(limit: 8, includeRootUser: false)
+        try processService.fetchProcesses(includeRootUser: false)
       }
 
       Task { @MainActor [weak self] in
@@ -100,7 +100,7 @@ final class RamStatsAppState: ObservableObject {
 
         switch processResult {
         case .success(let processes):
-          processVM.apply(snapshots: processes, sampledAt: sampledAt)
+          processVM.apply(snapshots: processes, topLimit: 8, sampledAt: sampledAt)
         case .failure(let error):
           messages.append("Process: \(error.localizedDescription)")
         }
