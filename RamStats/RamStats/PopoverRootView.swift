@@ -73,14 +73,16 @@ struct PopoverRootView: View {
   }
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 14) {
-      headerSection
-      donutSection
-      historySection
-      processSection
+    ScrollView(.vertical, showsIndicators: false) {
+      VStack(alignment: .leading, spacing: 14) {
+        headerSection
+        donutSection
+        historySection
+        processSection
+      }
+      .padding(16)
+      .frame(maxWidth: .infinity, alignment: .topLeading)
     }
-    .padding(16)
-    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .background(Color(nsColor: .windowBackgroundColor))
     .onChange(of: selectedAngleValue) { _, newValue in
       updateSelection(for: newValue)
