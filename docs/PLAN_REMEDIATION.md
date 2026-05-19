@@ -118,6 +118,24 @@ Acceptance Criteria:
 - Khi chọn user, process list phản ánh đúng top process của user đã chọn.
 - Không còn tình trạng selected user nhưng list trống/sai do lọc từ top global.
 
+## Task 7 - History Chart Readability Stabilization
+
+Objective:
+
+- Làm chart lịch sử dễ đọc hơn và tránh cảm giác "line bị chéo lạ" khi hiển thị đồng thời Used/Swap/Pressure.
+
+TODO:
+
+- [x] Đổi series `Used` sang area + line để thể hiện xu hướng usage rõ hơn.
+- [x] Giữ `Swap` ở dạng line nét đứt để phân biệt với `Used`.
+- [x] Dời `Pressure` về dải overlay gần đỉnh chart để không nhiễu scale bytes.
+- [x] Run lint cho file đã thay đổi.
+
+Acceptance Criteria:
+
+- Chart nhìn ổn định, dễ đọc hơn khi mở lâu.
+- `Used`, `Swap`, `Pressure` được phân biệt rõ mà không làm trục dữ liệu khó hiểu.
+
 Latest Verification Notes (2026-05-19):
 
 - Lint: `swiftlint` chưa có trong môi trường local; dùng `xcrun swift-format lint` để kiểm tra thay thế.
@@ -133,6 +151,7 @@ Latest Verification Notes (2026-05-19):
 4. Task 4 (copy/polish)
 5. Task 5 (verification)
 6. Task 6 (selected-user process filtering)
+7. Task 7 (history chart readability)
 
 ## Review Gates
 

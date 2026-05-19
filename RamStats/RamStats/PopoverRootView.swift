@@ -237,6 +237,16 @@ struct PopoverRootView: View {
         } else {
           Chart {
             ForEach(Array(orderedMemoryHistory.enumerated()), id: \.offset) { _, sample in
+              AreaMark(
+                x: .value("Time", sample.timestamp),
+                yStart: .value("Baseline", 0),
+                yEnd: .value("Used RAM", Double(sample.usedBytes))
+              )
+              .foregroundStyle(Color.blue.opacity(0.2))
+              .interpolationMethod(.linear)
+            }
+
+            ForEach(Array(orderedMemoryHistory.enumerated()), id: \.offset) { _, sample in
               LineMark(
                 x: .value("Time", sample.timestamp),
                 y: .value("Used RAM", Double(sample.usedBytes))
@@ -252,17 +262,20 @@ struct PopoverRootView: View {
                 y: .value("Swap Used", Double(sample.swapUsedBytes))
               )
               .foregroundStyle(Color.orange)
-              .lineStyle(StrokeStyle(lineWidth: 2))
+              .lineStyle(StrokeStyle(lineWidth: 2, dash: [6, 4]))
               .interpolationMethod(.linear)
             }
 
             ForEach(Array(orderedMemoryHistory.enumerated()), id: \.offset) { _, sample in
               LineMark(
                 x: .value("Time", sample.timestamp),
-                y: .value("Pressure", scaledPressureValue(for: sample.pressureLevel))
+                y: .value(
+                  "Pressure",
+                  scaledPressureOverlayValue(for: sample.pressureLevel)
+                )
               )
               .foregroundStyle(Color.red)
-              .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+              .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
               .interpolationMethod(.stepCenter)
             }
 
@@ -524,16 +537,16 @@ struct PopoverRootView: View {
     return (angle / (Double.pi * 2)) * total
   }
 
-  private func scaledPressureValue(for level: MemoryPressureLevel) -> Double {
+  private func scaledPressureOverlayValue(for level: MemoryPressureLevel) -> Double {
     let base = historyScaleUpperBound
 
     switch level {
     case .normal:
-      return base * 0.25
+      return base * 0.86
     case .warning:
-      return base * 0.6
+      return base * 0.92
     case .critical:
-      return base
+      return base * 0.98
     }
   }
 
