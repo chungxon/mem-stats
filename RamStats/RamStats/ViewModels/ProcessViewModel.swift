@@ -15,14 +15,16 @@ final class ProcessViewModel: ObservableObject {
 
   private var userHistoryByUser: [String: [UserMemoryHistorySample]] = [:]
   private let maxSamples: Int
+  private var topLimit: Int = 8
 
   init(maxSamples: Int = 120) {
     self.maxSamples = max(maxSamples, 1)
   }
 
   func apply(snapshots: [ProcessSnapshot], topLimit: Int = 8, sampledAt: Date = Date()) {
+    self.topLimit = max(topLimit, 0)
     allProcesses = snapshots
-    topProcesses = Array(snapshots.prefix(max(topLimit, 0)))
+    topProcesses = Array(snapshots.prefix(self.topLimit))
     let adjustedTimestamp: Date
     let latestTimestamp = userHistoryByUser.values.compactMap(\.last?.timestamp).max()
     if let latestTimestamp, sampledAt <= latestTimestamp {
@@ -54,7 +56,7 @@ final class ProcessViewModel: ObservableObject {
 
   var visibleProcesses: [ProcessSnapshot] {
     guard let selectedUser else { return topProcesses }
-    return topProcesses.filter { $0.user == selectedUser }
+    return Array(allProcesses.filter { $0.user == selectedUser }.prefix(topLimit))
   }
 
   var selectedUserHistory: [UserMemoryHistorySample] {

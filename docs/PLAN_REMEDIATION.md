@@ -100,6 +100,24 @@ Acceptance Criteria:
 - Có báo cáo kết quả lint/test/build minh bạch.
 - Nếu fail do môi trường, có hướng xử lý cụ thể.
 
+## Task 6 - Selected User Process Filter Correctness
+
+Objective:
+
+- Đảm bảo khi chọn user từ donut, list process hiển thị đúng top process của user đó (không bị lệ thuộc top global).
+
+TODO:
+
+- [x] Lưu `topLimit` hiện tại trong `ProcessViewModel`.
+- [x] Đổi `visibleProcesses` để lọc từ `allProcesses` theo `selectedUser`, sau đó mới áp `topLimit`.
+- [x] Bổ sung test regression cho case user không nằm trong top global nhưng vẫn có top process riêng.
+- [x] Run lint cho file đã thay đổi.
+
+Acceptance Criteria:
+
+- Khi chọn user, process list phản ánh đúng top process của user đã chọn.
+- Không còn tình trạng selected user nhưng list trống/sai do lọc từ top global.
+
 Latest Verification Notes (2026-05-19):
 
 - Lint: `swiftlint` chưa có trong môi trường local; dùng `xcrun swift-format lint` để kiểm tra thay thế.
@@ -114,6 +132,7 @@ Latest Verification Notes (2026-05-19):
 3. Task 3 (interaction UX)
 4. Task 4 (copy/polish)
 5. Task 5 (verification)
+6. Task 6 (selected-user process filtering)
 
 ## Review Gates
 

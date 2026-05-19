@@ -151,6 +151,26 @@ struct RamStatsTests {
     #expect(vm.visibleProcesses.first?.user == "alice")
   }
 
+  @MainActor @Test func processViewModelSelectedUserUsesTopLimitFromAllProcesses() {
+    let vm = ProcessViewModel()
+    vm.apply(
+      snapshots: [
+        ProcessSnapshot(user: "bob", pid: 1, rssBytes: 900, command: "/bin/b1"),
+        ProcessSnapshot(user: "alice", pid: 2, rssBytes: 800, command: "/bin/a1"),
+        ProcessSnapshot(user: "alice", pid: 3, rssBytes: 700, command: "/bin/a2"),
+        ProcessSnapshot(user: "alice", pid: 4, rssBytes: 600, command: "/bin/a3"),
+      ],
+      topLimit: 2
+    )
+
+    vm.selectedUser = "alice"
+
+    #expect(vm.topProcesses.count == 2)
+    #expect(vm.visibleProcesses.count == 2)
+    #expect(vm.visibleProcesses[0].pid == 2)
+    #expect(vm.visibleProcesses[1].pid == 3)
+  }
+
   @MainActor @Test func processViewModelTracksSelectedUserHistoryWithBounds() {
     let vm = ProcessViewModel(maxSamples: 2)
 
