@@ -57,7 +57,7 @@ struct PopoverRootView: View {
 
   private var memorySummary: String {
     guard let stats = memoryVM.currentStats else {
-      return "Collecting memory data..."
+      return "Loading memory data..."
     }
 
     return "Used \(formatGigabytes(stats.usedBytes)) / \(formatGigabytes(stats.totalBytes))"
@@ -104,7 +104,7 @@ struct PopoverRootView: View {
 
   private var headerSection: some View {
     HStack {
-      Text("Ram Stats")
+      Text("RAM Stats")
         .font(.title3.weight(.semibold))
       Spacer()
 
@@ -125,7 +125,7 @@ struct PopoverRootView: View {
     GroupBox {
       VStack(alignment: .leading, spacing: 10) {
         if donutSlices.isEmpty {
-          Text("Collecting chart data...")
+          Text("Loading chart data...")
             .font(.footnote)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, minHeight: 150, alignment: .center)
@@ -218,7 +218,7 @@ struct PopoverRootView: View {
         .font(.footnote)
 
         if memoryVM.history.isEmpty {
-          Text("Collecting history data...")
+          Text("Loading history data...")
             .font(.footnote)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, minHeight: 120, alignment: .center)
@@ -308,7 +308,7 @@ struct PopoverRootView: View {
         }
 
         if processVM.visibleProcesses.isEmpty {
-          Text("No process data")
+          Text("No process data available")
             .font(.footnote)
             .foregroundStyle(.secondary)
         } else {
@@ -357,7 +357,7 @@ struct PopoverRootView: View {
             .lineLimit(2)
         }
 
-        Button("Refresh now") {
+        Button("Refresh Now") {
           appState.sampleImmediately()
         }
         .buttonStyle(.borderedProminent)
@@ -377,7 +377,7 @@ struct PopoverRootView: View {
   }
 
   private var selectionSubtitle: String {
-    guard let slice = activeFocusSlice else { return "Hover or click a slice to filter process list" }
+    guard let slice = activeFocusSlice else { return "Hover or click a slice to filter the process list" }
     return "\(formatGigabytes(slice.bytes)) | \(Int(slice.fractionOfTotal * 100))% of total RAM"
   }
 

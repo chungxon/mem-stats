@@ -74,9 +74,9 @@ Objective:
 
 TODO:
 
-- [ ] Đổi "Tap a slice..." thành wording phù hợp desktop (`Click a slice...`).
-- [ ] Rà lại text labels trong popover cho đồng nhất.
-- [ ] Kiểm tra tương phản và readability với solid color surfaces hiện tại.
+- [x] Đổi "Tap a slice..." thành wording phù hợp desktop (`Click a slice...`).
+- [x] Rà lại text labels trong popover cho đồng nhất.
+- [x] Kiểm tra tương phản và readability với solid color surfaces hiện tại.
 
 Acceptance Criteria:
 

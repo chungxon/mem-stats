@@ -1,6 +1,6 @@
 # 🧭 Ram Stats
 
-Similar to iStats, but focused on **memory monitoring** for multiple users.
+Similar to iStat Menus/Stats, but focused on **memory monitoring** for multiple users.
 
 A **menu bar macOS app** that shows:
 
