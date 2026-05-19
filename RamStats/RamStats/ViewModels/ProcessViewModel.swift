@@ -23,6 +23,13 @@ final class ProcessViewModel: ObservableObject {
   func apply(snapshots: [ProcessSnapshot], topLimit: Int = 8, sampledAt: Date = Date()) {
     allProcesses = snapshots
     topProcesses = Array(snapshots.prefix(max(topLimit, 0)))
+    let adjustedTimestamp: Date
+    let latestTimestamp = userHistoryByUser.values.compactMap(\.last?.timestamp).max()
+    if let latestTimestamp, sampledAt <= latestTimestamp {
+      adjustedTimestamp = latestTimestamp.addingTimeInterval(0.001)
+    } else {
+      adjustedTimestamp = sampledAt
+    }
 
     var rssByUser: [String: UInt64] = [:]
     for snapshot in snapshots {
@@ -31,7 +38,9 @@ final class ProcessViewModel: ObservableObject {
 
     for (user, rssBytes) in rssByUser {
       var history = userHistoryByUser[user, default: []]
-      history.append(UserMemoryHistorySample(timestamp: sampledAt, user: user, rssBytes: rssBytes))
+      history.append(
+        UserMemoryHistorySample(timestamp: adjustedTimestamp, user: user, rssBytes: rssBytes)
+      )
       if history.count > maxSamples {
         history.removeFirst(history.count - maxSamples)
       }

@@ -1,8 +1,10 @@
 import Foundation
 
 protocol ProcessSnapshotProviding: Sendable {
-  nonisolated func fetchProcesses(includeRootUser: Bool) throws -> [ProcessSnapshot]
-  nonisolated func fetchTopProcesses(limit: Int, includeRootUser: Bool) throws -> [ProcessSnapshot]
+  nonisolated func fetchProcesses(includeRootUser: Bool, includeSystemUsers: Bool) throws
+    -> [ProcessSnapshot]
+  nonisolated func fetchTopProcesses(limit: Int, includeRootUser: Bool, includeSystemUsers: Bool)
+    throws -> [ProcessSnapshot]
 }
 
 enum ProcessSnapshotServiceError: Error {
@@ -31,24 +33,30 @@ extension ProcessSnapshotServiceError: LocalizedError {
 }
 
 struct ProcessSnapshotService: ProcessSnapshotProviding {
-  nonisolated func fetchProcesses(includeRootUser: Bool = false) throws -> [ProcessSnapshot] {
+  nonisolated func fetchProcesses(
+    includeRootUser: Bool = true,
+    includeSystemUsers: Bool = true
+  ) throws -> [ProcessSnapshot] {
     let output = try runPSCommand()
     return ProcessSnapshotParser.parse(
       psOutput: output,
       limit: nil,
-      includeRootUser: includeRootUser
+      includeRootUser: includeRootUser,
+      includeSystemUsers: includeSystemUsers
     )
   }
 
   nonisolated func fetchTopProcesses(
     limit: Int = 8,
-    includeRootUser: Bool = false
+    includeRootUser: Bool = true,
+    includeSystemUsers: Bool = true
   ) throws -> [ProcessSnapshot] {
     let output = try runPSCommand()
     return ProcessSnapshotParser.parse(
       psOutput: output,
       limit: limit,
-      includeRootUser: includeRootUser
+      includeRootUser: includeRootUser,
+      includeSystemUsers: includeSystemUsers
     )
   }
 
@@ -102,7 +110,8 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
     _ = readGroup.wait(timeout: .now() + .seconds(1))
 
     guard process.terminationStatus == 0 else {
-      let details = String(data: errorData, encoding: .utf8)?
+      let details =
+        String(data: errorData, encoding: .utf8)?
         .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
       throw ProcessSnapshotServiceError.commandFailed(process.terminationStatus, details)
     }
@@ -119,13 +128,20 @@ enum ProcessSnapshotParser {
   nonisolated static func parse(
     psOutput: String,
     limit: Int? = 8,
-    includeRootUser: Bool = false
+    includeRootUser: Bool = true,
+    includeSystemUsers: Bool = true
   ) -> [ProcessSnapshot] {
     let parsed =
       psOutput
       .split(whereSeparator: \.isNewline)
       .compactMap(parseLine)
-      .filter { shouldInclude(user: $0.user, includeRootUser: includeRootUser) }
+      .filter {
+        shouldInclude(
+          user: $0.user,
+          includeRootUser: includeRootUser,
+          includeSystemUsers: includeSystemUsers
+        )
+      }
       .sorted { lhs, rhs in
         if lhs.rssBytes == rhs.rssBytes {
           return lhs.pid < rhs.pid
@@ -161,12 +177,18 @@ enum ProcessSnapshotParser {
     )
   }
 
-  nonisolated private static func shouldInclude(user: String, includeRootUser: Bool) -> Bool {
-    if user.hasPrefix("_") {
+  nonisolated private static func shouldInclude(
+    user: String,
+    includeRootUser: Bool,
+    includeSystemUsers: Bool
+  ) -> Bool {
+    if user.isEmpty {
       return false
     }
-
     if !includeRootUser && user == "root" {
+      return false
+    }
+    if !includeSystemUsers && user.hasPrefix("_") {
       return false
     }
 

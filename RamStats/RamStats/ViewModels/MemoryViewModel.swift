@@ -14,10 +14,16 @@ final class MemoryViewModel: ObservableObject {
 
   func apply(stats: MemoryStats, sampledAt: Date = Date()) {
     currentStats = stats
+    let adjustedTimestamp: Date
+    if let lastTimestamp = history.last?.timestamp, sampledAt <= lastTimestamp {
+      adjustedTimestamp = lastTimestamp.addingTimeInterval(0.001)
+    } else {
+      adjustedTimestamp = sampledAt
+    }
 
     history.append(
       MemoryHistorySample(
-        timestamp: sampledAt,
+        timestamp: adjustedTimestamp,
         usedBytes: stats.usedBytes,
         swapUsedBytes: stats.swapUsedBytes,
         pressureLevel: stats.pressureLevel

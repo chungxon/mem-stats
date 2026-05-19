@@ -10,7 +10,6 @@ struct PopoverRootView: View {
   private let onOpenActivityMonitor: () -> Void
   private let onOpenOptionsMenu: () -> Void
 
-  @State private var selectedAngleValue: Double?
   @State private var hoveredAngleValue: Double?
 
   init(
@@ -55,6 +54,14 @@ struct PopoverRootView: View {
     activeHoveredSlice ?? activeSelectedSlice
   }
 
+  private var orderedMemoryHistory: [MemoryHistorySample] {
+    memoryVM.history.sorted { $0.timestamp < $1.timestamp }
+  }
+
+  private var orderedSelectedUserHistory: [ProcessViewModel.UserMemoryHistorySample] {
+    processVM.selectedUserHistory.sorted { $0.timestamp < $1.timestamp }
+  }
+
   private var memorySummary: String {
     guard let stats = memoryVM.currentStats else {
       return "Loading memory data..."
@@ -93,9 +100,6 @@ struct PopoverRootView: View {
       .frame(maxWidth: .infinity, alignment: .topLeading)
     }
     .background(Color(nsColor: .windowBackgroundColor))
-    .onChange(of: selectedAngleValue) { _, newValue in
-      updateSelection(for: newValue)
-    }
     .onChange(of: donutSlices.map(\.id)) { _, _ in
       validateSelectionState()
       hoveredAngleValue = nil
@@ -142,7 +146,6 @@ struct PopoverRootView: View {
               .opacity(shouldDim(slice) ? 0.35 : 1)
             }
             .chartLegend(.hidden)
-            .chartAngleSelection(value: $selectedAngleValue)
             .chartOverlay { proxy in
               GeometryReader { geometry in
                 Color.clear
@@ -162,6 +165,16 @@ struct PopoverRootView: View {
                       hoveredAngleValue = nil
                     }
                   }
+                  .gesture(
+                    SpatialTapGesture().onEnded { event in
+                      guard let plotFrame = proxy.plotFrame else { return }
+                      let angle = hoverAngleValue(
+                        at: event.location,
+                        plotFrame: geometry[plotFrame]
+                      )
+                      applySelectionToggle(for: angle)
+                    }
+                  )
               }
             }
             .frame(height: 170)
@@ -181,7 +194,6 @@ struct PopoverRootView: View {
           if processVM.selectedUser != nil {
             Button("Clear Filter") {
               processVM.selectedUser = nil
-              selectedAngleValue = nil
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
@@ -217,34 +229,34 @@ struct PopoverRootView: View {
         }
         .font(.footnote)
 
-        if memoryVM.history.isEmpty {
+        if orderedMemoryHistory.isEmpty {
           Text("Loading history data...")
             .font(.footnote)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, minHeight: 120, alignment: .center)
         } else {
           Chart {
-            ForEach(Array(memoryVM.history.enumerated()), id: \.offset) { _, sample in
+            ForEach(Array(orderedMemoryHistory.enumerated()), id: \.offset) { _, sample in
               LineMark(
                 x: .value("Time", sample.timestamp),
                 y: .value("Used RAM", Double(sample.usedBytes))
               )
               .foregroundStyle(Color.blue)
               .lineStyle(StrokeStyle(lineWidth: 2))
-              .interpolationMethod(.monotone)
+              .interpolationMethod(.linear)
             }
 
-            ForEach(Array(memoryVM.history.enumerated()), id: \.offset) { _, sample in
+            ForEach(Array(orderedMemoryHistory.enumerated()), id: \.offset) { _, sample in
               LineMark(
                 x: .value("Time", sample.timestamp),
                 y: .value("Swap Used", Double(sample.swapUsedBytes))
               )
               .foregroundStyle(Color.orange)
               .lineStyle(StrokeStyle(lineWidth: 2))
-              .interpolationMethod(.monotone)
+              .interpolationMethod(.linear)
             }
 
-            ForEach(Array(memoryVM.history.enumerated()), id: \.offset) { _, sample in
+            ForEach(Array(orderedMemoryHistory.enumerated()), id: \.offset) { _, sample in
               LineMark(
                 x: .value("Time", sample.timestamp),
                 y: .value("Pressure", scaledPressureValue(for: sample.pressureLevel))
@@ -255,7 +267,7 @@ struct PopoverRootView: View {
             }
 
             if processVM.selectedUser != nil {
-              ForEach(Array(processVM.selectedUserHistory.enumerated()), id: \.offset) {
+              ForEach(Array(orderedSelectedUserHistory.enumerated()), id: \.offset) {
                 _, sample in
                 LineMark(
                   x: .value("Time", sample.timestamp),
@@ -263,7 +275,7 @@ struct PopoverRootView: View {
                 )
                 .foregroundStyle(Color.teal)
                 .lineStyle(StrokeStyle(lineWidth: 2))
-                .interpolationMethod(.monotone)
+                .interpolationMethod(.linear)
               }
             }
           }
@@ -271,7 +283,15 @@ struct PopoverRootView: View {
           .chartYScale(domain: 0...historyScaleUpperBound)
           .chartXAxis(.hidden)
           .chartYAxis {
-            AxisMarks(position: .leading, values: .automatic(desiredCount: 4))
+            AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { value in
+              AxisGridLine()
+              AxisTick()
+              AxisValueLabel {
+                if let bytes = value.as(Double.self) {
+                  Text(formatBytesAsGigabytes(bytes))
+                }
+              }
+            }
           }
           .frame(height: 130)
 
@@ -377,7 +397,9 @@ struct PopoverRootView: View {
   }
 
   private var selectionSubtitle: String {
-    guard let slice = activeFocusSlice else { return "Hover or click a slice to filter the process list" }
+    guard let slice = activeFocusSlice else {
+      return "Hover or click a slice to filter the process list"
+    }
     return "\(formatGigabytes(slice.bytes)) | \(Int(slice.fractionOfTotal * 100))% of total RAM"
   }
 
@@ -386,32 +408,16 @@ struct PopoverRootView: View {
     return slice.id != focused.id
   }
 
-  private func updateSelection(for angle: Double?) {
-    guard let angle else {
-      if processVM.selectedUser != nil {
-        processVM.selectedUser = nil
-      }
-      return
-    }
-
-    guard let pickedSlice = DonutDataBuilder.sliceForSelection(angleValue: angle, in: donutSlices)
+  private func applySelectionToggle(for angle: Double?) {
+    guard
+      let angle,
+      let pickedSlice = DonutDataBuilder.sliceForSelection(angleValue: angle, in: donutSlices),
+      case .user(let user) = pickedSlice.category
     else {
-      if processVM.selectedUser != nil {
-        processVM.selectedUser = nil
-      }
       return
     }
 
-    guard case .user(let user) = pickedSlice.category else {
-      if processVM.selectedUser != nil {
-        processVM.selectedUser = nil
-      }
-      return
-    }
-
-    if processVM.selectedUser != user {
-      processVM.selectedUser = user
-    }
+    processVM.selectedUser = processVM.selectedUser == user ? nil : user
   }
 
   private func validateSelectionState() {
@@ -446,6 +452,14 @@ struct PopoverRootView: View {
 
   private func formatGigabytes(_ bytes: UInt64) -> String {
     let gb = Double(bytes) / 1_073_741_824
+    return String(format: "%.1f GB", gb)
+  }
+
+  private func formatBytesAsGigabytes(_ bytes: Double) -> String {
+    let gb = bytes / 1_073_741_824
+    if gb == 0 {
+      return "0"
+    }
     return String(format: "%.1f GB", gb)
   }
 

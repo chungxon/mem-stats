@@ -95,7 +95,7 @@ final class RamStatsAppState: ObservableObject {
       }
 
       let processResult = Result {
-        try processService.fetchProcesses(includeRootUser: false)
+        try processService.fetchProcesses(includeRootUser: true, includeSystemUsers: true)
       }
       switch processResult {
       case .success(let processes):

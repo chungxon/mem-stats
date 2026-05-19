@@ -101,6 +101,28 @@ struct RamStatsTests {
     #expect(vm.history[2].timestamp == Date(timeIntervalSince1970: 4))
   }
 
+  @MainActor @Test func memoryViewModelMakesTimestampsMonotonic() {
+    let vm = MemoryViewModel(maxSamples: 3)
+    let baseStats = MemoryStats(
+      totalBytes: 1000,
+      usedBytes: 500,
+      freeBytes: 500,
+      activeBytes: 100,
+      inactiveBytes: 100,
+      wiredBytes: 100,
+      compressedBytes: 100,
+      swapUsedBytes: 100,
+      pressureLevel: .normal
+    )
+
+    let sampleTime = Date(timeIntervalSince1970: 1)
+    vm.apply(stats: baseStats, sampledAt: sampleTime)
+    vm.apply(stats: baseStats, sampledAt: sampleTime)
+
+    #expect(vm.history.count == 2)
+    #expect(vm.history[1].timestamp > vm.history[0].timestamp)
+  }
+
   @MainActor @Test func processViewModelResetsMissingSelectedUser() {
     let vm = ProcessViewModel()
     vm.selectedUser = "alice"
@@ -158,6 +180,21 @@ struct RamStatsTests {
     #expect(vm.selectedUserHistory[1].rssBytes == 300)
   }
 
+  @MainActor @Test func processViewModelMakesUserHistoryTimestampsMonotonic() {
+    let vm = ProcessViewModel(maxSamples: 3)
+    let snapshots = [
+      ProcessSnapshot(user: "alice", pid: 1, rssBytes: 100, command: "/bin/a")
+    ]
+    let sampleTime = Date(timeIntervalSince1970: 1)
+
+    vm.apply(snapshots: snapshots, sampledAt: sampleTime)
+    vm.apply(snapshots: snapshots, sampledAt: sampleTime)
+    vm.selectedUser = "alice"
+
+    #expect(vm.selectedUserHistory.count == 2)
+    #expect(vm.selectedUserHistory[1].timestamp > vm.selectedUserHistory[0].timestamp)
+  }
+
   @MainActor @Test func processViewModelCapsTopProcessesToLimit() {
     let vm = ProcessViewModel()
     let snapshots = (1...30).map { index in
@@ -184,7 +221,11 @@ struct RamStatsTests {
       son 44 650 /Applications/Xcode.app
       """
 
-    let snapshots = ProcessSnapshotParser.parse(psOutput: output, limit: 8)
+    let snapshots = ProcessSnapshotParser.parse(
+      psOutput: output,
+      limit: 8,
+      includeRootUser: false
+    )
 
     #expect(snapshots.count == 2)
     #expect(snapshots[0].pid == 44)
@@ -198,18 +239,38 @@ struct RamStatsTests {
       son 44 650 /Applications/Xcode.app
       """
 
-    let defaultFiltered = ProcessSnapshotParser.parse(psOutput: output, limit: 8)
+    let defaultFiltered = ProcessSnapshotParser.parse(
+      psOutput: output,
+      limit: 8,
+      includeRootUser: false,
+      includeSystemUsers: false
+    )
     #expect(defaultFiltered.count == 1)
     #expect(defaultFiltered[0].user == "son")
 
     let withRoot = ProcessSnapshotParser.parse(
       psOutput: output,
       limit: 8,
-      includeRootUser: true
+      includeRootUser: true,
+      includeSystemUsers: false
     )
     #expect(withRoot.count == 2)
     #expect(withRoot[0].user == "root")
     #expect(withRoot[1].user == "son")
+  }
+
+  @Test func parseProcessOutputDefaultsToAllUsersIncludingSystemAndRoot() {
+    let output = """
+      _windowserver 10 500 /System/Library/windowserver
+      root 1 900 /sbin/launchd
+      son 44 650 /Applications/Xcode.app
+      """
+
+    let snapshots = ProcessSnapshotParser.parse(psOutput: output, limit: 8)
+    #expect(snapshots.count == 3)
+    #expect(snapshots[0].user == "root")
+    #expect(snapshots[1].user == "son")
+    #expect(snapshots[2].user == "_windowserver")
   }
 
   @Test func parseProcessOutputCapsAtLimit() {
