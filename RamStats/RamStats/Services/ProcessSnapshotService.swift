@@ -6,8 +6,28 @@ protocol ProcessSnapshotProviding: Sendable {
 }
 
 enum ProcessSnapshotServiceError: Error {
-  case commandFailed(Int32)
+  case commandLaunchFailed(String)
+  case commandTimedOut
+  case commandFailed(Int32, String)
   case utf8DecodeFailed
+}
+
+extension ProcessSnapshotServiceError: LocalizedError {
+  var errorDescription: String? {
+    switch self {
+    case .commandLaunchFailed(let message):
+      return "Could not launch ps command (\(message))."
+    case .commandTimedOut:
+      return "ps command timed out."
+    case .commandFailed(let code, let details):
+      if details.isEmpty {
+        return "ps command failed with status \(code)."
+      }
+      return "ps command failed with status \(code): \(details)"
+    case .utf8DecodeFailed:
+      return "Could not decode ps command output."
+    }
+  }
 }
 
 struct ProcessSnapshotService: ProcessSnapshotProviding {
@@ -43,14 +63,50 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
     let errorPipe = Pipe()
     process.standardError = errorPipe
 
-    try process.run()
-    process.waitUntilExit()
+    let outputQueue = DispatchQueue(label: "com.chungxon.ramstats.ps.stdout")
+    let errorQueue = DispatchQueue(label: "com.chungxon.ramstats.ps.stderr")
+    let readGroup = DispatchGroup()
+    var outputData = Data()
+    var errorData = Data()
 
-    guard process.terminationStatus == 0 else {
-      throw ProcessSnapshotServiceError.commandFailed(process.terminationStatus)
+    readGroup.enter()
+    outputQueue.async {
+      outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+      readGroup.leave()
     }
 
-    let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+    readGroup.enter()
+    errorQueue.async {
+      errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+      readGroup.leave()
+    }
+
+    let finished = DispatchSemaphore(value: 0)
+    process.terminationHandler = { _ in
+      finished.signal()
+    }
+
+    do {
+      try process.run()
+    } catch {
+      throw ProcessSnapshotServiceError.commandLaunchFailed(error.localizedDescription)
+    }
+
+    let timeout: DispatchTime = .now() + .seconds(2)
+    if finished.wait(timeout: timeout) != .success {
+      process.terminate()
+      process.waitUntilExit()
+      throw ProcessSnapshotServiceError.commandTimedOut
+    }
+
+    _ = readGroup.wait(timeout: .now() + .seconds(1))
+
+    guard process.terminationStatus == 0 else {
+      let details = String(data: errorData, encoding: .utf8)?
+        .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+      throw ProcessSnapshotServiceError.commandFailed(process.terminationStatus, details)
+    }
+
     guard let output = String(data: outputData, encoding: .utf8) else {
       throw ProcessSnapshotServiceError.utf8DecodeFailed
     }

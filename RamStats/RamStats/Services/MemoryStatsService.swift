@@ -12,6 +12,21 @@ enum MemoryStatsServiceError: Error {
   case swapUsageUnavailable
 }
 
+extension MemoryStatsServiceError: LocalizedError {
+  var errorDescription: String? {
+    switch self {
+    case .hostPageSizeFailed:
+      return "Could not read system page size."
+    case .hostStatisticsFailed(let code):
+      return "Could not read VM statistics (kern_return_t=\(code))."
+    case .totalRAMUnavailable:
+      return "Could not read total RAM."
+    case .swapUsageUnavailable:
+      return "Could not read swap usage."
+    }
+  }
+}
+
 struct MemoryStatsService: MemoryStatsProviding {
   nonisolated func fetchMemoryStats() throws -> MemoryStats {
     let totalBytes = try totalRAMBytes()
@@ -24,7 +39,7 @@ struct MemoryStatsService: MemoryStatsProviding {
     let wiredBytes = UInt64(vmStats.wire_count) * pageSize
     let compressedBytes = UInt64(vmStats.compressor_page_count) * pageSize
     let usedBytes = min(totalBytes, totalBytes &- freeBytes)
-    let swapUsedBytes = try swapUsedBytes()
+    let swapUsedBytes = (try? swapUsedBytes()) ?? 0
     let pressureLevel = derivePressureLevel(usedBytes: usedBytes, totalBytes: totalBytes)
 
     return MemoryStats(

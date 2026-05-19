@@ -79,32 +79,36 @@ final class RamStatsAppState: ObservableObject {
     let processService = processService
 
     samplingQueue.async { [weak self] in
+      guard let self else { return }
       let sampledAt = Date()
+      var messages: [String] = []
 
       let memoryResult = Result { try memoryService.fetchMemoryStats() }
+      switch memoryResult {
+      case .success(let stats):
+        Task { @MainActor [weak self] in
+          self?.memoryVM.apply(stats: stats, sampledAt: sampledAt)
+        }
+      case .failure(let error):
+        let message = "Memory: \(error.localizedDescription)"
+        messages.append(message)
+      }
+
       let processResult = Result {
         try processService.fetchProcesses(includeRootUser: false)
+      }
+      switch processResult {
+      case .success(let processes):
+        Task { @MainActor [weak self] in
+          processVM.apply(snapshots: processes, topLimit: 8, sampledAt: sampledAt)
+        }
+      case .failure(let error):
+        let message = "Process: \(error.localizedDescription)"
+        messages.append(message)
       }
 
       Task { @MainActor [weak self] in
         guard let self else { return }
-
-        var messages: [String] = []
-
-        switch memoryResult {
-        case .success(let stats):
-          memoryVM.apply(stats: stats, sampledAt: sampledAt)
-        case .failure(let error):
-          messages.append("Memory: \(error.localizedDescription)")
-        }
-
-        switch processResult {
-        case .success(let processes):
-          processVM.apply(snapshots: processes, topLimit: 8, sampledAt: sampledAt)
-        case .failure(let error):
-          messages.append("Process: \(error.localizedDescription)")
-        }
-
         lastSamplingError = messages.isEmpty ? nil : messages.joined(separator: " | ")
       }
     }
