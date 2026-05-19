@@ -11,6 +11,7 @@ struct PopoverRootView: View {
   private let onOpenOptionsMenu: () -> Void
 
   @State private var selectedAngleValue: Double?
+  @State private var hoveredAngleValue: Double?
 
   init(
     appState: RamStatsAppState,
@@ -44,6 +45,14 @@ struct PopoverRootView: View {
       }
       return false
     }
+  }
+
+  private var activeHoveredSlice: DonutSlice? {
+    DonutDataBuilder.sliceForSelection(angleValue: hoveredAngleValue, in: donutSlices)
+  }
+
+  private var activeFocusSlice: DonutSlice? {
+    activeHoveredSlice ?? activeSelectedSlice
   }
 
   private var memorySummary: String {
@@ -89,6 +98,7 @@ struct PopoverRootView: View {
     }
     .onChange(of: donutSlices.map(\.id)) { _, _ in
       validateSelectionState()
+      hoveredAngleValue = nil
     }
   }
 
@@ -120,19 +130,44 @@ struct PopoverRootView: View {
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, minHeight: 150, alignment: .center)
         } else {
-          Chart(donutSlices) { slice in
-            SectorMark(
-              angle: .value("Bytes", slice.angleValue),
-              innerRadius: .ratio(0.62),
-              outerRadius: activeSelectedSlice?.id == slice.id ? .ratio(1.0) : .ratio(0.93),
-              angularInset: 1
-            )
-            .foregroundStyle(color(for: slice))
-            .opacity(shouldDim(slice) ? 0.35 : 1)
+          ZStack {
+            Chart(donutSlices) { slice in
+              SectorMark(
+                angle: .value("Bytes", slice.angleValue),
+                innerRadius: .ratio(0.62),
+                outerRadius: activeFocusSlice?.id == slice.id ? .ratio(1.0) : .ratio(0.93),
+                angularInset: 1
+              )
+              .foregroundStyle(color(for: slice))
+              .opacity(shouldDim(slice) ? 0.35 : 1)
+            }
+            .chartLegend(.hidden)
+            .chartAngleSelection(value: $selectedAngleValue)
+            .chartOverlay { proxy in
+              GeometryReader { geometry in
+                Color.clear
+                  .contentShape(Rectangle())
+                  .onContinuousHover { phase in
+                    switch phase {
+                    case .active(let location):
+                      guard let plotFrame = proxy.plotFrame else {
+                        hoveredAngleValue = nil
+                        return
+                      }
+                      hoveredAngleValue = hoverAngleValue(
+                        at: location,
+                        plotFrame: geometry[plotFrame]
+                      )
+                    case .ended:
+                      hoveredAngleValue = nil
+                    }
+                  }
+              }
+            }
+            .frame(height: 170)
+
+            donutCenterOverlay
           }
-          .chartLegend(.hidden)
-          .chartAngleSelection(value: $selectedAngleValue)
-          .frame(height: 170)
 
           HStack {
             Text(selectionTitle)
@@ -337,18 +372,18 @@ struct PopoverRootView: View {
   }
 
   private var selectionTitle: String {
-    guard let slice = activeSelectedSlice else { return "All Users" }
+    guard let slice = activeFocusSlice else { return "All Users" }
     return slice.label
   }
 
   private var selectionSubtitle: String {
-    guard let slice = activeSelectedSlice else { return "Tap a slice to filter process list" }
-    return "\(Int(slice.fractionOfTotal * 100))% of total RAM"
+    guard let slice = activeFocusSlice else { return "Hover or click a slice to filter process list" }
+    return "\(formatGigabytes(slice.bytes)) | \(Int(slice.fractionOfTotal * 100))% of total RAM"
   }
 
   private func shouldDim(_ slice: DonutSlice) -> Bool {
-    guard let selected = activeSelectedSlice else { return false }
-    return slice.id != selected.id
+    guard let focused = activeFocusSlice else { return false }
+    return slice.id != focused.id
   }
 
   private func updateSelection(for angle: Double?) {
@@ -417,6 +452,62 @@ struct PopoverRootView: View {
   private func processDisplayName(_ command: String) -> String {
     let executable = URL(fileURLWithPath: command).lastPathComponent
     return executable.isEmpty ? command : executable
+  }
+
+  private var donutCenterOverlay: some View {
+    VStack(spacing: 2) {
+      Text(donutCenterTitle)
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.secondary)
+      Text(donutCenterValue)
+        .font(.footnote.weight(.semibold))
+        .monospacedDigit()
+    }
+    .padding(.horizontal, 8)
+    .padding(.vertical, 6)
+    .background(Color(nsColor: .windowBackgroundColor).opacity(0.85))
+    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    .allowsHitTesting(false)
+  }
+
+  private var donutCenterTitle: String {
+    activeFocusSlice?.label ?? "Used RAM"
+  }
+
+  private var donutCenterValue: String {
+    guard let stats = memoryVM.currentStats else {
+      return "--"
+    }
+
+    if let slice = activeFocusSlice {
+      return "\(formatGigabytes(slice.bytes)) | \(Int(slice.fractionOfTotal * 100))%"
+    }
+
+    let ratio = stats.totalBytes > 0 ? Double(stats.usedBytes) / Double(stats.totalBytes) : 0
+    let percent = Int((ratio * 100).rounded())
+    return "\(percent)%"
+  }
+
+  private func hoverAngleValue(at location: CGPoint, plotFrame: CGRect) -> Double? {
+    guard !donutSlices.isEmpty, plotFrame.width > 0, plotFrame.height > 0 else { return nil }
+
+    let center = CGPoint(x: plotFrame.midX, y: plotFrame.midY)
+    let dx = location.x - center.x
+    let dy = location.y - center.y
+    let radius = sqrt((dx * dx) + (dy * dy))
+    let maxRadius = min(plotFrame.width, plotFrame.height) / 2
+    guard maxRadius > 0 else { return nil }
+
+    let radiusRatio = radius / maxRadius
+    guard radiusRatio >= 0.62, radiusRatio <= 1.02 else { return nil }
+
+    var angle = atan2(dx, -dy)
+    if angle < 0 {
+      angle += (Double.pi * 2)
+    }
+
+    let total = donutSlices.reduce(0.0) { $0 + $1.angleValue }
+    return (angle / (Double.pi * 2)) * total
   }
 
   private func scaledPressureValue(for level: MemoryPressureLevel) -> Double {

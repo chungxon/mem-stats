@@ -56,10 +56,10 @@ Objective:
 
 TODO:
 
-- [ ] Thêm hover state cho slice (highlight/dim rõ ràng trên macOS).
-- [ ] Thêm tooltip/overlay thông tin user + memory + percent.
-- [ ] Bổ sung center label hoặc trạng thái tương đương để phản hồi trực quan.
-- [ ] Đảm bảo click chọn/bỏ chọn vẫn ổn định.
+- [x] Thêm hover state cho slice (highlight/dim rõ ràng trên macOS).
+- [x] Thêm tooltip/overlay thông tin user + memory + percent.
+- [x] Bổ sung center label hoặc trạng thái tương đương để phản hồi trực quan.
+- [x] Đảm bảo click chọn/bỏ chọn vẫn ổn định.
 
 Acceptance Criteria:
 
