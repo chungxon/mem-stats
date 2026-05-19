@@ -91,14 +91,21 @@ Objective:
 
 TODO:
 
-- [ ] Run lint cho tất cả file đã thay đổi.
-- [ ] Run unit test/build trong môi trường khả dụng.
-- [ ] Ghi chú rõ nếu fail do signing certificate/team setup.
+- [x] Run lint cho tất cả file đã thay đổi.
+- [x] Run unit test/build trong môi trường khả dụng.
+- [x] Ghi chú rõ nếu fail do signing certificate/team setup.
 
 Acceptance Criteria:
 
 - Có báo cáo kết quả lint/test/build minh bạch.
 - Nếu fail do môi trường, có hướng xử lý cụ thể.
+
+Latest Verification Notes (2026-05-19):
+
+- Lint: `swiftlint` chưa có trong môi trường local; dùng `xcrun swift-format lint` để kiểm tra thay thế.
+- Build: `xcodebuild build` pass với `CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO`.
+- Test: `xcodebuild test -only-testing:RamStatsTests` fail do sandbox chặn `com.apple.testmanagerd.control` (không phải lỗi logic runtime của app).
+- Environment follow-up: cần chạy test ngoài sandbox hoặc trên máy local có quyền testmanagerd đầy đủ để có kết quả test chính thức.
 
 ## Execution Order
 
