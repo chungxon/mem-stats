@@ -277,22 +277,40 @@ struct PopoverRootView: View {
             .font(.footnote)
             .foregroundStyle(.secondary)
         } else {
-          ForEach(Array(processVM.visibleProcesses.prefix(5)), id: \.pid) { process in
+          HStack(spacing: 8) {
+            Text("USER")
+              .frame(width: 58, alignment: .leading)
+            Text("PID")
+              .frame(width: 50, alignment: .leading)
+            Text("PROCESS")
+              .frame(maxWidth: .infinity, alignment: .leading)
+            Text("MEM")
+              .frame(width: 56, alignment: .trailing)
+          }
+          .font(.caption2.weight(.semibold))
+          .foregroundStyle(.secondary)
+
+          ForEach(processVM.visibleProcesses, id: \.pid) { process in
             HStack(spacing: 8) {
               Text(process.user)
                 .font(.footnote.monospaced())
                 .foregroundStyle(.secondary)
                 .frame(width: 58, alignment: .leading)
 
-              Text(process.command)
+              Text(verbatim: String(process.pid))
+                .font(.footnote.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .frame(width: 50, alignment: .leading)
+
+              Text(processDisplayName(process.command))
                 .font(.footnote)
                 .lineLimit(1)
-
-              Spacer(minLength: 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
               Text(formatGigabytes(process.rssBytes))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+                .frame(width: 56, alignment: .trailing)
             }
           }
         }
@@ -394,6 +412,11 @@ struct PopoverRootView: View {
   private func formatGigabytes(_ bytes: UInt64) -> String {
     let gb = Double(bytes) / 1_073_741_824
     return String(format: "%.1f GB", gb)
+  }
+
+  private func processDisplayName(_ command: String) -> String {
+    let executable = URL(fileURLWithPath: command).lastPathComponent
+    return executable.isEmpty ? command : executable
   }
 
   private func scaledPressureValue(for level: MemoryPressureLevel) -> Double {

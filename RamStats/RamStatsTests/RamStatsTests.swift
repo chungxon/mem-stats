@@ -158,6 +158,25 @@ struct RamStatsTests {
     #expect(vm.selectedUserHistory[1].rssBytes == 300)
   }
 
+  @MainActor @Test func processViewModelCapsTopProcessesToLimit() {
+    let vm = ProcessViewModel()
+    let snapshots = (1...30).map { index in
+      ProcessSnapshot(
+        user: "u\(index)",
+        pid: Int32(index),
+        rssBytes: UInt64((31 - index) * 100),
+        command: "/bin/\(index)"
+      )
+    }
+
+    vm.apply(snapshots: snapshots, topLimit: 8)
+
+    #expect(vm.allProcesses.count == 30)
+    #expect(vm.topProcesses.count == 8)
+    #expect(vm.topProcesses.first?.pid == 1)
+    #expect(vm.topProcesses.last?.pid == 8)
+  }
+
   @Test func parseProcessOutputSortsByRSSDescending() {
     let output = """
       son 100 400 /usr/bin/vim

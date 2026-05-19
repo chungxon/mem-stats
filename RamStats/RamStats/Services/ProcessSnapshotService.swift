@@ -60,7 +60,7 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
 }
 
 enum ProcessSnapshotParser {
-  static func parse(
+  nonisolated static func parse(
     psOutput: String,
     limit: Int? = 8,
     includeRootUser: Bool = false
@@ -84,7 +84,7 @@ enum ProcessSnapshotParser {
     return parsed
   }
 
-  private static func parseLine(_ line: Substring) -> ProcessSnapshot? {
+  nonisolated private static func parseLine(_ line: Substring) -> ProcessSnapshot? {
     let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmedLine.isEmpty else { return nil }
 
@@ -105,7 +105,7 @@ enum ProcessSnapshotParser {
     )
   }
 
-  private static func shouldInclude(user: String, includeRootUser: Bool) -> Bool {
+  nonisolated private static func shouldInclude(user: String, includeRootUser: Bool) -> Bool {
     if user.hasPrefix("_") {
       return false
     }

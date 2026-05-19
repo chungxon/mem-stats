@@ -38,10 +38,10 @@ Objective:
 
 TODO:
 
-- [ ] Hiển thị đầy đủ tối đa top 8 process.
-- [ ] Bổ sung cột PID.
-- [ ] Rút gọn command thành process name dễ đọc, vẫn giữ metadata cần thiết.
-- [ ] Giữ sorting theo RAM giảm dần.
+- [x] Hiển thị đầy đủ tối đa top 8 process.
+- [x] Bổ sung cột PID.
+- [x] Rút gọn command thành process name dễ đọc, vẫn giữ metadata cần thiết.
+- [x] Giữ sorting theo RAM giảm dần.
 
 Acceptance Criteria:
 
