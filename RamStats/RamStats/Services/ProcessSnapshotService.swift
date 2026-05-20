@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 protocol ProcessSnapshotProviding: Sendable {
@@ -38,12 +39,13 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
     includeSystemUsers: Bool = true
   ) throws -> [ProcessSnapshot] {
     let output = try runPSCommand()
-    return ProcessSnapshotParser.parse(
+    let parsed = ProcessSnapshotParser.parse(
       psOutput: output,
       limit: nil,
       includeRootUser: includeRootUser,
       includeSystemUsers: includeSystemUsers
     )
+    return applyBestEffortMemoryFootprint(to: parsed)
   }
 
   nonisolated func fetchTopProcesses(
@@ -52,12 +54,14 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
     includeSystemUsers: Bool = true
   ) throws -> [ProcessSnapshot] {
     let output = try runPSCommand()
-    return ProcessSnapshotParser.parse(
+    let parsed = ProcessSnapshotParser.parse(
       psOutput: output,
-      limit: limit,
+      limit: nil,
       includeRootUser: includeRootUser,
       includeSystemUsers: includeSystemUsers
     )
+    let ranked = applyBestEffortMemoryFootprint(to: parsed)
+    return Array(ranked.prefix(max(limit, 0)))
   }
 
   private nonisolated func runPSCommand() throws -> String {
@@ -121,6 +125,42 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
     }
 
     return output
+  }
+
+  private nonisolated func applyBestEffortMemoryFootprint(to snapshots: [ProcessSnapshot])
+    -> [ProcessSnapshot]
+  {
+    snapshots
+      .map { snapshot in
+        let bestMemoryBytes = memoryFootprintBytes(for: snapshot.pid) ?? snapshot.rssBytes
+        return ProcessSnapshot(
+          user: snapshot.user,
+          pid: snapshot.pid,
+          rssBytes: bestMemoryBytes,
+          command: snapshot.command
+        )
+      }
+      .sorted { lhs, rhs in
+        if lhs.rssBytes == rhs.rssBytes {
+          return lhs.pid < rhs.pid
+        }
+        return lhs.rssBytes > rhs.rssBytes
+      }
+  }
+
+  private nonisolated func memoryFootprintBytes(for pid: Int32) -> UInt64? {
+    var usage = rusage_info_v4()
+    let result = withUnsafeMutablePointer(to: &usage) { usagePointer in
+      let usageBufferPointer = UnsafeMutableRawPointer(usagePointer)
+        .assumingMemoryBound(to: rusage_info_t?.self)
+      return proc_pid_rusage(pid, RUSAGE_INFO_V4, usageBufferPointer)
+    }
+
+    guard result == 0 else {
+      return nil
+    }
+
+    return UInt64(usage.ri_phys_footprint)
   }
 }
 

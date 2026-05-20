@@ -162,6 +162,24 @@ Latest Verification Notes (2026-05-19):
 - Environment follow-up: cần chạy test ngoài sandbox hoặc trên máy local có quyền testmanagerd đầy đủ để có kết quả test chính thức.
 - Full lint snapshot: có warning format trong `RamStatsUITests/*` (template indentation/line length), không phải file logic chính của app.
 
+## Task 9 - Process Memory Metric Alignment With Activity Monitor
+
+Objective:
+
+- Giảm độ lệch giữa Top Processes trong app và cột Memory của Activity Monitor.
+
+TODO:
+
+- [x] Ưu tiên lấy `phys_footprint` theo PID thay vì chỉ dựa trên `rss`.
+- [x] Giữ fallback `rss` khi không lấy được footprint của process.
+- [x] Re-rank toàn bộ process sau khi enrich memory metric để top list đúng thứ tự.
+- [x] Run lint cho file đã thay đổi.
+
+Acceptance Criteria:
+
+- Top process ranking gần với Activity Monitor hơn trong các tiến trình tiêu tốn RAM lớn.
+- Không làm hỏng parser/filter hiện có.
+
 ## Execution Order
 
 1. Task 1 (data correctness)
@@ -172,6 +190,7 @@ Latest Verification Notes (2026-05-19):
 6. Task 6 (selected-user process filtering)
 7. Task 7 (history chart readability)
 8. Task 8 (full verification pass)
+9. Task 9 (memory metric alignment)
 
 ## Review Gates
 
