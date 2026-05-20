@@ -251,32 +251,9 @@ struct PopoverRootView: View {
                 x: .value("Time", sample.timestamp),
                 y: .value("Used RAM", Double(sample.usedBytes))
               )
-              .foregroundStyle(Color.blue)
+              .foregroundStyle(by: .value("Series", "Used"))
               .lineStyle(StrokeStyle(lineWidth: 2))
               .interpolationMethod(.linear)
-            }
-
-            ForEach(Array(orderedMemoryHistory.enumerated()), id: \.offset) { _, sample in
-              LineMark(
-                x: .value("Time", sample.timestamp),
-                y: .value("Swap Used", Double(sample.swapUsedBytes))
-              )
-              .foregroundStyle(Color.orange)
-              .lineStyle(StrokeStyle(lineWidth: 2, dash: [6, 4]))
-              .interpolationMethod(.linear)
-            }
-
-            ForEach(Array(orderedMemoryHistory.enumerated()), id: \.offset) { _, sample in
-              LineMark(
-                x: .value("Time", sample.timestamp),
-                y: .value(
-                  "Pressure",
-                  scaledPressureOverlayValue(for: sample.pressureLevel)
-                )
-              )
-              .foregroundStyle(Color.red)
-              .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
-              .interpolationMethod(.stepCenter)
             }
 
             if processVM.selectedUser != nil {
@@ -286,12 +263,16 @@ struct PopoverRootView: View {
                   x: .value("Time", sample.timestamp),
                   y: .value("Selected User", Double(sample.rssBytes))
                 )
-                .foregroundStyle(Color.teal)
-                .lineStyle(StrokeStyle(lineWidth: 2))
+                .foregroundStyle(by: .value("Series", "Selected User"))
+                .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 3]))
                 .interpolationMethod(.linear)
               }
             }
           }
+          .chartForegroundStyleScale([
+            "Used": Color.blue,
+            "Selected User": Color.teal,
+          ])
           .chartLegend(.hidden)
           .chartYScale(domain: 0...historyScaleUpperBound)
           .chartXAxis(.hidden)
@@ -309,9 +290,14 @@ struct PopoverRootView: View {
           .frame(height: 130)
 
           HStack(spacing: 10) {
-            legendItem(color: .blue, label: "Used")
-            legendItem(color: .orange, label: "Swap")
-            legendItem(color: .red, label: "Pressure")
+            if let latestSample = orderedMemoryHistory.last {
+              legendItem(color: .blue, label: "Used \(formatGigabytes(latestSample.usedBytes))")
+              legendItem(
+                color: .orange,
+                label: "Swap \(formatGigabytes(latestSample.swapUsedBytes))"
+              )
+              pressureBadge(level: latestSample.pressureLevel)
+            }
             if processVM.selectedUser != nil {
               legendItem(color: .teal, label: "Selected")
             }
@@ -477,8 +463,17 @@ struct PopoverRootView: View {
   }
 
   private func processDisplayName(_ command: String) -> String {
-    let executable = URL(fileURLWithPath: command).lastPathComponent
-    return executable.isEmpty ? command : executable
+    let trimmedCommand = command.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmedCommand.isEmpty else { return "Unknown" }
+
+    let executableToken =
+      trimmedCommand
+      .split(whereSeparator: \.isWhitespace)
+      .first
+      .map(String.init) ?? trimmedCommand
+
+    let executable = URL(fileURLWithPath: executableToken).lastPathComponent
+    return executable.isEmpty ? executableToken : executable
   }
 
   private var donutCenterOverlay: some View {
@@ -537,19 +532,6 @@ struct PopoverRootView: View {
     return (angle / (Double.pi * 2)) * total
   }
 
-  private func scaledPressureOverlayValue(for level: MemoryPressureLevel) -> Double {
-    let base = historyScaleUpperBound
-
-    switch level {
-    case .normal:
-      return base * 0.86
-    case .warning:
-      return base * 0.92
-    case .critical:
-      return base * 0.98
-    }
-  }
-
   @ViewBuilder
   private func legendItem(color: Color, label: String) -> some View {
     HStack(spacing: 4) {
@@ -558,6 +540,39 @@ struct PopoverRootView: View {
         .frame(width: 10, height: 10)
       Text(label)
         .foregroundStyle(.secondary)
+    }
+  }
+
+  @ViewBuilder
+  private func pressureBadge(level: MemoryPressureLevel) -> some View {
+    HStack(spacing: 4) {
+      RoundedRectangle(cornerRadius: 2)
+        .fill(pressureColor(for: level))
+        .frame(width: 10, height: 10)
+      Text("Pressure \(pressureLabel(for: level))")
+        .foregroundStyle(.secondary)
+    }
+  }
+
+  private func pressureColor(for level: MemoryPressureLevel) -> Color {
+    switch level {
+    case .normal:
+      return .green
+    case .warning:
+      return .orange
+    case .critical:
+      return .red
+    }
+  }
+
+  private func pressureLabel(for level: MemoryPressureLevel) -> String {
+    switch level {
+    case .normal:
+      return "Normal"
+    case .warning:
+      return "Warning"
+    case .critical:
+      return "Critical"
     }
   }
 }

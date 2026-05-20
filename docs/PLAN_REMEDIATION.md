@@ -136,12 +136,31 @@ Acceptance Criteria:
 - Chart nhìn ổn định, dễ đọc hơn khi mở lâu.
 - `Used`, `Swap`, `Pressure` được phân biệt rõ mà không làm trục dữ liệu khó hiểu.
 
+## Task 8 - Full Verification Pass
+
+Objective:
+
+- Chạy lại full verification sau các thay đổi gần nhất để có trạng thái hiện tại rõ ràng.
+
+TODO:
+
+- [x] Run lint trên toàn bộ file Swift trong repo.
+- [x] Run `xcodebuild build` với `-derivedDataPath .derivedData`.
+- [x] Run `xcodebuild test -only-testing:RamStatsTests`.
+- [x] Cập nhật notes kết quả verification và rủi ro môi trường.
+
+Acceptance Criteria:
+
+- Có báo cáo minh bạch cho lint/build/test tại thời điểm hiện tại.
+- Nếu test fail do môi trường, ghi rõ nguyên nhân và hành động tiếp theo.
+
 Latest Verification Notes (2026-05-19):
 
 - Lint: `swiftlint` chưa có trong môi trường local; dùng `xcrun swift-format lint` để kiểm tra thay thế.
 - Build: `xcodebuild build` pass với `CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO`.
 - Test: `xcodebuild test -only-testing:RamStatsTests` fail do sandbox chặn `com.apple.testmanagerd.control` (không phải lỗi logic runtime của app).
 - Environment follow-up: cần chạy test ngoài sandbox hoặc trên máy local có quyền testmanagerd đầy đủ để có kết quả test chính thức.
+- Full lint snapshot: có warning format trong `RamStatsUITests/*` (template indentation/line length), không phải file logic chính của app.
 
 ## Execution Order
 
@@ -152,6 +171,7 @@ Latest Verification Notes (2026-05-19):
 5. Task 5 (verification)
 6. Task 6 (selected-user process filtering)
 7. Task 7 (history chart readability)
+8. Task 8 (full verification pass)
 
 ## Review Gates
 

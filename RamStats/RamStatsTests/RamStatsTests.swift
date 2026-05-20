@@ -320,6 +320,24 @@ struct RamStatsTests {
     #expect(snapshots.last?.pid == 45)
   }
 
+  @Test func parseProcessOutputKeepsFullCommandLineWhenUsingCommandField() {
+    let output = """
+      son 19538 3014656 lldb-rpc-server --stdio --foo bar
+      son 53462 2695168 dart:dartdev_aot.dart.snapshot --packages=.dart_tool/package_config.json
+      """
+
+    let snapshots = ProcessSnapshotParser.parse(psOutput: output, limit: nil)
+
+    #expect(snapshots.count == 2)
+    #expect(snapshots[0].pid == 19538)
+    #expect(snapshots[0].command == "lldb-rpc-server --stdio --foo bar")
+    #expect(snapshots[1].pid == 53462)
+    #expect(
+      snapshots[1].command
+        == "dart:dartdev_aot.dart.snapshot --packages=.dart_tool/package_config.json"
+    )
+  }
+
   @Test func memoryStatsServiceReturnsPositiveTotals() throws {
     let service = MemoryStatsService()
     let stats = try service.fetchMemoryStats()

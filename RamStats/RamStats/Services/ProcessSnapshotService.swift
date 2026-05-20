@@ -63,7 +63,7 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
   private nonisolated func runPSCommand() throws -> String {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/bin/ps")
-    process.arguments = ["-axo", "user=,pid=,rss=,comm="]
+    process.arguments = ["-axo", "user=,pid=,rss=,command="]
 
     let outputPipe = Pipe()
     process.standardOutput = outputPipe
