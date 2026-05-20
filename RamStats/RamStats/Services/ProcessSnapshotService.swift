@@ -132,7 +132,10 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
   {
     snapshots
       .map { snapshot in
-        let bestMemoryBytes = memoryFootprintBytes(for: snapshot.pid) ?? snapshot.rssBytes
+        let bestMemoryBytes =
+          memoryFootprintBytes(for: snapshot.pid)
+          ?? taskResidentBytes(for: snapshot.pid)
+          ?? snapshot.rssBytes
         return ProcessSnapshot(
           user: snapshot.user,
           pid: snapshot.pid,
@@ -161,6 +164,27 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
     }
 
     return UInt64(usage.ri_phys_footprint)
+  }
+
+  private nonisolated func taskResidentBytes(for pid: Int32) -> UInt64? {
+    var taskInfo = proc_taskinfo()
+    let expectedSize = Int32(MemoryLayout<proc_taskinfo>.stride)
+
+    let result = withUnsafeMutableBytes(of: &taskInfo) { taskInfoBuffer in
+      proc_pidinfo(
+        pid,
+        PROC_PIDTASKINFO,
+        0,
+        taskInfoBuffer.baseAddress,
+        expectedSize
+      )
+    }
+
+    guard result == expectedSize else {
+      return nil
+    }
+
+    return UInt64(taskInfo.pti_resident_size)
   }
 }
 

@@ -180,6 +180,24 @@ Acceptance Criteria:
 - Top process ranking gần với Activity Monitor hơn trong các tiến trình tiêu tốn RAM lớn.
 - Không làm hỏng parser/filter hiện có.
 
+## Task 10 - Improve Memory Metric Fallback Coverage
+
+Objective:
+
+- Tăng khả năng đọc memory metric khi `proc_pid_rusage` bị giới hạn quyền trên một số process.
+
+TODO:
+
+- [x] Thêm fallback `proc_pidinfo(PROC_PIDTASKINFO)` lấy `pti_resident_size`.
+- [x] Giữ fallback cuối cùng về `rss` từ `ps` để không mất dữ liệu.
+- [x] Run lint cho file đã thay đổi.
+- [x] Run build check để đảm bảo compile/link ổn định.
+
+Acceptance Criteria:
+
+- Với process không lấy được footprint, app vẫn có metric đáng tin hơn `rss` đơn thuần.
+- Top list ổn định hơn khi chạy lâu và giữa các quyền process khác nhau.
+
 ## Execution Order
 
 1. Task 1 (data correctness)
@@ -191,6 +209,7 @@ Acceptance Criteria:
 7. Task 7 (history chart readability)
 8. Task 8 (full verification pass)
 9. Task 9 (memory metric alignment)
+10. Task 10 (metric fallback coverage)
 
 ## Review Gates
 
