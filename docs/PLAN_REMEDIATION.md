@@ -198,6 +198,25 @@ Acceptance Criteria:
 - Với process không lấy được footprint, app vẫn có metric đáng tin hơn `rss` đơn thuần.
 - Top list ổn định hơn khi chạy lâu và giữa các quyền process khác nhau.
 
+## Task 11 - Top Process Name Readability And Inspection
+
+Objective:
+
+- Làm tên process trong bảng dễ đọc và dễ đối chiếu với Activity Monitor khi command có path/space/args phức tạp.
+
+TODO:
+
+- [x] Cải thiện parse token executable đầu tiên để xử lý escape và quote trong command line.
+- [x] Giữ ưu tiên hiển thị executable name thay vì cả command line dài.
+- [x] Thêm tooltip full command cho từng dòng process để inspect chi tiết khi cần.
+- [x] Run lint cho file đã thay đổi.
+- [x] Run build check.
+
+Acceptance Criteria:
+
+- Các process có app path chứa khoảng trắng (vd Edge Helper) không bị cắt sai tên còn lại như `Microsoft`.
+- Người dùng vẫn xem được full command line khi hover.
+
 ## Execution Order
 
 1. Task 1 (data correctness)
@@ -210,6 +229,7 @@ Acceptance Criteria:
 8. Task 8 (full verification pass)
 9. Task 9 (memory metric alignment)
 10. Task 10 (metric fallback coverage)
+11. Task 11 (top process readability)
 
 ## Review Gates
 
