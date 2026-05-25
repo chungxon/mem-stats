@@ -63,7 +63,7 @@ Objective:
 - Implement data collectors:
   - `host_statistics64` for memory stats
   - `sysctl` for total RAM
-  - `ps -axo user,pid,rss,command` for process snapshots
+  - `top -l 1 -o mem -stats pid,user,mem,command` for process snapshots
 
 Deliverables:
 
@@ -74,15 +74,15 @@ Deliverables:
 Acceptance criteria:
 
 - Services return valid values on local machine
-- Process list sorted by RSS desc
+- Process list sorted by memory desc
 - Result capped to top 8 processes
 
 Task 2 TODO:
 
 - [x] Add memory model and process model for service outputs
 - [x] Implement `MemoryStatsService` using `host_statistics64`, `sysctl hw.memsize`, and `vm.swapusage`
-- [x] Implement `ProcessSnapshotService` using `ps -axo user,pid,rss,command`
-- [x] Ensure process snapshots are sorted by RSS descending
+- [x] Implement `ProcessSnapshotService` using `top -l 1 -o mem -stats pid,user,mem,command`
+- [x] Ensure process snapshots are sorted by memory descending
 - [x] Cap process snapshots to top 8 entries
 - [x] Add parser/service tests for core acceptance behavior
 

@@ -24,7 +24,7 @@ All inside **one popup window**.
 
   * `host_statistics64` → memory stats
   * `sysctl` → total RAM
-  * `ps -axo user,pid,rss,command` → processes
+  * `top -l 1 -o mem -stats pid,user,mem,command` → processes
 * State:
 
   * `ObservableObject` (single source of truth)
@@ -125,7 +125,7 @@ Process list: every 5s
 UI refresh: every 5s
 ```
 
-👉 Process parsing is the expensive part.
+👉 Process parsing is the expensive part (`top` snapshot + parse).
 
 ---
 

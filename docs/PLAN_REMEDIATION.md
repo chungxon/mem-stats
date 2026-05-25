@@ -254,6 +254,29 @@ Acceptance Criteria:
 - Process như `WindowServer` vẫn xuất hiện đúng trong top list khi RSS/proc APIs không phản ánh đủ.
 - Thứ tự top process gần Activity Monitor hơn trong môi trường user không root.
 
+## Task 14 - One-Command Process Sampling Experiment
+
+Objective:
+
+- Thử phương án chỉ dùng một command (`top`) cho toàn bộ pipeline process snapshot để giảm complexity.
+
+TODO:
+
+- [x] Đổi `fetchProcesses` và `fetchTopProcesses` sang parse trực tiếp output `top`.
+- [x] Giữ filter `includeRootUser` và `includeSystemUsers` như hiện tại.
+- [x] Sắp xếp lại theo memory giảm dần và áp limit như cũ.
+- [x] Run lint file thay đổi.
+- [x] Run build check.
+
+Acceptance Criteria:
+
+- Runtime path chỉ dùng `top` (không gọi `ps` trong sampling flow).
+- Top process có mặt `WindowServer` gần giống Activity Monitor trên máy local.
+
+Decision Note:
+
+- Sau thử nghiệm, chọn giữ phương án single-source `top` cho process sampling hiện tại.
+
 ## Execution Order
 
 1. Task 1 (data correctness)
@@ -269,6 +292,7 @@ Acceptance Criteria:
 11. Task 11 (top process readability)
 12. Task 12 (system process under-reporting)
 13. Task 13 (top memory merge)
+14. Task 14 (one-command top sampling)
 
 ## Review Gates
 
