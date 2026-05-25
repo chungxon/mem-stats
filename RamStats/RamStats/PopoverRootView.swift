@@ -452,7 +452,7 @@ struct PopoverRootView: View {
 
   private func formatGigabytes(_ bytes: UInt64) -> String {
     let gb = Double(bytes) / 1_073_741_824
-    return String(format: "%.1f GB", gb)
+    return String(format: "%.2f GB", gb)
   }
 
   private func formatBytesAsGigabytes(_ bytes: Double) -> String {
@@ -460,7 +460,7 @@ struct PopoverRootView: View {
     if gb == 0 {
       return "0"
     }
-    return String(format: "%.1f GB", gb)
+    return String(format: "%.2f GB", gb)
   }
 
   private func processDisplayName(_ command: String) -> String {
