@@ -285,7 +285,7 @@ Deliverables:
 - Debounced UI updates with threshold:
   - `max(100MB, 1-2% total RAM)`
 - Background sampling on utility QoS
-- System user filtering defaults (`_*`, optional `root`)
+- Runtime default includes all users (`root` and system users), with optional filtering flags in service APIs
 - Final lint/build/test verification
 
 Acceptance criteria:
@@ -298,9 +298,9 @@ Task 8 TODO:
 
 - [x] Add status-item debounce threshold using `max(100MB, 1% total RAM)` to reduce unnecessary UI churn
 - [x] Keep sampling work on utility QoS queue
-- [x] Filter system users by default in process snapshots (`_*`, and `root` excluded by default)
-- [x] Preserve optional root inclusion path for future toggles/config
-- [x] Extend tests for new process filtering behavior
+- [x] Keep runtime process snapshots inclusive by default (`root` + system users) to align with Activity Monitor-style view
+- [x] Preserve optional filtering path via `includeRootUser`/`includeSystemUsers`
+- [x] Extend parser tests for include/exclude behavior switches
 - [x] Run lint on all changed files
 - [x] Run build verification
 - [x] Run test command verification (environment still sandbox-limited)

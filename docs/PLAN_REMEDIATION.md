@@ -136,6 +136,10 @@ Acceptance Criteria:
 - Chart nhìn ổn định, dễ đọc hơn khi mở lâu.
 - `Used`, `Swap`, `Pressure` được phân biệt rõ mà không làm trục dữ liệu khó hiểu.
 
+Current Note:
+
+- Bản hiện tại giữ `Used` là series chính; `Swap` và `Pressure` hiển thị dạng latest-status badges để giảm nhiễu đường chart.
+
 ## Task 8 - Full Verification Pass
 
 Objective:
@@ -189,7 +193,7 @@ Objective:
 TODO:
 
 - [x] Thêm fallback `proc_pidinfo(PROC_PIDTASKINFO)` lấy `pti_resident_size`.
-- [x] Giữ fallback cuối cùng về `rss` từ `ps` để không mất dữ liệu.
+- [x] Giữ fallback cuối cùng về metric từ snapshot process để không mất dữ liệu.
 - [x] Run lint cho file đã thay đổi.
 - [x] Run build check để đảm bảo compile/link ổn định.
 
@@ -277,6 +281,26 @@ Decision Note:
 
 - Sau thử nghiệm, chọn giữ phương án single-source `top` cho process sampling hiện tại.
 
+## Task 15 - Docs and Parser Alignment Cleanup
+
+Objective:
+
+- Đồng bộ docs + test với kiến trúc runtime hiện tại (single-source `top`) và bỏ parser code thừa dễ gây hiểu nhầm.
+
+TODO:
+
+- [x] Cập nhật `docs/PLAN.md` để phản ánh default filter hiện tại (include all users).
+- [x] Cập nhật `docs/DESCRIPTION.md` để phản ánh history chart hiện tại (Used là series chính, swap/pressure là status badges).
+- [x] Xóa parser `ps` không còn dùng trong runtime để tránh drift về sau.
+- [x] Chuyển test parser sang `TopProcessSnapshotParser`.
+- [x] Run lint cho file Swift thay đổi.
+
+Acceptance Criteria:
+
+- Docs không còn mâu thuẫn với runtime behavior hiện tại.
+- Test parser bám đúng source dữ liệu `top`.
+- Không còn đoạn code parser `ps` không được dùng trong production flow.
+
 ## Execution Order
 
 1. Task 1 (data correctness)
@@ -293,6 +317,7 @@ Decision Note:
 12. Task 12 (system process under-reporting)
 13. Task 13 (top memory merge)
 14. Task 14 (one-command top sampling)
+15. Task 15 (docs and parser alignment cleanup)
 
 ## Review Gates
 

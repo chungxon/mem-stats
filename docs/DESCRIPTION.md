@@ -5,7 +5,7 @@ Similar to iStat Menus/Stats, but focused on **memory monitoring** for multiple 
 A **menu bar macOS app** that shows:
 
 * Runs continuously with **minimal CPU + memory overhead**
-* Shows **RAM by user (donut)**, **swap**, **pressure**
+* Shows **RAM by user (donut)** with swap/pressure status context
 * Provides **short-term history (bounded window)**
 * Show **Top processes (global or per selected user)**
 * Has **native macOS UX (no custom-heavy UI nonsense)**
@@ -200,10 +200,9 @@ UI refresh: every 5s
 
 ### Metrics (In-memory)
 
-* Total used RAM
-* Swap used
-* Memory pressure
-* selected user only (if any)
+* Total used RAM (primary plotted series)
+* Selected user series (optional when a user is selected)
+* Swap used + memory pressure shown as latest status badges
 
 ### Time ranges
 
@@ -292,11 +291,13 @@ let maxSamples = 120 // ~10 minutes if 5s interval
 * Use:
 
   * native `Charts` framework
-* Lines:
+* Primary plotted series:
 
   * total usage
-  * swap
-  * pressure
+  * selected user usage (optional)
+* Swap + pressure:
+
+  * shown as latest-value badges below chart for readability
 
 ---
 
@@ -407,6 +408,6 @@ Don’t show ALL users in history chart to avoid noise.
 
 ### Note
 
-* RAM per user is approximated using RSS
-* Shared memory may be double-counted
-* Values are indicative, not exact
+* Process memory comes from `top` (`mem`) snapshot and is best-effort relative to Activity Monitor
+* Shared memory may still be accounted differently than Activity Monitor internals
+* Values are indicative and optimized for lightweight monitoring

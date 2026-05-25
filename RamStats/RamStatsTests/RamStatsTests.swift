@@ -234,15 +234,15 @@ struct RamStatsTests {
     #expect(vm.topProcesses.last?.pid == 8)
   }
 
-  @Test func parseProcessOutputSortsByRSSDescending() {
+  @Test func parseTopOutputSortsByMemoryDescending() {
     let output = """
-      son 100 400 /usr/bin/vim
-      root 1 900 /sbin/launchd
-      son 44 650 /Applications/Xcode.app
+      100 son 400M /usr/bin/vim
+      1 root 900M /sbin/launchd
+      44 son 650M /Applications/Xcode.app
       """
 
-    let snapshots = ProcessSnapshotParser.parse(
-      psOutput: output,
+    let snapshots = TopProcessSnapshotParser.parse(
+      topOutput: output,
       limit: 8,
       includeRootUser: false
     )
@@ -252,15 +252,15 @@ struct RamStatsTests {
     #expect(snapshots[1].pid == 100)
   }
 
-  @Test func parseProcessOutputFiltersUnderscoreUsersAndCanIncludeRoot() {
+  @Test func parseTopOutputFiltersUnderscoreUsersAndCanIncludeRoot() {
     let output = """
-      _windowserver 10 500 /System/Library/windowserver
-      root 1 900 /sbin/launchd
-      son 44 650 /Applications/Xcode.app
+      10 _windowserver 500M /System/Library/windowserver
+      1 root 900M /sbin/launchd
+      44 son 650M /Applications/Xcode.app
       """
 
-    let defaultFiltered = ProcessSnapshotParser.parse(
-      psOutput: output,
+    let defaultFiltered = TopProcessSnapshotParser.parse(
+      topOutput: output,
       limit: 8,
       includeRootUser: false,
       includeSystemUsers: false
@@ -268,8 +268,8 @@ struct RamStatsTests {
     #expect(defaultFiltered.count == 1)
     #expect(defaultFiltered[0].user == "son")
 
-    let withRoot = ProcessSnapshotParser.parse(
-      psOutput: output,
+    let withRoot = TopProcessSnapshotParser.parse(
+      topOutput: output,
       limit: 8,
       includeRootUser: true,
       includeSystemUsers: false
@@ -279,54 +279,54 @@ struct RamStatsTests {
     #expect(withRoot[1].user == "son")
   }
 
-  @Test func parseProcessOutputDefaultsToAllUsersIncludingSystemAndRoot() {
+  @Test func parseTopOutputDefaultsToAllUsersIncludingSystemAndRoot() {
     let output = """
-      _windowserver 10 500 /System/Library/windowserver
-      root 1 900 /sbin/launchd
-      son 44 650 /Applications/Xcode.app
+      10 _windowserver 500M /System/Library/windowserver
+      1 root 900M /sbin/launchd
+      44 son 650M /Applications/Xcode.app
       """
 
-    let snapshots = ProcessSnapshotParser.parse(psOutput: output, limit: 8)
+    let snapshots = TopProcessSnapshotParser.parse(topOutput: output, limit: 8)
     #expect(snapshots.count == 3)
     #expect(snapshots[0].user == "root")
     #expect(snapshots[1].user == "son")
     #expect(snapshots[2].user == "_windowserver")
   }
 
-  @Test func parseProcessOutputCapsAtLimit() {
+  @Test func parseTopOutputCapsAtLimit() {
     let lines = (1...30).map { index in
-      "u\(index) \(index) \(index) /cmd/\(index)"
+      "\(index) u\(index) \(index)M /cmd/\(index)"
     }
     let output = lines.joined(separator: "\n")
 
-    let snapshots = ProcessSnapshotParser.parse(psOutput: output, limit: 8)
+    let snapshots = TopProcessSnapshotParser.parse(topOutput: output, limit: 8)
 
     #expect(snapshots.count == 8)
     #expect(snapshots.first?.pid == 30)
-    #expect(snapshots.last?.pid == 11)
+    #expect(snapshots.last?.pid == 23)
   }
 
-  @Test func parseProcessOutputReturnsAllWhenNoLimitProvided() {
+  @Test func parseTopOutputReturnsAllWhenNoLimitProvided() {
     let output = """
-      son 100 400 /usr/bin/vim
-      son 44 650 /Applications/Xcode.app
-      son 45 300 /Applications/Code.app
+      100 son 400M /usr/bin/vim
+      44 son 650M /Applications/Xcode.app
+      45 son 300M /Applications/Code.app
       """
 
-    let snapshots = ProcessSnapshotParser.parse(psOutput: output, limit: nil)
+    let snapshots = TopProcessSnapshotParser.parse(topOutput: output, limit: nil)
 
     #expect(snapshots.count == 3)
     #expect(snapshots.first?.pid == 44)
     #expect(snapshots.last?.pid == 45)
   }
 
-  @Test func parseProcessOutputKeepsFullCommandLineWhenUsingCommandField() {
+  @Test func parseTopOutputKeepsFullCommandLineWhenUsingCommandField() {
     let output = """
-      son 19538 3014656 lldb-rpc-server --stdio --foo bar
-      son 53462 2695168 dart:dartdev_aot.dart.snapshot --packages=.dart_tool/package_config.json
+      19538 son 2.88G lldb-rpc-server --stdio --foo bar
+      53462 son 2.57G dart:dartdev_aot.dart.snapshot --packages=.dart_tool/package_config.json
       """
 
-    let snapshots = ProcessSnapshotParser.parse(psOutput: output, limit: nil)
+    let snapshots = TopProcessSnapshotParser.parse(topOutput: output, limit: nil)
 
     #expect(snapshots.count == 2)
     #expect(snapshots[0].pid == 19538)

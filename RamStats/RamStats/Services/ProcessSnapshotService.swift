@@ -130,42 +130,6 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
 
     return output
   }
-
-  private nonisolated func parseTopMemoryToken(_ token: String) -> UInt64? {
-    let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !trimmed.isEmpty else { return nil }
-
-    let suffix = trimmed.last?.uppercased() ?? ""
-    let numericPart: String
-    let multiplier: Double
-
-    switch suffix {
-    case "B":
-      numericPart = String(trimmed.dropLast())
-      multiplier = 1
-    case "K":
-      numericPart = String(trimmed.dropLast())
-      multiplier = 1_024
-    case "M":
-      numericPart = String(trimmed.dropLast())
-      multiplier = 1_048_576
-    case "G":
-      numericPart = String(trimmed.dropLast())
-      multiplier = 1_073_741_824
-    case "T":
-      numericPart = String(trimmed.dropLast())
-      multiplier = 1_099_511_627_776
-    default:
-      numericPart = trimmed
-      multiplier = 1
-    }
-
-    guard let numericValue = Double(numericPart), numericValue >= 0 else {
-      return nil
-    }
-
-    return UInt64(numericValue * multiplier)
-  }
 }
 
 enum TopProcessSnapshotParser {
@@ -270,78 +234,6 @@ enum TopProcessSnapshotParser {
     if !includeSystemUsers && user.hasPrefix("_") {
       return false
     }
-    return true
-  }
-}
-
-enum ProcessSnapshotParser {
-  nonisolated static func parse(
-    psOutput: String,
-    limit: Int? = 8,
-    includeRootUser: Bool = true,
-    includeSystemUsers: Bool = true
-  ) -> [ProcessSnapshot] {
-    let parsed =
-      psOutput
-      .split(whereSeparator: \.isNewline)
-      .compactMap(parseLine)
-      .filter {
-        shouldInclude(
-          user: $0.user,
-          includeRootUser: includeRootUser,
-          includeSystemUsers: includeSystemUsers
-        )
-      }
-      .sorted { lhs, rhs in
-        if lhs.rssBytes == rhs.rssBytes {
-          return lhs.pid < rhs.pid
-        }
-        return lhs.rssBytes > rhs.rssBytes
-      }
-
-    if let limit {
-      return Array(parsed.prefix(max(limit, 0)))
-    }
-
-    return parsed
-  }
-
-  nonisolated private static func parseLine(_ line: Substring) -> ProcessSnapshot? {
-    let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !trimmedLine.isEmpty else { return nil }
-
-    let parts = trimmedLine.split(maxSplits: 3, whereSeparator: \.isWhitespace)
-    guard parts.count == 4 else { return nil }
-
-    let user = String(parts[0])
-    guard let pid = Int32(parts[1]), let rssKilobytes = UInt64(parts[2]) else {
-      return nil
-    }
-
-    let command = String(parts[3])
-    return ProcessSnapshot(
-      user: user,
-      pid: pid,
-      rssBytes: rssKilobytes * 1024,
-      command: command
-    )
-  }
-
-  nonisolated private static func shouldInclude(
-    user: String,
-    includeRootUser: Bool,
-    includeSystemUsers: Bool
-  ) -> Bool {
-    if user.isEmpty {
-      return false
-    }
-    if !includeRootUser && user == "root" {
-      return false
-    }
-    if !includeSystemUsers && user.hasPrefix("_") {
-      return false
-    }
-
     return true
   }
 }
