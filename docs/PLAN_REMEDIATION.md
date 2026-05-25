@@ -217,6 +217,43 @@ Acceptance Criteria:
 - Các process có app path chứa khoảng trắng (vd Edge Helper) không bị cắt sai tên còn lại như `Microsoft`.
 - Người dùng vẫn xem được full command line khi hover.
 
+## Task 12 - Prevent System Process Under-Reporting
+
+Objective:
+
+- Tránh việc một số system process (như `WindowServer`) bị tụt top do metric fallback trả về thấp bất thường.
+
+TODO:
+
+- [x] Cập nhật metric chọn giá trị lớn nhất giữa `rss`, `phys_footprint`, `task resident`.
+- [x] Giữ sorting top process theo metric đã chuẩn hóa.
+- [x] Run lint file thay đổi.
+- [x] Run build check.
+
+Acceptance Criteria:
+
+- Các process hệ thống lớn không bị mất khỏi top list chỉ vì một source metric under-report.
+- Top list ổn định hơn khi dữ liệu từ API quyền thấp không nhất quán.
+
+## Task 13 - Add `top` Memory Merge For Protected Processes
+
+Objective:
+
+- Bù khoảng trống khi `proc_pid_rusage`/`proc_pidinfo` bị `EPERM` với process system như `WindowServer`.
+
+TODO:
+
+- [x] Lấy snapshot memory từ `top -l 1 -o mem -stats pid,mem`.
+- [x] Parse `pid -> bytes` và merge vào pipeline memory metric theo PID.
+- [x] Chọn metric cuối bằng `max(rss, footprint, task resident, top mem)`.
+- [x] Run lint file thay đổi.
+- [x] Run build check.
+
+Acceptance Criteria:
+
+- Process như `WindowServer` vẫn xuất hiện đúng trong top list khi RSS/proc APIs không phản ánh đủ.
+- Thứ tự top process gần Activity Monitor hơn trong môi trường user không root.
+
 ## Execution Order
 
 1. Task 1 (data correctness)
@@ -230,6 +267,8 @@ Acceptance Criteria:
 9. Task 9 (memory metric alignment)
 10. Task 10 (metric fallback coverage)
 11. Task 11 (top process readability)
+12. Task 12 (system process under-reporting)
+13. Task 13 (top memory merge)
 
 ## Review Gates
 

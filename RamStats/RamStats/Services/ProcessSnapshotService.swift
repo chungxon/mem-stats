@@ -39,13 +39,14 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
     includeSystemUsers: Bool = true
   ) throws -> [ProcessSnapshot] {
     let output = try runPSCommand()
+    let topMemoryByPID = runTopMemoryByPID()
     let parsed = ProcessSnapshotParser.parse(
       psOutput: output,
       limit: nil,
       includeRootUser: includeRootUser,
       includeSystemUsers: includeSystemUsers
     )
-    return applyBestEffortMemoryFootprint(to: parsed)
+    return applyBestEffortMemoryFootprint(to: parsed, topMemoryByPID: topMemoryByPID)
   }
 
   nonisolated func fetchTopProcesses(
@@ -54,13 +55,14 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
     includeSystemUsers: Bool = true
   ) throws -> [ProcessSnapshot] {
     let output = try runPSCommand()
+    let topMemoryByPID = runTopMemoryByPID()
     let parsed = ProcessSnapshotParser.parse(
       psOutput: output,
       limit: nil,
       includeRootUser: includeRootUser,
       includeSystemUsers: includeSystemUsers
     )
-    let ranked = applyBestEffortMemoryFootprint(to: parsed)
+    let ranked = applyBestEffortMemoryFootprint(to: parsed, topMemoryByPID: topMemoryByPID)
     return Array(ranked.prefix(max(limit, 0)))
   }
 
@@ -127,15 +129,21 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
     return output
   }
 
-  private nonisolated func applyBestEffortMemoryFootprint(to snapshots: [ProcessSnapshot])
-    -> [ProcessSnapshot]
-  {
+  private nonisolated func applyBestEffortMemoryFootprint(
+    to snapshots: [ProcessSnapshot],
+    topMemoryByPID: [Int32: UInt64]
+  ) -> [ProcessSnapshot] {
     snapshots
       .map { snapshot in
-        let bestMemoryBytes =
-          memoryFootprintBytes(for: snapshot.pid)
-          ?? taskResidentBytes(for: snapshot.pid)
-          ?? snapshot.rssBytes
+        let footprintBytes = memoryFootprintBytes(for: snapshot.pid) ?? 0
+        let taskResidentBytes = taskResidentBytes(for: snapshot.pid) ?? 0
+        let topMemoryBytes = topMemoryByPID[snapshot.pid] ?? 0
+        let bestMemoryBytes = max(
+          snapshot.rssBytes,
+          footprintBytes,
+          taskResidentBytes,
+          topMemoryBytes
+        )
         return ProcessSnapshot(
           user: snapshot.user,
           pid: snapshot.pid,
@@ -149,6 +157,92 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
         }
         return lhs.rssBytes > rhs.rssBytes
       }
+  }
+
+  private nonisolated func runTopMemoryByPID() -> [Int32: UInt64] {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/top")
+    process.arguments = ["-l", "1", "-o", "mem", "-stats", "pid,mem", "-n", "200"]
+
+    let outputPipe = Pipe()
+    process.standardOutput = outputPipe
+    process.standardError = Pipe()
+
+    let finished = DispatchSemaphore(value: 0)
+    process.terminationHandler = { _ in
+      finished.signal()
+    }
+
+    do {
+      try process.run()
+    } catch {
+      return [:]
+    }
+
+    let timeout: DispatchTime = .now() + .seconds(2)
+    if finished.wait(timeout: timeout) != .success {
+      process.terminate()
+      process.waitUntilExit()
+      return [:]
+    }
+
+    let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+    guard
+      process.terminationStatus == 0,
+      let output = String(data: outputData, encoding: .utf8)
+    else {
+      return [:]
+    }
+
+    var memoryByPID: [Int32: UInt64] = [:]
+    for line in output.split(whereSeparator: \.isNewline) {
+      let parts =
+        line
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        .split(whereSeparator: \.isWhitespace)
+      guard parts.count >= 2 else { continue }
+      guard let pid = Int32(parts[0]) else { continue }
+      guard let bytes = parseTopMemoryToken(String(parts[1])) else { continue }
+      memoryByPID[pid] = bytes
+    }
+
+    return memoryByPID
+  }
+
+  private nonisolated func parseTopMemoryToken(_ token: String) -> UInt64? {
+    let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return nil }
+
+    let suffix = trimmed.last?.uppercased() ?? ""
+    let numericPart: String
+    let multiplier: Double
+
+    switch suffix {
+    case "B":
+      numericPart = String(trimmed.dropLast())
+      multiplier = 1
+    case "K":
+      numericPart = String(trimmed.dropLast())
+      multiplier = 1_024
+    case "M":
+      numericPart = String(trimmed.dropLast())
+      multiplier = 1_048_576
+    case "G":
+      numericPart = String(trimmed.dropLast())
+      multiplier = 1_073_741_824
+    case "T":
+      numericPart = String(trimmed.dropLast())
+      multiplier = 1_099_511_627_776
+    default:
+      numericPart = trimmed
+      multiplier = 1
+    }
+
+    guard let numericValue = Double(numericPart), numericValue >= 0 else {
+      return nil
+    }
+
+    return UInt64(numericValue * multiplier)
   }
 
   private nonisolated func memoryFootprintBytes(for pid: Int32) -> UInt64? {
