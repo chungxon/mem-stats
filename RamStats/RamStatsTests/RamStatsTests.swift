@@ -59,7 +59,7 @@ struct RamStatsTests {
     )
 
     let totalSliceBytes = slices.reduce(UInt64(0)) { $0 + $1.bytes }
-    let hasUnattributed = slices.contains { $0.category == .unattributed }
+    let hasUnattributed = slices.contains { $0.label == "Unattributed Used" }
 
     #expect(totalSliceBytes == 1_000)
     #expect(hasUnattributed == false)

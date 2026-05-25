@@ -106,15 +106,23 @@ final class RamStatsAppState: ObservableObject {
       }
 
       let sampledError = messages.isEmpty ? nil : messages.joined(separator: " | ")
+      let finalizedMemoryStats = sampledMemoryStats
+      let finalizedProcesses = sampledProcesses
+      let finalizedError = sampledError
+      let finalizedSampledAt = sampledAt
       Task { @MainActor [weak self] in
         guard let self else { return }
-        if let sampledMemoryStats {
-          self.memoryVM.apply(stats: sampledMemoryStats, sampledAt: sampledAt)
+        if let finalizedMemoryStats {
+          self.memoryVM.apply(stats: finalizedMemoryStats, sampledAt: finalizedSampledAt)
         }
-        if !sampledProcesses.isEmpty {
-          self.processVM.apply(snapshots: sampledProcesses, topLimit: 8, sampledAt: sampledAt)
+        if !finalizedProcesses.isEmpty {
+          self.processVM.apply(
+            snapshots: finalizedProcesses,
+            topLimit: 8,
+            sampledAt: finalizedSampledAt
+          )
         }
-        self.lastSamplingError = sampledError
+        self.lastSamplingError = finalizedError
       }
     }
   }

@@ -301,6 +301,25 @@ Acceptance Criteria:
 - Test parser bám đúng source dữ liệu `top`.
 - Không còn đoạn code parser `ps` không được dùng trong production flow.
 
+## Task 16 - Swift 6 Warning Cleanup (Sampling + Tests)
+
+Objective:
+
+- Giảm warning còn lại để chuẩn bị chuyển strict Swift 6 mode an toàn hơn.
+
+TODO:
+
+- [x] Sửa capture mutable vars trong `RamStatsAppState.performSample` trước khi hop sang `MainActor`.
+- [x] Sửa warning actor-isolated `Equatable` check trong `RamStatsTests` bằng assertion không phụ thuộc enum compare context.
+- [x] Run lint cho file Swift thay đổi.
+- [x] Run build + test verification.
+
+Acceptance Criteria:
+
+- Không còn warning capture mutable var trong `RamStatsAppState`.
+- Không còn warning `DonutSlice.Category` compare trong test đã sửa.
+- Build/test pass sau cleanup.
+
 ## Execution Order
 
 1. Task 1 (data correctness)
@@ -318,6 +337,7 @@ Acceptance Criteria:
 13. Task 13 (top memory merge)
 14. Task 14 (one-command top sampling)
 15. Task 15 (docs and parser alignment cleanup)
+16. Task 16 (Swift 6 warning cleanup)
 
 ## Review Gates
 
