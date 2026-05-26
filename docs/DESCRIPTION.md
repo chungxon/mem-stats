@@ -143,10 +143,12 @@ UI refresh: every 5s
 
 ### 5.3 Limit process list size
 
-* Only keep:
+* Runtime snapshot:
 
-  * top 8 processes
-* Not full list
+  * keep a broader process set (for example top 500 from `top`) to support donut/user aggregation accurately
+* UI list:
+
+  * show top 8 processes in the popover
 
 ---
 
@@ -227,7 +229,8 @@ let maxSamples = 120 // ~10 minutes if 5s interval
 
 ### Default
 
-* Show **all users**
+* Runtime keeps all sampled processes (all users by default)
+* UI shows **Top 8 processes** in descending memory order
 
 ### When user selected
 

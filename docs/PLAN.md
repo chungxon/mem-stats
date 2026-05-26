@@ -75,7 +75,7 @@ Acceptance criteria:
 
 - Services return valid values on local machine
 - Process list sorted by memory desc
-- Result capped to top 8 processes
+- Runtime snapshots keep a broader set for downstream aggregation/filtering; UI remains capped to top 8
 
 Task 2 TODO:
 
@@ -83,7 +83,7 @@ Task 2 TODO:
 - [x] Implement `MemoryStatsService` using `host_statistics64`, `sysctl hw.memsize`, and `vm.swapusage`
 - [x] Implement `ProcessSnapshotService` using `top -l 1 -o mem -stats pid,user,mem,command`
 - [x] Ensure process snapshots are sorted by memory descending
-- [x] Cap process snapshots to top 8 entries
+- [x] Keep runtime snapshot broad and cap displayed top processes to 8 in view-model/UI layer
 - [x] Add parser/service tests for core acceptance behavior
 
 Review gate:
