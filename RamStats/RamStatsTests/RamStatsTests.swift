@@ -234,6 +234,24 @@ struct RamStatsTests {
     #expect(vm.topProcesses.last?.pid == 8)
   }
 
+  @MainActor @Test func processViewModelApplyEmptySnapshotsClearsVisibleState() {
+    let vm = ProcessViewModel()
+    vm.apply(
+      snapshots: [
+        ProcessSnapshot(user: "alice", pid: 1, rssBytes: 1024, command: "/bin/a")
+      ],
+      topLimit: 8
+    )
+    vm.selectedUser = "alice"
+
+    vm.apply(snapshots: [], topLimit: 8)
+
+    #expect(vm.allProcesses.isEmpty)
+    #expect(vm.topProcesses.isEmpty)
+    #expect(vm.visibleProcesses.isEmpty)
+    #expect(vm.selectedUser == nil)
+  }
+
   @Test func parseTopOutputSortsByMemoryDescending() {
     let output = """
       100 son 400M /usr/bin/vim

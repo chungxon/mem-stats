@@ -84,6 +84,7 @@ final class RamStatsAppState: ObservableObject {
       var messages: [String] = []
       var sampledMemoryStats: MemoryStats?
       var sampledProcesses: [ProcessSnapshot] = []
+      var didSampleProcesses = false
 
       let memoryResult = Result { try memoryService.fetchMemoryStats() }
       switch memoryResult {
@@ -100,6 +101,7 @@ final class RamStatsAppState: ObservableObject {
       switch processResult {
       case .success(let processes):
         sampledProcesses = processes
+        didSampleProcesses = true
       case .failure(let error):
         let message = "Process: \(error.localizedDescription)"
         messages.append(message)
@@ -108,6 +110,7 @@ final class RamStatsAppState: ObservableObject {
       let sampledError = messages.isEmpty ? nil : messages.joined(separator: " | ")
       let finalizedMemoryStats = sampledMemoryStats
       let finalizedProcesses = sampledProcesses
+      let finalizedDidSampleProcesses = didSampleProcesses
       let finalizedError = sampledError
       let finalizedSampledAt = sampledAt
       Task { @MainActor [weak self] in
@@ -115,7 +118,7 @@ final class RamStatsAppState: ObservableObject {
         if let finalizedMemoryStats {
           self.memoryVM.apply(stats: finalizedMemoryStats, sampledAt: finalizedSampledAt)
         }
-        if !finalizedProcesses.isEmpty {
+        if finalizedDidSampleProcesses {
           self.processVM.apply(
             snapshots: finalizedProcesses,
             topLimit: 8,
