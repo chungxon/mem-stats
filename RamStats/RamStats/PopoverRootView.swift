@@ -108,19 +108,32 @@ struct PopoverRootView: View {
 
   private var headerSection: some View {
     HStack {
-      Text("RAM Stats")
-        .font(.title3.weight(.semibold))
+      Button {
+        onOpenActivityMonitor()
+      } label: {
+        Image(systemName: "waveform.path.ecg")
+          .imageScale(.medium)
+      }
+      .buttonStyle(.plain)
+      .help("Open Activity Monitor")
+      .accessibilityLabel("Open Activity Monitor")
+
       Spacer()
 
-      Button("Activity Monitor") {
-        onOpenActivityMonitor()
-      }
-      .buttonStyle(.bordered)
+      Text("RAM Stats")
+        .font(.title3.weight(.semibold))
 
-      Button("Options") {
+      Spacer()
+
+      Button {
         onOpenOptionsMenu()
+      } label: {
+        Image(systemName: "gearshape")
+          .imageScale(.medium)
       }
-      .buttonStyle(.bordered)
+      .buttonStyle(.plain)
+      .help("Open Options")
+      .accessibilityLabel("Open Options")
     }
     .padding(.bottom, 2)
   }
