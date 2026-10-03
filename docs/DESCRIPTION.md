@@ -223,6 +223,7 @@ UI refresh: every 5s
 
 * Click slice:
 
+  * only user slices can be selected; "Free", "Others" and "Unattributed Used" respond to hover only
   * set `selectedUser`
   * filter process list
   * show a "Clear Filter" button in the Top Users header (overlaid, so it does not shift the layout)
@@ -230,7 +231,8 @@ UI refresh: every 5s
 * Click again:
 
   * reset filter
-  * If selectedUser no longer exists → auto reset selection
+
+* Auto reset: the filter clears itself when the selected user no longer has its own slice on the donut, either because it was merged into "Others" (< 2%) or because it has no processes left. This keeps the highlighted slice, center label and info row in sync with the filtered lists.
 
 * VoiceOver: the donut is one element with a value listing every slice, plus actions to filter or clear each user
 

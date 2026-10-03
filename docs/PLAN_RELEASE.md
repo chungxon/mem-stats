@@ -68,8 +68,8 @@ Files: `docs/DESCRIPTION.md`
 
 Giữ hành vi hiện tại: filter tự reset khi user không còn slice riêng trên donut. Lý do: user được chọn luôn có slice để highlight, center label và info row luôn khớp với danh sách đang lọc. Docs §6 chỉ ghi "no longer exists" nên chưa rõ.
 
-- [ ] §6: ghi rõ filter tự reset khi user không còn slice riêng (bị gộp vào "Others" vì < 2%, hoặc không còn process).
-- [ ] §6: ghi rõ chỉ slice user mới chọn được (Free, Others, Unattributed chỉ hover).
+- [x] §6: ghi rõ filter tự reset khi user không còn slice riêng (bị gộp vào "Others" vì < 2%, hoặc không còn process).
+- [x] §6: ghi rõ chỉ slice user mới chọn được (Free, Others, Unattributed chỉ hover).
 
 Commit: `docs(donut): clarify when the user filter resets`
 
