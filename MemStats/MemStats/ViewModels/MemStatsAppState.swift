@@ -84,6 +84,7 @@ final class MemStatsAppState: ObservableObject {
       var messages: [String] = []
       var sampledMemoryStats: MemoryStats?
       var sampledProcesses: [ProcessSnapshot] = []
+      var sampledAppIdentities: [Int32: AppIdentity] = [:]
       var didSampleProcesses = false
 
       let memoryResult = Result { try memoryService.fetchMemoryStats() }
@@ -101,6 +102,7 @@ final class MemStatsAppState: ObservableObject {
       switch processResult {
       case .success(let processes):
         sampledProcesses = processes
+        sampledAppIdentities = AppIdentityResolver.resolve(pids: processes.map(\.pid))
         didSampleProcesses = true
       case .failure(let error):
         let message = "Process: \(error.localizedDescription)"
@@ -110,6 +112,7 @@ final class MemStatsAppState: ObservableObject {
       let sampledError = messages.isEmpty ? nil : messages.joined(separator: " | ")
       let finalizedMemoryStats = sampledMemoryStats
       let finalizedProcesses = sampledProcesses
+      let finalizedAppIdentities = sampledAppIdentities
       let finalizedDidSampleProcesses = didSampleProcesses
       let finalizedError = sampledError
       let finalizedSampledAt = sampledAt
@@ -121,6 +124,7 @@ final class MemStatsAppState: ObservableObject {
         if finalizedDidSampleProcesses {
           self.processVM.apply(
             snapshots: finalizedProcesses,
+            appIdentities: finalizedAppIdentities,
             topLimit: 8,
             sampledAt: finalizedSampledAt
           )

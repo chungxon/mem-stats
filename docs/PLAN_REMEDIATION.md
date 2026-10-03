@@ -340,26 +340,34 @@ Acceptance Criteria:
 - Không còn tên `RamStats` hiển thị với người dùng.
 - Build/test pass sau khi rename.
 
-## Task 18 - View RAM By App
+## Task 18 - Top Apps And Top Users Naming
 
 Objective:
 
 - Thêm chế độ xem RAM theo app (gộp các process thuộc cùng một app) bên cạnh view theo user/process.
+- Đổi tên section donut "RAM by User" thành "Top Users".
 
 TODO:
 
-- [ ] Xác định cách gộp process theo app (bundle/executable path, helper process).
-- [ ] Bổ sung model + aggregation theo app trong pipeline sampling.
-- [ ] Thêm UI view RAM theo app trong popover.
-- [ ] Bổ sung test cho logic aggregation.
-- [ ] Cập nhật `docs/DESCRIPTION.md`.
-- [ ] Run lint cho file Swift thay đổi.
-- [ ] Run build + test verification.
+- [x] Xác định cách gộp process theo app: `proc_pidpath(pid)` → outermost `.app` bundle; ngoài bundle thì gộp theo executable path; fallback theo command name của `top`.
+- [x] Bổ sung model (`AppIdentity`, `AppMemoryUsage`) + resolver/aggregator, resolve path trong sampling queue.
+- [x] Thêm section "Top Apps" trong popover (App / Procs / Mem, tooltip path, lọc theo selected user).
+- [x] Đổi tên section donut "RAM by User" → "Top Users".
+- [x] Bổ sung test cho logic aggregation.
+- [x] Cập nhật `docs/DESCRIPTION.md`.
+- [x] Run lint cho file Swift thay đổi.
+- [x] Run build + test verification.
 
 Acceptance Criteria:
 
 - Hiển thị được RAM theo từng app, các helper process được gộp vào đúng app.
 - Build/test pass.
+
+Notes:
+
+- `top` chỉ trả command name bị cắt 16 ký tự (vd `Microsoft Edge H`) nên không dùng được để gộp app; cần path thật từ `proc_pidpath`.
+- Process XPC dùng chung của hệ thống (vd `com.apple.WebKit.WebContent`) không gắn được về app gọi nó nếu không dùng private API, nên hiển thị như một mục riêng.
+- PID không đọc được path (process đã thoát giữa `top` và `proc_pidpath`, hoặc bị giới hạn quyền) sẽ fallback theo command name bị cắt của `top`; tổng RAM theo app chỉ tính trên tập process `top -n 500`.
 
 ## Execution Order
 
@@ -380,7 +388,7 @@ Acceptance Criteria:
 15. Task 15 (docs and parser alignment cleanup)
 16. Task 16 (Swift 6 warning cleanup)
 17. Task 17 (rename RamStats -> MemStats)
-18. Task 18 (view RAM by app)
+18. Task 18 (top apps + top users naming)
 
 ## Review Gates
 

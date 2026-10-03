@@ -94,6 +94,7 @@ struct PopoverRootView: View {
         headerSection
         donutSection
         historySection
+        appSection
         processSection
       }
       .padding(16)
@@ -219,7 +220,7 @@ struct PopoverRootView: View {
       }
       .frame(maxWidth: .infinity, alignment: .leading)
     } label: {
-      Text("RAM by User")
+      Text("Top Users")
         .font(.headline)
     }
     .background(Color(nsColor: .controlBackgroundColor))
@@ -318,6 +319,63 @@ struct PopoverRootView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     } label: {
       Text("History")
+        .font(.headline)
+    }
+    .background(Color(nsColor: .controlBackgroundColor))
+  }
+
+  private var appSection: some View {
+    GroupBox {
+      VStack(alignment: .leading, spacing: 8) {
+        HStack {
+          Text(processVM.selectedUser == nil ? "Top Apps" : "Filtered Apps")
+            .font(.subheadline.weight(.semibold))
+          Spacer()
+          Text("\(processVM.visibleApps.count)")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+        }
+
+        if processVM.visibleApps.isEmpty {
+          Text("No app data available")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+        } else {
+          HStack(spacing: 8) {
+            Text("APP")
+              .frame(maxWidth: .infinity, alignment: .leading)
+            Text("PROCS")
+              .frame(width: 50, alignment: .trailing)
+            Text("MEM")
+              .frame(width: 56, alignment: .trailing)
+          }
+          .font(.caption2.weight(.semibold))
+          .foregroundStyle(.secondary)
+
+          ForEach(processVM.visibleApps) { app in
+            HStack(spacing: 8) {
+              Text(app.name)
+                .font(.footnote)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .help(app.path ?? app.name)
+
+              Text(verbatim: String(app.processCount))
+                .font(.footnote.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .frame(width: 50, alignment: .trailing)
+
+              Text(formatGigabytes(app.bytes))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .frame(width: 56, alignment: .trailing)
+            }
+          }
+        }
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+    } label: {
+      Text("Top Apps")
         .font(.headline)
     }
     .background(Color(nsColor: .controlBackgroundColor))

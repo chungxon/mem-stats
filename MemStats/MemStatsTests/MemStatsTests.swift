@@ -356,6 +356,71 @@ struct MemStatsTests {
     )
   }
 
+  @Test func appIdentityGroupsHelperIntoOutermostAppBundle() {
+    let main = AppIdentityResolver.identity(
+      forExecutablePath: "/Applications/Visual Studio Code.app/Contents/MacOS/Electron"
+    )
+    let helper = AppIdentityResolver.identity(
+      forExecutablePath:
+        "/Applications/Visual Studio Code.app/Contents/Frameworks/Code Helper (Renderer).app/Contents/MacOS/Code Helper (Renderer)"
+    )
+
+    #expect(main.id == helper.id)
+    #expect(helper.name == "Visual Studio Code")
+    #expect(helper.path == "/Applications/Visual Studio Code.app")
+  }
+
+  @Test func appIdentityUsesExecutableNameOutsideAppBundle() {
+    let identity = AppIdentityResolver.identity(forExecutablePath: "/usr/local/bin/mysqld")
+
+    #expect(identity.id == "exec:/usr/local/bin/mysqld")
+    #expect(identity.name == "mysqld")
+  }
+
+  @Test func appAggregatorSumsMemoryAndSortsDescending() {
+    let code = AppIdentity(id: "app:/Code.app", name: "Code", path: "/Code.app")
+    let edge = AppIdentity(id: "app:/Edge.app", name: "Edge", path: "/Edge.app")
+    let processes = [
+      ProcessSnapshot(user: "son", pid: 1, rssBytes: 300, command: "Code"),
+      ProcessSnapshot(user: "son", pid: 2, rssBytes: 400, command: "Code Helper"),
+      ProcessSnapshot(user: "son", pid: 3, rssBytes: 500, command: "Microsoft Edge"),
+      ProcessSnapshot(user: "son", pid: 4, rssBytes: 50, command: "unknownd"),
+    ]
+
+    let apps = AppMemoryAggregator.aggregate(
+      processes: processes,
+      identities: [1: code, 2: code, 3: edge]
+    )
+
+    #expect(apps.count == 3)
+    #expect(apps[0].name == "Code")
+    #expect(apps[0].bytes == 700)
+    #expect(apps[0].processCount == 2)
+    #expect(apps[1].name == "Edge")
+    #expect(apps[2].name == "unknownd")
+    #expect(apps[2].path == nil)
+  }
+
+  @MainActor @Test func processViewModelScopesAppsToSelectedUser() {
+    let app = AppIdentity(id: "app:/A.app", name: "A", path: "/A.app")
+    let vm = ProcessViewModel()
+    vm.apply(
+      snapshots: [
+        ProcessSnapshot(user: "bob", pid: 1, rssBytes: 900, command: "A"),
+        ProcessSnapshot(user: "alice", pid: 2, rssBytes: 100, command: "A"),
+      ],
+      appIdentities: [1: app, 2: app]
+    )
+
+    #expect(vm.visibleApps.first?.bytes == 1_000)
+
+    vm.selectedUser = "alice"
+
+    #expect(vm.visibleApps.count == 1)
+    #expect(vm.visibleApps.first?.bytes == 100)
+    #expect(vm.visibleApps.first?.processCount == 1)
+  }
+
   @Test func memoryStatsServiceReturnsPositiveTotals() throws {
     let service = MemoryStatsService()
     let stats = try service.fetchMemoryStats()

@@ -11,18 +11,31 @@ final class ProcessViewModel: ObservableObject {
 
   @Published private(set) var allProcesses: [ProcessSnapshot] = []
   @Published private(set) var topProcesses: [ProcessSnapshot] = []
-  @Published var selectedUser: String?
+  @Published private(set) var visibleApps: [AppMemoryUsage] = []
+  @Published var selectedUser: String? {
+    didSet {
+      guard selectedUser != oldValue else { return }
+      refreshVisibleApps()
+    }
+  }
 
   private var userHistoryByUser: [String: [UserMemoryHistorySample]] = [:]
   private let maxSamples: Int
   private var topLimit: Int = 8
+  private var appIdentities: [Int32: AppIdentity] = [:]
 
   init(maxSamples: Int = 120) {
     self.maxSamples = max(maxSamples, 1)
   }
 
-  func apply(snapshots: [ProcessSnapshot], topLimit: Int = 8, sampledAt: Date = Date()) {
+  func apply(
+    snapshots: [ProcessSnapshot],
+    appIdentities: [Int32: AppIdentity] = [:],
+    topLimit: Int = 8,
+    sampledAt: Date = Date()
+  ) {
     self.topLimit = max(topLimit, 0)
+    self.appIdentities = appIdentities
     allProcesses = snapshots
     topProcesses = Array(snapshots.prefix(self.topLimit))
     let adjustedTimestamp: Date
@@ -51,12 +64,29 @@ final class ProcessViewModel: ObservableObject {
 
     if let selectedUser, !allProcesses.contains(where: { $0.user == selectedUser }) {
       self.selectedUser = nil
+    } else {
+      refreshVisibleApps()
     }
   }
 
   var visibleProcesses: [ProcessSnapshot] {
     guard let selectedUser else { return topProcesses }
     return Array(allProcesses.filter { $0.user == selectedUser }.prefix(topLimit))
+  }
+
+  private func refreshVisibleApps() {
+    let scopedProcesses: [ProcessSnapshot]
+    if let selectedUser {
+      scopedProcesses = allProcesses.filter { $0.user == selectedUser }
+    } else {
+      scopedProcesses = allProcesses
+    }
+
+    visibleApps = AppMemoryAggregator.aggregate(
+      processes: scopedProcesses,
+      identities: appIdentities,
+      limit: topLimit
+    )
   }
 
   var selectedUserHistory: [UserMemoryHistorySample] {

@@ -5,7 +5,8 @@ Similar to iStat Menus/Stats, but focused on **memory monitoring** for multiple 
 A **menu bar macOS app** that shows:
 
 * Runs continuously with **minimal CPU + memory overhead**
-* Shows **RAM by user (donut)** with swap/pressure status context
+* Shows **Top Users (donut)** with swap/pressure status context
+* Shows **Top Apps** (helper processes grouped into their parent app)
 * Provides **short-term history (bounded window)**
 * Show **Top processes (global or per selected user)**
 * Has **native macOS UX (no custom-heavy UI nonsense)**
@@ -26,6 +27,7 @@ All inside **one popup window**.
   * `sysctl` → total RAM
   * `sysctl vm.memory_pressure` + `kern.memorystatus_vm_pressure_level` → memory pressure level
   * `top -l 1 -o mem -stats pid,user,mem,command` → processes
+  * `proc_pidpath(pid)` → executable path, used to group processes by app
 * State:
 
   * `ObservableObject` (single source of truth)
@@ -44,6 +46,9 @@ All inside **one popup window**.
 │                                  │
 ├──────────────────────────────────┤
 │        History Chart             │
+├──────────────────────────────────┤
+│        Top Apps                  │
+│   (filtered by selected user)    │
 ├──────────────────────────────────┤
 │        Top Processes             │
 │   (filtered by selected user)    │
@@ -258,6 +263,25 @@ let maxSamples = 120 // ~10 minutes if 5s interval
 
 ---
 
+## 8.1 Top Apps
+
+### Grouping
+
+* Resolve executable path per PID with `proc_pidpath` (public libproc API)
+* Path inside an `.app` bundle → group by the **outermost** `.app` bundle
+  * e.g. `Visual Studio Code.app/.../Code Helper (Renderer).app/...` → `Visual Studio Code`
+* Path outside any bundle → group by executable path (name = executable file name)
+* Path not resolvable → fallback to the `top` command name
+
+### Display
+
+* Top 8 apps in descending memory order
+* Columns: App, process count, Memory
+* Hover an app row → tooltip with bundle/executable path
+* When a user is selected, only that user's processes are aggregated
+
+---
+
 ## 9. Native macOS Design Rules
 
 ### Follow Apple style strictly
@@ -403,7 +427,8 @@ Don’t show ALL users in history chart to avoid noise.
 ### Core
 
 * Menu bar app
-* Donut (RAM by user + free)
+* Donut (Top Users + free)
+* Top apps (helpers grouped, filterable)
 * Memory pressure + swap
 * Short history (bounded)
 * Top processes (filterable)
