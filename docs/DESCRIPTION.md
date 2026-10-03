@@ -423,6 +423,12 @@ DispatchQueue.global(qos: .utility)
 
 * Not lazy: the popover is small and always shows every section, so the charts render with the popover. Nothing is rendered while the popover is closed.
 
+### 11.4 Keep rendering cheap
+
+* Donut hover state lives in its own subview and changes only when the hovered slice changes, so moving the mouse never redraws the history chart or the tables
+* History segments are built once per memory sample in `MemoryViewModel`; history is already in time order, so nothing is sorted while rendering
+* Visible apps and processes are rebuilt only on a new sample, a filter change or new row counts, and the PROCESS column names are parsed once per visible command
+
 ---
 
 ## 12. Permissions & Stability

@@ -13,8 +13,6 @@ struct PopoverRootView: View {
   private let onOpenActivityMonitor: () -> Void
   private let onOpenOptionsMenu: () -> Void
 
-  @State private var hoveredAngleValue: Double?
-
   init(
     appState: MemStatsAppState,
     onOpenActivityMonitor: @escaping () -> Void = {},
@@ -25,62 +23,6 @@ struct PopoverRootView: View {
     self._processVM = ObservedObject(wrappedValue: appState.processVM)
     self.onOpenActivityMonitor = onOpenActivityMonitor
     self.onOpenOptionsMenu = onOpenOptionsMenu
-  }
-
-  private var donutSlices: [DonutSlice] {
-    appState.donutSlices
-  }
-
-  private var donutUserSlices: [DonutSlice] {
-    donutSlices.filter {
-      if case .user = $0.category { return true }
-      return false
-    }
-  }
-
-  private var donutAccessibilityValue: String {
-    donutSlices
-      .map { "\($0.label) \(MemoryFormat.size($0.bytes)), \(percentText($0.fractionOfTotal))" }
-      .joined(separator: "; ")
-  }
-
-  private var activeSelectedSlice: DonutSlice? {
-    guard let selectedUser = processVM.selectedUser else { return nil }
-
-    return donutSlices.first {
-      if case .user(let user) = $0.category {
-        return user == selectedUser
-      }
-      return false
-    }
-  }
-
-  private var activeHoveredSlice: DonutSlice? {
-    DonutDataBuilder.sliceForSelection(angleValue: hoveredAngleValue, in: donutSlices)
-  }
-
-  private var activeFocusSlice: DonutSlice? {
-    activeHoveredSlice ?? activeSelectedSlice
-  }
-
-  private var orderedMemoryHistory: [MemoryHistorySample] {
-    memoryVM.history.sorted { $0.timestamp < $1.timestamp }
-  }
-
-  private var historySegmentPoints: [MemoryHistorySegmentPoint] {
-    MemoryHistorySegmentPoint.segments(from: orderedMemoryHistory)
-  }
-
-  private var orderedSelectedUserHistory: [ProcessViewModel.UserMemoryHistorySample] {
-    processVM.selectedUserHistory.sorted { $0.timestamp < $1.timestamp }
-  }
-
-  private var memorySummary: String {
-    guard let stats = memoryVM.currentStats else {
-      return "Loading memory data..."
-    }
-
-    return "Used \(MemoryFormat.size(stats.usedBytes)) / \(MemoryFormat.size(stats.totalBytes))"
   }
 
   private var modeLabel: String {
@@ -118,7 +60,12 @@ struct PopoverRootView: View {
 
       ScrollView(.vertical, showsIndicators: true) {
         VStack(alignment: .leading, spacing: 14) {
-          donutSection
+          DonutSectionView(
+            slices: appState.donutSlices,
+            stats: memoryVM.currentStats,
+            selectedUser: processVM.selectedUser,
+            onSelectUser: { processVM.selectedUser = $0 }
+          )
           historySection
           appSection
           processSection
@@ -129,10 +76,6 @@ struct PopoverRootView: View {
     }
     .frame(width: Self.popoverSize.width, height: Self.popoverSize.height)
     .background(Color(nsColor: .windowBackgroundColor))
-    .onChange(of: donutSlices.map(\.id)) { _, _ in
-      validateSelectionState()
-      hoveredAngleValue = nil
-    }
   }
 
   private var headerSection: some View {
@@ -170,112 +113,6 @@ struct PopoverRootView: View {
     }
   }
 
-  private var donutSection: some View {
-    GroupBox {
-      VStack(alignment: .leading, spacing: 10) {
-        if donutSlices.isEmpty {
-          Text("Loading chart data...")
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, minHeight: 150, alignment: .center)
-
-          Text(memorySummary)
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-        } else {
-          ZStack {
-            Chart(donutSlices) { slice in
-              SectorMark(
-                angle: .value("Bytes", slice.angleValue),
-                innerRadius: .ratio(0.62),
-                outerRadius: activeFocusSlice?.id == slice.id ? .ratio(1.0) : .ratio(0.93),
-                angularInset: 1
-              )
-              .foregroundStyle(color(for: slice))
-              .opacity(shouldDim(slice) ? 0.35 : 1)
-            }
-            .chartLegend(.hidden)
-            .chartOverlay { proxy in
-              GeometryReader { geometry in
-                Color.clear
-                  .contentShape(Rectangle())
-                  .onContinuousHover { phase in
-                    switch phase {
-                    case .active(let location):
-                      guard let plotFrame = proxy.plotFrame else {
-                        hoveredAngleValue = nil
-                        return
-                      }
-                      hoveredAngleValue = hoverAngleValue(
-                        at: location,
-                        plotFrame: geometry[plotFrame]
-                      )
-                    case .ended:
-                      hoveredAngleValue = nil
-                    }
-                  }
-                  .gesture(
-                    SpatialTapGesture().onEnded { event in
-                      guard let plotFrame = proxy.plotFrame else { return }
-                      let angle = hoverAngleValue(
-                        at: event.location,
-                        plotFrame: geometry[plotFrame]
-                      )
-                      applySelectionToggle(for: angle)
-                    }
-                  )
-              }
-            }
-            .frame(height: 170)
-
-            donutCenterOverlay
-          }
-          // The hover/tap overlay is mouse only, so expose the slices and the filter to VoiceOver.
-          .accessibilityElement(children: .ignore)
-          .accessibilityLabel("Memory by user")
-          .accessibilityValue(donutAccessibilityValue)
-          .accessibilityActions {
-            ForEach(donutUserSlices) { slice in
-              let isSelected = processVM.selectedUser == slice.label
-              Button(isSelected ? "Clear filter" : "Filter \(slice.label)") {
-                processVM.selectedUser = isSelected ? nil : slice.label
-              }
-            }
-          }
-
-          HStack {
-            Text(selectionTitle)
-              .font(.subheadline.weight(.semibold))
-              .lineLimit(1)
-            Spacer()
-            // Higher priority keeps the numbers whole; a long user name truncates instead.
-            Text(selectionSubtitle)
-              .font(.footnote)
-              .foregroundStyle(.secondary)
-              .lineLimit(1)
-              .layoutPriority(1)
-          }
-        }
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
-    } label: {
-      // Overlay keeps the button out of the label's layout, so showing it does not push the box down.
-      Text("Top Users")
-        .font(.headline)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .trailing) {
-          if processVM.selectedUser != nil {
-            Button("Clear Filter") {
-              processVM.selectedUser = nil
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-          }
-        }
-    }
-    .background(Color(nsColor: .controlBackgroundColor))
-  }
-
   private var historySection: some View {
     GroupBox {
       VStack(alignment: .leading, spacing: 8) {
@@ -293,47 +130,47 @@ struct PopoverRootView: View {
         }
         .font(.footnote)
 
-        if orderedMemoryHistory.isEmpty {
+        if memoryVM.history.isEmpty {
           Text("Loading history data...")
             .font(.footnote)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, minHeight: 120, alignment: .center)
         } else {
           Chart {
-            ForEach(historySegmentPoints) { point in
+            ForEach(memoryVM.historySegments) { point in
               AreaMark(
                 x: .value("Time", point.timestamp),
                 yStart: .value("Baseline", 0),
                 yEnd: .value("Used RAM", Double(point.usedBytes)),
                 series: .value("Segment", point.segmentID)
               )
-              .foregroundStyle(pressureColor(for: point.pressureLevel).opacity(0.18))
+              .foregroundStyle(PopoverStyle.pressureColor(point.pressureLevel).opacity(0.18))
               .interpolationMethod(.linear)
             }
 
-            ForEach(historySegmentPoints) { point in
+            ForEach(memoryVM.historySegments) { point in
               LineMark(
                 x: .value("Time", point.timestamp),
                 y: .value("Used RAM", Double(point.usedBytes)),
                 series: .value("Segment", point.segmentID)
               )
-              .foregroundStyle(pressureColor(for: point.pressureLevel))
+              .foregroundStyle(PopoverStyle.pressureColor(point.pressureLevel))
               .lineStyle(StrokeStyle(lineWidth: 2))
               .interpolationMethod(.linear)
             }
 
             // A single sample has no segment yet, so show it as a point.
-            if orderedMemoryHistory.count == 1, let sample = orderedMemoryHistory.first {
+            if memoryVM.history.count == 1, let sample = memoryVM.history.first {
               PointMark(
                 x: .value("Time", sample.timestamp),
                 y: .value("Used RAM", Double(sample.usedBytes))
               )
-              .foregroundStyle(pressureColor(for: sample.pressureLevel))
+              .foregroundStyle(PopoverStyle.pressureColor(sample.pressureLevel))
             }
 
             if processVM.selectedUser != nil {
               // Timestamps are unique and monotonic, so they stay stable as old samples drop.
-              ForEach(orderedSelectedUserHistory, id: \.timestamp) { sample in
+              ForEach(processVM.selectedUserHistory, id: \.timestamp) { sample in
                 LineMark(
                   x: .value("Time", sample.timestamp),
                   y: .value("Selected User", Double(sample.displayBytes)),
@@ -376,7 +213,7 @@ struct PopoverRootView: View {
         ForEach(appState.growthHints.prefix(2), id: \.user) { hint in
           HStack(spacing: 4) {
             RoundedRectangle(cornerRadius: 2)
-              .fill(userColor(hint.user))
+              .fill(PopoverStyle.userColor(hint.user))
               .frame(width: 10, height: 10)
             Text(growthHintText(hint))
               .foregroundStyle(.secondary)
@@ -478,7 +315,7 @@ struct PopoverRootView: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 50, alignment: .leading)
 
-              Text(processDisplayName(process.command))
+              Text(processVM.displayName(for: process))
                 .font(.footnote)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -513,212 +350,6 @@ struct PopoverRootView: View {
     .background(Color(nsColor: .controlBackgroundColor))
   }
 
-  private var selectionTitle: String {
-    guard let slice = activeFocusSlice else { return "All Users" }
-    return slice.label
-  }
-
-  private var selectionSubtitle: String {
-    guard let slice = activeFocusSlice else { return memorySummary }
-    guard let stats = memoryVM.currentStats else {
-      return "\(MemoryFormat.size(slice.bytes))"
-    }
-    // Free memory is not part of used RAM, so it is compared against total RAM instead.
-    if case .free = slice.category {
-      return "\(MemoryFormat.size(slice.bytes)) / Total \(MemoryFormat.size(stats.totalBytes))"
-    }
-    return "\(MemoryFormat.size(slice.bytes)) / Used \(MemoryFormat.size(stats.usedBytes))"
-  }
-
-  private func shouldDim(_ slice: DonutSlice) -> Bool {
-    guard let focused = activeFocusSlice else { return false }
-    return slice.id != focused.id
-  }
-
-  private func applySelectionToggle(for angle: Double?) {
-    guard
-      let angle,
-      let pickedSlice = DonutDataBuilder.sliceForSelection(angleValue: angle, in: donutSlices),
-      case .user(let user) = pickedSlice.category
-    else {
-      return
-    }
-
-    processVM.selectedUser = processVM.selectedUser == user ? nil : user
-  }
-
-  private func validateSelectionState() {
-    guard let selectedUser = processVM.selectedUser else { return }
-
-    let hasMatchingSlice = donutSlices.contains {
-      if case .user(let user) = $0.category {
-        return user == selectedUser
-      }
-      return false
-    }
-
-    if !hasMatchingSlice {
-      processVM.selectedUser = nil
-    }
-  }
-
-  private func color(for slice: DonutSlice) -> Color {
-    switch slice.category {
-    case .free:
-      return Color.green
-    case .others:
-      return Color(nsColor: .systemGray)
-    case .unattributed:
-      return Color(nsColor: Self.unattributedColor)
-    case .user(let user):
-      return userColor(user)
-    }
-  }
-
-  /// Opaque lighter gray so it reads differently from the "Others" slice. Resolved per
-  /// appearance, since `Color.mix(with:by:)` needs macOS 15.
-  private static let unattributedColor = NSColor(name: nil) { appearance in
-    var color = NSColor.systemGray
-    appearance.performAsCurrentDrawingAppearance {
-      color =
-        NSColor.systemGray.usingColorSpace(.sRGB)?.blended(withFraction: 0.45, of: .white)
-        ?? .systemGray
-    }
-    return color
-  }
-
-  /// Stable per-user color. Green, orange and red are left out so a user never looks like the
-  /// "Free" slice or a pressure level.
-  private func userColor(_ user: String) -> Color {
-    let palette: [Color] = [.blue, .purple, .mint, .indigo, .teal, .cyan, .pink, .brown]
-    return palette[DonutDataBuilder.paletteIndex(for: user, paletteCount: palette.count)]
-  }
-
-  private func processDisplayName(_ command: String) -> String {
-    let trimmedCommand = command.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !trimmedCommand.isEmpty else { return "Unknown" }
-
-    let executableToken = firstCommandToken(from: trimmedCommand) ?? trimmedCommand
-    let normalizedExecutableToken = unescapeCommandToken(executableToken)
-
-    guard normalizedExecutableToken.contains("/") else {
-      return normalizedExecutableToken
-    }
-
-    let executable = URL(fileURLWithPath: normalizedExecutableToken).lastPathComponent
-    return executable.isEmpty ? normalizedExecutableToken : executable
-  }
-
-  private func firstCommandToken(from command: String) -> String? {
-    var token = ""
-    var isInSingleQuote = false
-    var isInDoubleQuote = false
-    var isEscaped = false
-
-    for character in command {
-      if isEscaped {
-        token.append(character)
-        isEscaped = false
-        continue
-      }
-
-      if character == "\\" && !isInSingleQuote {
-        isEscaped = true
-        continue
-      }
-
-      if character == "'" && !isInDoubleQuote {
-        isInSingleQuote.toggle()
-        continue
-      }
-
-      if character == "\"" && !isInSingleQuote {
-        isInDoubleQuote.toggle()
-        continue
-      }
-
-      if character.isWhitespace && !isInSingleQuote && !isInDoubleQuote {
-        if !token.isEmpty {
-          break
-        }
-        continue
-      }
-
-      token.append(character)
-    }
-
-    return token.isEmpty ? nil : token
-  }
-
-  private func unescapeCommandToken(_ token: String) -> String {
-    token
-      .replacingOccurrences(of: "\\ ", with: " ")
-      .replacingOccurrences(of: "\\(", with: "(")
-      .replacingOccurrences(of: "\\)", with: ")")
-      .replacingOccurrences(of: "\\[", with: "[")
-      .replacingOccurrences(of: "\\]", with: "]")
-  }
-
-  private var donutCenterOverlay: some View {
-    VStack(spacing: 2) {
-      Text(donutCenterTitle)
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(.secondary)
-      Text(donutCenterValue)
-        .font(.footnote.weight(.semibold))
-        .monospacedDigit()
-    }
-    .padding(.horizontal, 8)
-    .padding(.vertical, 6)
-    .background(Color(nsColor: .windowBackgroundColor).opacity(0.85))
-    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-    .allowsHitTesting(false)
-  }
-
-  private var donutCenterTitle: String {
-    activeFocusSlice?.label ?? "Used RAM"
-  }
-
-  private var donutCenterValue: String {
-    guard let stats = memoryVM.currentStats else {
-      return "--"
-    }
-
-    if let slice = activeFocusSlice {
-      return percentText(slice.fractionOfTotal)
-    }
-
-    let ratio = stats.totalBytes > 0 ? Double(stats.usedBytes) / Double(stats.totalBytes) : 0
-    return percentText(ratio)
-  }
-
-  /// Rounds the same way everywhere, so a slice and the total never disagree by one point.
-  private func percentText(_ fraction: Double) -> String {
-    "\(Int((fraction * 100).rounded()))%"
-  }
-
-  private func hoverAngleValue(at location: CGPoint, plotFrame: CGRect) -> Double? {
-    guard !donutSlices.isEmpty, plotFrame.width > 0, plotFrame.height > 0 else { return nil }
-
-    let center = CGPoint(x: plotFrame.midX, y: plotFrame.midY)
-    let dx = location.x - center.x
-    let dy = location.y - center.y
-    let radius = sqrt((dx * dx) + (dy * dy))
-    let maxRadius = min(plotFrame.width, plotFrame.height) / 2
-    guard maxRadius > 0 else { return nil }
-
-    let radiusRatio = radius / maxRadius
-    guard radiusRatio >= 0.62, radiusRatio <= 1.02 else { return nil }
-
-    var angle = atan2(dx, -dy)
-    if angle < 0 {
-      angle += (Double.pi * 2)
-    }
-
-    let total = donutSlices.reduce(0.0) { $0 + $1.angleValue }
-    return (angle / (Double.pi * 2)) * total
-  }
-
   private func growthHintText(_ hint: MemoryGrowthHint) -> String {
     let growth = MemoryFormat.size(hint.growthBytes)
     switch hint.kind {
@@ -749,9 +380,9 @@ struct PopoverRootView: View {
 
   @ViewBuilder
   private var legendItems: some View {
-    if let latestSample = orderedMemoryHistory.last {
+    if let latestSample = memoryVM.history.last {
       legendItem(
-        color: pressureColor(for: latestSample.pressureLevel),
+        color: PopoverStyle.pressureColor(latestSample.pressureLevel),
         label: "Used \(MemoryFormat.size(latestSample.usedBytes))"
       )
       legendItem(
@@ -781,17 +412,13 @@ struct PopoverRootView: View {
   private func pressureBadge(level: MemoryPressureLevel) -> some View {
     HStack(spacing: 4) {
       RoundedRectangle(cornerRadius: 2)
-        .fill(pressureColor(for: level))
+        .fill(PopoverStyle.pressureColor(level))
         .frame(width: 10, height: 10)
       Text("Pressure \(level.displayName)")
         .foregroundStyle(.secondary)
         .lineLimit(1)
         .fixedSize()
     }
-  }
-
-  private func pressureColor(for level: MemoryPressureLevel) -> Color {
-    Color(nsColor: level.color)
   }
 }
 

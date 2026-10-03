@@ -4,7 +4,10 @@ import Foundation
 @MainActor
 final class MemoryViewModel: ObservableObject {
   @Published private(set) var currentStats: MemoryStats?
+  /// Oldest first. Timestamps are kept strictly increasing, so it never needs sorting.
   @Published private(set) var history: [MemoryHistorySample] = []
+  /// Chart segments for `history`, built once per change instead of on every render.
+  @Published private(set) var historySegments: [MemoryHistorySegmentPoint] = []
 
   private(set) var maxSamples: Int
 
@@ -17,6 +20,7 @@ final class MemoryViewModel: ObservableObject {
     self.maxSamples = max(maxSamples, 1)
     if history.count > self.maxSamples {
       history.removeFirst(history.count - self.maxSamples)
+      historySegments = MemoryHistorySegmentPoint.segments(from: history)
     }
   }
 
@@ -41,5 +45,6 @@ final class MemoryViewModel: ObservableObject {
     if history.count > maxSamples {
       history.removeFirst(history.count - maxSamples)
     }
+    historySegments = MemoryHistorySegmentPoint.segments(from: history)
   }
 }

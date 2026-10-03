@@ -234,10 +234,10 @@ Commit: `fix(ui): add loading state and keep header visible`
 
 Files: `PopoverRootView.swift`, `ViewModels/MemoryViewModel.swift`, `ViewModels/ProcessViewModel.swift`
 
-- [ ] Tách donut thành subview riêng giữ state hover, chỉ cập nhật khi slice id đang hover thay đổi.
-- [ ] Sort history và tạo segment 1 lần trong ViewModel khi có sample mới, không sort trong body.
-- [ ] Cache `visibleProcesses` / `visibleApps` khi đổi selection hoặc có sample mới.
-- [ ] Cache tên hiển thị của process thay vì parse command mỗi lần render.
+- [x] Tách donut thành subview riêng giữ state hover, chỉ cập nhật khi slice id đang hover thay đổi.
+- [x] Sort history và tạo segment 1 lần trong ViewModel khi có sample mới, không sort trong body.
+- [x] Cache `visibleProcesses` / `visibleApps` khi đổi selection hoặc có sample mới.
+- [x] Cache tên hiển thị của process thay vì parse command mỗi lần render.
 
 Commit: `perf(ui): avoid full popover re-render on donut hover`
 

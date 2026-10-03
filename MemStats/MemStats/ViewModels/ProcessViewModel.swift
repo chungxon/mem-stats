@@ -14,13 +14,16 @@ final class ProcessViewModel: ObservableObject {
 
   @Published private(set) var allProcesses: [ProcessSnapshot] = []
   @Published private(set) var topProcesses: [ProcessSnapshot] = []
+  /// Rows for the current filter, rebuilt only on a new sample, a filter change or new limits,
+  /// so rendering never filters or aggregates.
   @Published private(set) var visibleApps: [AppMemoryUsage] = []
+  @Published private(set) var visibleProcesses: [ProcessSnapshot] = []
   /// False until the first process sample lands, so the lists can show a loading state.
   @Published private(set) var hasSampled = false
   @Published var selectedUser: String? {
     didSet {
       guard selectedUser != oldValue else { return }
-      refreshVisibleApps()
+      refreshVisibleLists()
     }
   }
 
@@ -29,6 +32,8 @@ final class ProcessViewModel: ObservableObject {
   private(set) var topAppsLimit: Int
   private(set) var topProcessesLimit: Int
   private var appIdentities: [Int32: AppIdentity] = [:]
+  /// PROCESS column names for the visible rows, so a command is parsed once, not per render.
+  private var displayNameByCommand: [String: String] = [:]
 
   init(maxSamples: Int = 120, topAppsLimit: Int = 8, topProcessesLimit: Int = 8) {
     self.maxSamples = max(maxSamples, 1)
@@ -45,7 +50,7 @@ final class ProcessViewModel: ObservableObject {
     topAppsLimit = nextAppsLimit
     topProcessesLimit = nextProcessesLimit
     self.topProcesses = Array(allProcesses.prefix(topProcessesLimit))
-    refreshVisibleApps()
+    refreshVisibleLists()
   }
 
   /// Changes how many samples each user's history keeps and drops the oldest extra ones.
@@ -106,21 +111,34 @@ final class ProcessViewModel: ObservableObject {
     if let selectedUser, !allProcesses.contains(where: { $0.user == selectedUser }) {
       self.selectedUser = nil
     } else {
-      refreshVisibleApps()
+      refreshVisibleLists()
     }
   }
 
-  var visibleProcesses: [ProcessSnapshot] {
-    guard let selectedUser else { return topProcesses }
-    return Array(allProcesses.filter { $0.user == selectedUser }.prefix(topProcessesLimit))
+  /// Name for the PROCESS column, from the cache when the row is visible.
+  func displayName(for process: ProcessSnapshot) -> String {
+    displayNameByCommand[process.command]
+      ?? ProcessCommandName.displayName(from: process.command)
   }
 
-  private func refreshVisibleApps() {
+  private func refreshVisibleLists() {
     let scopedProcesses: [ProcessSnapshot]
     if let selectedUser {
       scopedProcesses = allProcesses.filter { $0.user == selectedUser }
     } else {
       scopedProcesses = allProcesses
+    }
+
+    let nextProcesses = Array(scopedProcesses.prefix(topProcessesLimit))
+    var nextNames: [String: String] = [:]
+    for process in nextProcesses where nextNames[process.command] == nil {
+      nextNames[process.command] =
+        displayNameByCommand[process.command]
+        ?? ProcessCommandName.displayName(from: process.command)
+    }
+    displayNameByCommand = nextNames
+    if nextProcesses != visibleProcesses {
+      visibleProcesses = nextProcesses
     }
 
     visibleApps = AppMemoryAggregator.aggregate(

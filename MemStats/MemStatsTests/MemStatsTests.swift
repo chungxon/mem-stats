@@ -841,6 +841,60 @@ struct MemStatsTests {
     #expect(MemoryFormat.axisTick(8 * gb) == "8 GB")
   }
 
+  @Test func processCommandNameParsesExecutable() {
+    #expect(ProcessCommandName.displayName(from: "/usr/bin/swift build -c release") == "swift")
+    #expect(
+      ProcessCommandName.displayName(from: "/Applications/My\\ App.app/Contents/MacOS/My\\ App -x")
+        == "My App")
+    #expect(ProcessCommandName.displayName(from: "\"/opt/a b/tool\" --flag") == "tool")
+    #expect(ProcessCommandName.displayName(from: "launchd") == "launchd")
+    #expect(ProcessCommandName.displayName(from: "   ") == "Unknown")
+  }
+
+  @MainActor @Test func memoryViewModelBuildsSegmentsOnSample() {
+    let vm = MemoryViewModel(maxSamples: 3)
+    let start = Date(timeIntervalSince1970: 1_000)
+    for index in 0..<4 {
+      vm.apply(
+        stats: MemoryStats(
+          totalBytes: 1_000, usedBytes: UInt64(100 * index), freeBytes: 0, activeBytes: 0,
+          inactiveBytes: 0, wiredBytes: 0, compressedBytes: 0, swapUsedBytes: 0,
+          pressureLevel: .normal),
+        sampledAt: start.addingTimeInterval(Double(index)))
+    }
+
+    #expect(vm.historySegments == MemoryHistorySegmentPoint.segments(from: vm.history))
+    #expect(vm.historySegments.count == 4)
+
+    vm.setMaxSamples(2)
+    #expect(vm.historySegments == MemoryHistorySegmentPoint.segments(from: vm.history))
+    #expect(vm.historySegments.count == 2)
+  }
+
+  @MainActor @Test func processViewModelCachesVisibleRowsAndNames() {
+    let vm = ProcessViewModel(topProcessesLimit: 2)
+    vm.apply(snapshots: [
+      ProcessSnapshot(user: "alice", pid: 1, rssBytes: 300, command: "/bin/a --x"),
+      ProcessSnapshot(user: "bob", pid: 2, rssBytes: 200, command: "/bin/b"),
+      ProcessSnapshot(user: "alice", pid: 3, rssBytes: 100, command: "/bin/c"),
+    ])
+    #expect(vm.visibleProcesses.map(\.pid) == [1, 2])
+    #expect(vm.displayName(for: vm.visibleProcesses[0]) == "a")
+
+    vm.selectedUser = "alice"
+    #expect(vm.visibleProcesses.map(\.pid) == [1, 3])
+    #expect(vm.displayName(for: vm.visibleProcesses[1]) == "c")
+
+    vm.setLimits(topApps: 8, topProcesses: 1)
+    #expect(vm.visibleProcesses.map(\.pid) == [1])
+
+    // The selected user is gone, so the filter resets and the rows follow.
+    vm.apply(snapshots: [ProcessSnapshot(user: "bob", pid: 2, rssBytes: 200, command: "/bin/b")])
+    #expect(vm.selectedUser == nil)
+    #expect(vm.visibleProcesses.map(\.pid) == [2])
+    #expect(vm.displayName(for: vm.visibleProcesses[0]) == "b")
+  }
+
   @Test func parseTopMemoryTokenHandlesChangeMarkersAndClamps() {
     #expect(TopProcessSnapshotParser.parseTopMemoryToken("12G+") == UInt64(12) * 1_073_741_824)
     #expect(TopProcessSnapshotParser.parseTopMemoryToken("512K-") == UInt64(512) * 1_024)
