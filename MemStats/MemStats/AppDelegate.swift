@@ -46,7 +46,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     button.target = self
     button.action = #selector(handleStatusItemClick)
     button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-    applyStatusAppearance(to: button, usagePercent: 0, pressure: .normal)
+    // No sample yet: show a neutral placeholder instead of a green 0%.
+    applyStatusAppearance(to: button, usagePercent: nil, pressure: nil)
 
     statusItem = item
   }
@@ -83,13 +84,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
   /// The menu bar on the active display renders template content and `contentTintColor`
   /// as monochrome, so the pressure color is baked into a non-template image and an
-  /// attributed title instead.
+  /// attributed title instead. `nil` values mean no sample has arrived yet.
   private func applyStatusAppearance(
     to button: NSStatusBarButton,
-    usagePercent: Int,
-    pressure: MemoryPressureLevel
+    usagePercent: Int?,
+    pressure: MemoryPressureLevel?
   ) {
-    let tint = color(for: pressure)
+    let tint = pressure?.color ?? .secondaryLabelColor
+    let percentText = usagePercent.map { "\($0)%" } ?? "--%"
     let image = NSImage(systemSymbolName: "memorychip", accessibilityDescription: "RAM")?
       .withSymbolConfiguration(NSImage.SymbolConfiguration(paletteColors: [tint]))
     image?.isTemplate = false
@@ -97,7 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     button.contentTintColor = nil
     button.image = image
     button.attributedTitle = NSAttributedString(
-      string: "RAM \(usagePercent)%",
+      string: "RAM \(percentText)",
       attributes: [
         .foregroundColor: tint,
         // Monospaced digits keep the status item width stable as the percentage changes.
@@ -107,6 +109,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         ),
       ]
     )
+
+    // The color alone does not tell VoiceOver or a hover what the pressure is.
+    let description: String
+    if let usagePercent, let pressure {
+      description = "Memory \(usagePercent)%, pressure \(pressure.displayName)"
+    } else {
+      description = "Memory: waiting for the first sample"
+    }
+    button.toolTip = description
+    button.setAccessibilityLabel(description)
   }
 
   private func shouldRefreshStatus(
@@ -273,17 +285,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     NSApp.activate()
     if alert.runModal() == .alertFirstButtonReturn {
       SMAppService.openSystemSettingsLoginItems()
-    }
-  }
-
-  private func color(for pressure: MemoryPressureLevel) -> NSColor {
-    switch pressure {
-    case .normal:
-      return .systemGreen
-    case .warning:
-      return .systemYellow
-    case .critical:
-      return .systemRed
     }
   }
 

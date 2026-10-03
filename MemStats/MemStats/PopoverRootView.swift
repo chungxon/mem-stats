@@ -348,12 +348,18 @@ struct PopoverRootView: View {
           .font(.caption)
         }
 
+        // Orange is reserved for the warning pressure level, so hints use the user's color.
         ForEach(appState.growthHints.prefix(2), id: \.user) { hint in
-          Text(growthHintText(hint))
-            .font(.caption)
-            .foregroundStyle(.orange)
-            .lineLimit(1)
-            .help("Possible memory leak hint, based on recent samples")
+          HStack(spacing: 4) {
+            RoundedRectangle(cornerRadius: 2)
+              .fill(userColor(hint.user))
+              .frame(width: 10, height: 10)
+            Text(growthHintText(hint))
+              .foregroundStyle(.secondary)
+              .lineLimit(1)
+          }
+          .font(.caption)
+          .help("Possible memory leak hint, based on recent samples")
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
@@ -537,9 +543,15 @@ struct PopoverRootView: View {
       // Opaque lighter gray so it reads differently from the "Others" slice.
       return Color(nsColor: .systemGray).mix(with: .white, by: 0.45)
     case .user(let user):
-      let palette: [Color] = [.blue, .orange, .mint, .indigo, .teal, .cyan, .pink, .brown]
-      return palette[DonutDataBuilder.paletteIndex(for: user, paletteCount: palette.count)]
+      return userColor(user)
     }
+  }
+
+  /// Stable per-user color. Green, orange and red are left out so a user never looks like the
+  /// "Free" slice or a pressure level.
+  private func userColor(_ user: String) -> Color {
+    let palette: [Color] = [.blue, .purple, .mint, .indigo, .teal, .cyan, .pink, .brown]
+    return palette[DonutDataBuilder.paletteIndex(for: user, paletteCount: palette.count)]
   }
 
   private func formatGigabytes(_ bytes: UInt64) -> String {
@@ -716,7 +728,7 @@ struct PopoverRootView: View {
         label: "Used \(formatGigabytes(latestSample.usedBytes))"
       )
       legendItem(
-        color: .orange,
+        color: Color(nsColor: .systemGray),
         label: "Swap \(formatGigabytes(latestSample.swapUsedBytes))"
       )
       pressureBadge(level: latestSample.pressureLevel)
@@ -744,7 +756,7 @@ struct PopoverRootView: View {
       RoundedRectangle(cornerRadius: 2)
         .fill(pressureColor(for: level))
         .frame(width: 10, height: 10)
-      Text("Pressure \(pressureLabel(for: level))")
+      Text("Pressure \(level.displayName)")
         .foregroundStyle(.secondary)
         .lineLimit(1)
         .fixedSize()
@@ -752,25 +764,7 @@ struct PopoverRootView: View {
   }
 
   private func pressureColor(for level: MemoryPressureLevel) -> Color {
-    switch level {
-    case .normal:
-      return .green
-    case .warning:
-      return .orange
-    case .critical:
-      return .red
-    }
-  }
-
-  private func pressureLabel(for level: MemoryPressureLevel) -> String {
-    switch level {
-    case .normal:
-      return "Normal"
-    case .warning:
-      return "Warning"
-    case .critical:
-      return "Critical"
-    }
+    Color(nsColor: level.color)
   }
 }
 

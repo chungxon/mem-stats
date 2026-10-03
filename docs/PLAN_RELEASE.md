@@ -77,12 +77,12 @@ Commit: `docs(donut): clarify when the user filter resets`
 
 Files: `AppDelegate.swift`, `PopoverRootView.swift`, `ViewModels/DonutDataBuilder.swift`, `docs/DESCRIPTION.md`
 
-- [ ] Một nguồn màu pressure dùng chung cho menu bar và popover (normal green, warning orange, critical red).
-- [ ] Swap legend và growth hint không dùng orange nữa (swap dùng màu trung tính, hint dùng text `.secondary` + swatch).
-- [ ] Bỏ orange khỏi bảng màu user để không trùng warning.
-- [ ] Menu bar: thêm `toolTip` và accessibility label, ví dụ `Memory 45%, pressure Normal`.
-- [ ] Trước sample đầu tiên hiện `RAM --%` thay vì `RAM 0%` màu xanh.
-- [ ] Cập nhật §3, §7 trong docs.
+- [x] Một nguồn màu pressure dùng chung cho menu bar và popover (normal green, warning orange, critical red).
+- [x] Swap legend và growth hint không dùng orange nữa (swap dùng màu trung tính, hint dùng text `.secondary` + swatch).
+- [x] Bỏ orange khỏi bảng màu user để không trùng warning.
+- [x] Menu bar: thêm `toolTip` và accessibility label, ví dụ `Memory 45%, pressure Normal`.
+- [x] Trước sample đầu tiên hiện `RAM --%` thay vì `RAM 0%` màu xanh.
+- [x] Cập nhật §3, §7 trong docs.
 
 Commit: `fix(pressure): unify warning color and label the menu bar item`
 

@@ -70,9 +70,12 @@ All inside **one popup window**.
   * Icon + % usage
   * Color reflects **memory pressure**
 
-    * 🟢 / 🟡 / 🔴 (system pressure level)
+    * 🟢 / 🟠 / 🔴 (system pressure level): green normal, orange warning, red critical
+    * Orange instead of yellow, since yellow is hard to read on a light menu bar. The menu bar and the popover share one color source, and orange is used for nothing else (not swap, growth hints or user colors)
     * Color is baked into a non-template icon and an attributed title, because the active display's menu bar renders template content and `contentTintColor` as monochrome
     * Title uses monospaced digits so the item width stays stable
+    * Before the first sample the title reads `RAM --%` in a neutral color, instead of a green `RAM 0%`
+  * Tooltip and VoiceOver label: `Memory 45%, pressure Normal`
 
 * Click:
   → show **popover (main UI)**
@@ -244,10 +247,10 @@ UI refresh: every 5s
 
 * Total used RAM (primary plotted series)
 * Selected user series (optional when a user is selected), scaled the same way as the donut so it matches the donut value and stays within the used RAM range
-* Swap used + memory pressure shown as latest status badges
+* Swap used + memory pressure shown as latest status badges (swap uses a neutral gray swatch)
 * Used RAM chart segment color follows memory pressure at that sample:
   * Green = normal
-  * Yellow = warning
+  * Orange = warning
   * Red = critical
   * Each pair of adjacent samples is its own chart series, colored by the later sample's pressure, so the line never joins non-adjacent samples
   * The "Used" legend swatch uses the current pressure color
@@ -442,11 +445,11 @@ DispatchQueue.global(qos: .utility)
   * continuous growth: memory rises on each of the last 12 samples, with at least 100 MB total growth
   * sudden jump: growth between the last two samples > max(500 MB, 5% of total RAM)
 * A user missing from a snapshot loses its history, so coming back is not counted as a jump
-* Up to 2 hints show as orange caption lines in the History section
+* Up to 2 hints show as secondary caption lines in the History section, each with a swatch in the user's stable palette color, the same one its donut slice uses when it has its own slice (orange is reserved for the warning pressure level)
 
 ### 14.4 Alert system (dropped)
 
-* No notifications: memory pressure is already shown by the menu bar color (🟢 / 🟡 / 🔴) and swap by the history badges.
+* No notifications: memory pressure is already shown by the menu bar color (🟢 / 🟠 / 🔴) and swap by the history badges.
 
 ### 14.5 Show/Hide system users
 
