@@ -80,6 +80,7 @@ All inside **one popup window**.
 
 ```text
 • Open at Login [✓]
+• Show System Users [✓]
 • About
 • Quit
 ```
@@ -92,6 +93,7 @@ All inside **one popup window**.
 * Persist toggle via:
 
   * `UserDefaults`
+* `Show System Users`: see §14.5
 
 ---
 
@@ -412,13 +414,14 @@ DispatchQueue.global(qos: .utility)
   * pressure = red
   * swap > threshold
 
-### 14.5 Exclude system users
+### 14.5 Show/Hide system users
 
-Don’t show ALL users in history chart to avoid noise.
+System users can add noise, so they can be hidden with the `Show System Users` context menu option.
 
-* default hidden:
-  * _*
-  * root (optional)
+* System users: `root` and `_*`
+* Default: shown, to match Activity Monitor's all-users view
+* When hidden: excluded from the sampled processes, so they disappear from the donut, history (selected user series), Top Apps and Top Processes. Their memory is still part of the system "Used" total, so it shows up in the "Unattributed Used" donut slice.
+* The choice persists via `UserDefaults` and triggers an immediate resample
 
 ---
 

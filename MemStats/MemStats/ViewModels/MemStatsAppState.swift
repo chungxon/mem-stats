@@ -12,25 +12,44 @@ final class MemStatsAppState: ObservableObject {
   @Published private(set) var lastSamplingError: String?
   @Published private(set) var donutSlices: [DonutSlice] = []
   @Published private(set) var growthHints: [MemoryGrowthHint] = []
+  /// Whether `root` and `_*` system users are included in the sampled processes.
+  @Published private(set) var showsSystemUsers: Bool
 
   let memoryVM: MemoryViewModel
   let processVM: ProcessViewModel
 
+  static let showsSystemUsersKey = "showSystemUsers"
+
   private let memoryService: MemoryStatsService
   private let processService: ProcessSnapshotService
+  private let defaults: UserDefaults
   private let samplingQueue = DispatchQueue(label: "com.chungxon.memstats.sampling", qos: .utility)
 
   private var timer: DispatchSourceTimer?
   private var lastSampleAt: Date?
 
-  init(startSampling: Bool = true) {
+  init(startSampling: Bool = true, defaults: UserDefaults = .standard) {
     memoryVM = MemoryViewModel()
     processVM = ProcessViewModel()
     memoryService = MemoryStatsService()
     processService = ProcessSnapshotService()
+    self.defaults = defaults
+    // Shown by default to match Activity Monitor's all-users view.
+    showsSystemUsers = defaults.object(forKey: Self.showsSystemUsersKey) as? Bool ?? true
 
     if startSampling {
       restartSamplingTimer()
+    }
+  }
+
+  func setShowsSystemUsers(_ shows: Bool) {
+    guard shows != showsSystemUsers else { return }
+
+    showsSystemUsers = shows
+    defaults.set(shows, forKey: Self.showsSystemUsersKey)
+    // Resample right away so every section reflects the new filter.
+    if timer != nil {
+      sampleImmediately()
     }
   }
 
@@ -105,6 +124,7 @@ final class MemStatsAppState: ObservableObject {
     lastSampleAt = Date()
     let memoryService = memoryService
     let processService = processService
+    let includesSystemUsers = showsSystemUsers
 
     samplingQueue.async { [weak self] in
       guard self != nil else { return }
@@ -125,7 +145,10 @@ final class MemStatsAppState: ObservableObject {
       }
 
       let processResult = Result {
-        try processService.fetchProcesses(includeRootUser: true, includeSystemUsers: true)
+        try processService.fetchProcesses(
+          includeRootUser: includesSystemUsers,
+          includeSystemUsers: includesSystemUsers
+        )
       }
       switch processResult {
       case .success(let processes):

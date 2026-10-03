@@ -123,9 +123,9 @@ Commit: `feat(history): add per-user memory growth and jump hints`
 
 Files: `ViewModels/MemStatsAppState.swift`, `AppDelegate.swift`, `docs/DESCRIPTION.md`, `MemStatsTests.swift`
 
-- [ ] Thêm toggle "Show System Users" trong context menu, persist bằng `UserDefaults`, mặc định bật (giữ hành vi hiện tại).
-- [ ] Khi tắt: ẩn `root` và `_*` khỏi donut, history, Top Apps, Top Processes.
-- [ ] Cập nhật §3 context menu và §14.5 trong docs.
+- [x] Thêm toggle "Show System Users" trong context menu, persist bằng `UserDefaults`, mặc định bật (giữ hành vi hiện tại).
+- [x] Khi tắt: ẩn `root` và `_*` khỏi donut, history, Top Apps, Top Processes.
+- [x] Cập nhật §3 context menu và §14.5 trong docs.
 
 Commit: `feat(users): add option to show or hide system users`
 

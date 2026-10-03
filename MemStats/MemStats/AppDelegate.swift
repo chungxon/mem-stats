@@ -177,13 +177,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     loginItemService.syncWithSystem()
     openAtLogin.state = loginItemService.isEnabled ? .on : .off
 
+    let showSystemUsers = NSMenuItem(
+      title: "Show System Users",
+      action: #selector(toggleShowSystemUsers),
+      keyEquivalent: ""
+    )
+    showSystemUsers.target = self
+    showSystemUsers.state = appState.showsSystemUsers ? .on : .off
+    showSystemUsers.toolTip = "Include root and _* system accounts"
+
     let about = NSMenuItem(title: "About", action: #selector(showAbout), keyEquivalent: "")
     about.target = self
 
     let quit = NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q")
     quit.target = self
 
-    menu.items = [openAtLogin, .separator(), about, quit]
+    menu.items = [openAtLogin, showSystemUsers, .separator(), about, quit]
     statusItem?.menu = menu
     button.performClick(nil)
     statusItem?.menu = nil
@@ -206,6 +215,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         self?.presentLoginItemError(error)
       }
     }
+  }
+
+  @objc
+  private func toggleShowSystemUsers(_ sender: NSMenuItem) {
+    appState.setShowsSystemUsers(!appState.showsSystemUsers)
+    sender.state = appState.showsSystemUsers ? .on : .off
   }
 
   @objc

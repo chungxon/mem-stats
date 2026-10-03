@@ -598,6 +598,22 @@ struct MemStatsTests {
         lastSampleAt: now.addingTimeInterval(10), now: now, interval: 5) == 0)
   }
 
+  @MainActor @Test func appStatePersistsShowSystemUsersOption() {
+    let suiteName = "MemStatsTests.ShowSystemUsers"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+
+    let appState = MemStatsAppState(startSampling: false, defaults: defaults)
+    #expect(appState.showsSystemUsers == true)
+
+    appState.setShowsSystemUsers(false)
+    #expect(appState.showsSystemUsers == false)
+    #expect(defaults.bool(forKey: MemStatsAppState.showsSystemUsersKey) == false)
+
+    let restored = MemStatsAppState(startSampling: false, defaults: defaults)
+    #expect(restored.showsSystemUsers == false)
+  }
+
   @MainActor @Test func appStateCachesDonutSlicesPerSample() {
     let appState = MemStatsAppState(startSampling: false)
     #expect(appState.donutSlices.isEmpty)
