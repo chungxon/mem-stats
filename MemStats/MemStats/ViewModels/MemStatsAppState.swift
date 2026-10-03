@@ -20,6 +20,7 @@ final class MemStatsAppState: ObservableObject {
   private let samplingQueue = DispatchQueue(label: "com.chungxon.memstats.sampling", qos: .utility)
 
   private var timer: DispatchSourceTimer?
+  private var lastSampleAt: Date?
 
   init(startSampling: Bool = true) {
     memoryVM = MemoryViewModel()
@@ -46,6 +47,8 @@ final class MemStatsAppState: ObservableObject {
 
   func sampleImmediately() {
     performSample()
+    // Push the next scheduled tick a full interval out so it does not run right after this one.
+    restartSamplingTimer()
   }
 
   func samplingInterval(for mode: SamplingMode) -> TimeInterval {
@@ -57,13 +60,35 @@ final class MemStatsAppState: ObservableObject {
     }
   }
 
+  /// Delay before the first sample after the timer restarts. Opening and closing the popover
+  /// restarts the timer, so a sample taken moments ago is reused instead of spawning `top`
+  /// again right away.
+  nonisolated static func initialSamplingDelay(
+    lastSampleAt: Date?,
+    now: Date,
+    interval: TimeInterval,
+    minimumGap: TimeInterval = 2
+  ) -> TimeInterval {
+    guard let lastSampleAt else { return 0 }
+
+    let elapsed = now.timeIntervalSince(lastSampleAt)
+    guard elapsed >= 0, elapsed < minimumGap else { return 0 }
+    return max(0, interval - elapsed)
+  }
+
   private func restartSamplingTimer() {
     timer?.cancel()
 
+    let interval = samplingInterval(for: samplingMode)
+    let delay = Self.initialSamplingDelay(
+      lastSampleAt: lastSampleAt,
+      now: Date(),
+      interval: interval
+    )
     let nextTimer = DispatchSource.makeTimerSource(queue: samplingQueue)
     nextTimer.schedule(
-      deadline: .now(),
-      repeating: samplingInterval(for: samplingMode)
+      deadline: .now() + delay,
+      repeating: interval
     )
     nextTimer.setEventHandler { [weak self] in
       Task { @MainActor [weak self] in
@@ -76,6 +101,7 @@ final class MemStatsAppState: ObservableObject {
   }
 
   private func performSample() {
+    lastSampleAt = Date()
     let memoryService = memoryService
     let processService = processService
 

@@ -526,6 +526,22 @@ struct MemStatsTests {
     #expect(appState.samplingInterval(for: .idle) == 15)
   }
 
+  @Test func initialSamplingDelaySkipsResampleRightAfterASample() {
+    let now = Date(timeIntervalSince1970: 1_000)
+
+    #expect(MemStatsAppState.initialSamplingDelay(lastSampleAt: nil, now: now, interval: 5) == 0)
+    #expect(
+      MemStatsAppState.initialSamplingDelay(
+        lastSampleAt: now.addingTimeInterval(-0.5), now: now, interval: 5) == 4.5)
+    #expect(
+      MemStatsAppState.initialSamplingDelay(
+        lastSampleAt: now.addingTimeInterval(-3), now: now, interval: 5) == 0)
+    // Clock moved backwards: sample right away instead of waiting.
+    #expect(
+      MemStatsAppState.initialSamplingDelay(
+        lastSampleAt: now.addingTimeInterval(10), now: now, interval: 5) == 0)
+  }
+
   @MainActor @Test func appStateCachesDonutSlicesPerSample() {
     let appState = MemStatsAppState(startSampling: false)
     #expect(appState.donutSlices.isEmpty)

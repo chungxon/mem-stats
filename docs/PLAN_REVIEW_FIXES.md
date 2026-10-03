@@ -94,8 +94,8 @@ Commit: `perf(donut): cache slices and recompute only on new snapshots`
 
 Files: `ViewModels/MemStatsAppState.swift`, `MemStatsTests.swift`
 
-- [ ] Nếu sample gần nhất < 2s thì lên lịch theo interval mới thay vì sample ngay.
-- [ ] Test logic tính deadline.
+- [x] Nếu sample gần nhất < 2s thì lên lịch theo interval mới thay vì sample ngay.
+- [x] Test logic tính deadline.
 
 Commit: `perf(sampling): avoid immediate resample when popover toggles rapidly`
 
