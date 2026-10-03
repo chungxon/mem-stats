@@ -272,14 +272,14 @@ Commit: `fix(login): allow cancelling a login item pending approval`
 
 Files: `AppDelegate.swift`, `PopoverRootView.swift`, `MemStatsTests.swift`
 
-- [ ] `...` đổi thành `…` trong text Loading.
-- [ ] `.monospacedDigit()` cho số History Samples, legend và subtitle donut.
-- [ ] Spacing 14pt đổi về 12 hoặc 16 (lưới 8pt).
-- [ ] Đường "Selected" trong history dùng màu slice của user đó thay vì teal.
-- [ ] Copy: `grew +X` đổi thành `grew by X`.
-- [ ] `ForEach` growth hint: id không trùng khi 1 user có 2 hint.
-- [ ] Sửa warning Swift 6 trong test: `MemoryGrowthHint` Equatable conformance bị isolate main actor (đánh dấu `nonisolated`).
-- [ ] Menu bar title giữ độ rộng cố định khi đổi giữa 1/2/3 chữ số.
+- [x] `...` đổi thành `…` trong text Loading.
+- [x] `.monospacedDigit()` cho số History Samples, legend và subtitle donut.
+- [x] Spacing 14pt đổi về 12 hoặc 16 (lưới 8pt).
+- [x] Đường "Selected" trong history dùng màu slice của user đó thay vì teal.
+- [x] Copy: `grew +X` đổi thành `grew by X`.
+- [x] `ForEach` growth hint: id không trùng khi 1 user có 2 hint.
+- [x] Sửa warning Swift 6 trong test: `MemoryGrowthHint` Equatable conformance bị isolate main actor (đánh dấu `nonisolated`).
+- [x] Menu bar title giữ độ rộng cố định khi đổi giữa 1/2/3 chữ số.
 
 Commit: `chore(ui): polish copy, spacing and digit alignment`
 

@@ -78,7 +78,7 @@ struct PopoverRootView: View {
       Divider()
 
       ScrollView(.vertical, showsIndicators: true) {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
           DonutSectionView(
             slices: appState.donutSlices,
             stats: memoryVM.currentStats,
@@ -145,12 +145,13 @@ struct PopoverRootView: View {
         HStack {
           Text("History Samples")
           Spacer()
-          Text("\(memoryVM.history.count)")
+          Text(verbatim: String(memoryVM.history.count))
+            .monospacedDigit()
         }
         .font(.footnote)
 
         if memoryVM.history.isEmpty {
-          Text("Loading history data...")
+          Text("Loading history data…")
             .font(.footnote)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, minHeight: 120, alignment: .center)
@@ -187,7 +188,7 @@ struct PopoverRootView: View {
               .foregroundStyle(PopoverStyle.pressureColor(sample.pressureLevel))
             }
 
-            if processVM.selectedUser != nil {
+            if let selectedUser = processVM.selectedUser {
               // Timestamps are unique and monotonic, so they stay stable as old samples drop.
               ForEach(processVM.selectedUserHistory, id: \.timestamp) { sample in
                 LineMark(
@@ -195,7 +196,7 @@ struct PopoverRootView: View {
                   y: .value("Selected User", Double(sample.displayBytes)),
                   series: .value("Segment", "selected-user")
                 )
-                .foregroundStyle(.teal)
+                .foregroundStyle(PopoverStyle.userColor(selectedUser))
                 .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 3]))
                 .interpolationMethod(.linear)
               }
@@ -229,11 +230,11 @@ struct PopoverRootView: View {
             legendItems
           }
           .frame(maxWidth: .infinity, alignment: .leading)
-          .font(.caption)
+          .font(.caption.monospacedDigit())
         }
 
         // Orange is reserved for the warning pressure level, so hints use the user's color.
-        ForEach(appState.growthHints.prefix(2), id: \.user) { hint in
+        ForEach(appState.growthHints.prefix(2)) { hint in
           HStack(spacing: 4) {
             RoundedRectangle(cornerRadius: 2)
               .fill(PopoverStyle.userColor(hint.user))
@@ -390,9 +391,9 @@ struct PopoverRootView: View {
     let growth = MemoryFormat.size(hint.growthBytes)
     switch hint.kind {
     case .suddenJump:
-      return "\(hint.user) jumped +\(growth) since the last sample"
+      return "\(hint.user) jumped by \(growth) since the last sample"
     case .continuousGrowth(let samples):
-      return "\(hint.user) grew +\(growth) over the last \(samples) samples"
+      return "\(hint.user) grew by \(growth) over the last \(samples) samples"
     }
   }
 
@@ -427,8 +428,9 @@ struct PopoverRootView: View {
       )
       pressureBadge(level: latestSample.pressureLevel)
     }
-    if processVM.selectedUser != nil {
-      legendItem(color: .teal, label: "Selected")
+    if let selectedUser = processVM.selectedUser {
+      // Same color as the user's donut slice, so the dashed line is easy to match.
+      legendItem(color: PopoverStyle.userColor(selectedUser), label: "Selected")
     }
   }
 

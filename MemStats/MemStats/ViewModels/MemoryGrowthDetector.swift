@@ -1,7 +1,8 @@
 import Foundation
 
-/// A per-user hint that memory is growing in a way that may point to a leak.
-struct MemoryGrowthHint: Equatable, Sendable {
+/// A per-user hint that memory is growing in a way that may point to a leak. Nonisolated so
+/// its `Equatable` conformance works outside the main actor (tests, background work).
+nonisolated struct MemoryGrowthHint: Identifiable, Equatable, Sendable {
   enum Kind: Equatable, Sendable {
     /// Memory went up on every one of the last `samples` samples.
     case continuousGrowth(samples: Int)
@@ -12,6 +13,16 @@ struct MemoryGrowthHint: Equatable, Sendable {
   let user: String
   let kind: Kind
   let growthBytes: UInt64
+
+  /// Unique even if one user ever has two kinds of hint at once.
+  var id: String {
+    switch kind {
+    case .continuousGrowth:
+      return "\(user)|growth"
+    case .suddenJump:
+      return "\(user)|jump"
+    }
+  }
 }
 
 enum MemoryGrowthDetector {

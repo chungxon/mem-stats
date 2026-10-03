@@ -73,8 +73,8 @@ All inside **one popup window**.
     * 🟢 / 🟠 / 🔴 (system pressure level): green normal, orange warning, red critical
     * Orange instead of yellow, since yellow is hard to read on a light menu bar. The menu bar and the popover share one color source, and orange is used for nothing else (not swap, growth hints or user colors)
     * Color is baked into a non-template icon and an attributed title, because the active display's menu bar renders template content and `contentTintColor` as monochrome
-    * Title uses monospaced digits so the item width stays stable
-    * Before the first sample the title reads `RAM --%` in a neutral color, instead of a green `RAM 0%`
+    * Title uses monospaced digits and pads the number to three digits with figure spaces, so the item width stays the same at 5%, 45% and 100%
+    * Before the first sample the title reads `RAM ‒‒%` (figure dashes) in a neutral color, instead of a green `RAM 0%`
   * Tooltip and VoiceOver label: `Memory 45%, pressure Normal`
 
 * Click:
@@ -264,7 +264,7 @@ Process timer (top):                        default every 5s, setting 3-60s
 ### Metrics (In-memory)
 
 * Total used RAM (primary plotted series)
-* Selected user series (optional when a user is selected), scaled the same way as the donut so it matches the donut value and stays within the used RAM range
+* Selected user series (optional when a user is selected), scaled the same way as the donut so it matches the donut value and stays within the used RAM range; drawn as a dashed line in that user's donut color, with a matching "Selected" legend swatch
 * Swap used + memory pressure shown as latest status badges (swap uses a neutral gray swatch)
 * Used RAM chart segment color follows memory pressure at that sample:
   * Green = normal
@@ -478,6 +478,7 @@ DispatchQueue.global(qos: .utility)
   * sudden jump: growth between the last two samples > max(500 MB, 5% of total RAM)
 * A user missing from a snapshot loses its history, so coming back is not counted as a jump
 * Up to 2 hints show as secondary caption lines in the History section, each with a swatch in the user's stable palette color, the same one its donut slice uses when it has its own slice (orange is reserved for the warning pressure level)
+* Copy: `<user> grew by <size> over the last N samples` / `<user> jumped by <size> since the last sample`
 
 ### 14.4 Alert system (dropped)
 

@@ -895,6 +895,22 @@ struct MemStatsTests {
     #expect(vm.displayName(for: vm.visibleProcesses[0]) == "b")
   }
 
+  @Test func menuBarPercentKeepsThreeDigitWidth() {
+    let figureSpace = "\u{2007}"
+    #expect(AppDelegate.paddedPercentText(5) == figureSpace + figureSpace + "5%")
+    #expect(AppDelegate.paddedPercentText(45) == figureSpace + "45%")
+    #expect(AppDelegate.paddedPercentText(100) == "100%")
+    #expect(AppDelegate.paddedPercentText(nil) == figureSpace + "\u{2012}\u{2012}%")
+  }
+
+  @Test func growthHintIDsAreUniquePerUserAndKind() {
+    let growth = MemoryGrowthHint(
+      user: "alice", kind: .continuousGrowth(samples: 12), growthBytes: 1)
+    let jump = MemoryGrowthHint(user: "alice", kind: .suddenJump, growthBytes: 1)
+    #expect(growth.id != jump.id)
+    #expect(growth == growth)
+  }
+
   @Test func parseTopMemoryTokenHandlesChangeMarkersAndClamps() {
     #expect(TopProcessSnapshotParser.parseTopMemoryToken("12G+") == UInt64(12) * 1_073_741_824)
     #expect(TopProcessSnapshotParser.parseTopMemoryToken("512K-") == UInt64(512) * 1_024)

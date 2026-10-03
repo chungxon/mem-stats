@@ -15,7 +15,7 @@ struct DonutSectionView: View {
     GroupBox {
       VStack(alignment: .leading, spacing: 10) {
         if slices.isEmpty {
-          Text("Loading chart data...")
+          Text("Loading chart data…")
             .font(.footnote)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, minHeight: 150, alignment: .center)
@@ -50,7 +50,7 @@ struct DonutSectionView: View {
             Spacer()
             // Higher priority keeps the numbers whole; a long user name truncates instead.
             Text(selectionSubtitle)
-              .font(.footnote)
+              .font(.footnote.monospacedDigit())
               .foregroundStyle(.secondary)
               .lineLimit(1)
               .layoutPriority(1)
@@ -159,7 +159,7 @@ struct DonutSectionView: View {
   }
 
   private var memorySummary: String {
-    guard let stats else { return "Loading memory data..." }
+    guard let stats else { return "Loading memory data…" }
     return "Used \(MemoryFormat.size(stats.usedBytes)) / \(MemoryFormat.size(stats.totalBytes))"
   }
 
