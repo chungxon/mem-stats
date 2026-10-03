@@ -11,6 +11,7 @@ protocol ProcessSnapshotProviding: Sendable {
 enum ProcessSnapshotServiceError: Error {
   case commandLaunchFailed(String)
   case commandTimedOut
+  case outputReadTimedOut
   case commandFailed(Int32, String)
   case utf8DecodeFailed
 }
@@ -22,6 +23,8 @@ extension ProcessSnapshotServiceError: LocalizedError {
       return "Could not launch top command (\(message))."
     case .commandTimedOut:
       return "top command timed out."
+    case .outputReadTimedOut:
+      return "Could not read top command output in time."
     case .commandFailed(let code, let details):
       if details.isEmpty {
         return "top command failed with status \(code)."
@@ -35,6 +38,8 @@ extension ProcessSnapshotServiceError: LocalizedError {
 
 struct ProcessSnapshotService: ProcessSnapshotProviding {
   private let topProcessLimit = 500
+  /// `top -l 1 -n 500` takes about 1.4s on an idle machine, so leave room for a busy one.
+  private let topTimeout: DispatchTimeInterval = .seconds(6)
 
   nonisolated func fetchProcesses(
     includeRootUser: Bool = true,
@@ -108,14 +113,20 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
       throw ProcessSnapshotServiceError.commandLaunchFailed(error.localizedDescription)
     }
 
-    let timeout: DispatchTime = .now() + .seconds(2)
-    if finished.wait(timeout: timeout) != .success {
+    if finished.wait(timeout: .now() + topTimeout) != .success {
       process.terminate()
-      process.waitUntilExit()
+      // Sampling waits on this call, so never block forever on a `top` that ignores SIGTERM.
+      if finished.wait(timeout: .now() + .seconds(1)) != .success {
+        kill(process.processIdentifier, SIGKILL)
+        process.waitUntilExit()
+      }
       throw ProcessSnapshotServiceError.commandTimedOut
     }
 
-    _ = readGroup.wait(timeout: .now() + .seconds(1))
+    // The readers may still be writing the buffers, so never read them before both finish.
+    guard readGroup.wait(timeout: .now() + .seconds(1)) == .success else {
+      throw ProcessSnapshotServiceError.outputReadTimedOut
+    }
 
     guard process.terminationStatus == 0 else {
       let details =
@@ -187,8 +198,12 @@ enum TopProcessSnapshotParser {
     )
   }
 
-  nonisolated private static func parseTopMemoryToken(_ token: String) -> UInt64? {
-    let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+  nonisolated static func parseTopMemoryToken(_ token: String) -> UInt64? {
+    var trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+    // `top` appends `+` or `-` when a value changed since the previous sample.
+    while let last = trimmed.last, last == "+" || last == "-" {
+      trimmed.removeLast()
+    }
     guard !trimmed.isEmpty else { return nil }
 
     let suffix = trimmed.last?.uppercased() ?? ""
@@ -217,7 +232,10 @@ enum TopProcessSnapshotParser {
     }
 
     guard let numericValue = Double(numericPart), numericValue >= 0 else { return nil }
-    return UInt64(numericValue * multiplier)
+    // Clamp before converting, since `UInt64(_:)` traps on values it cannot represent.
+    let bytes = numericValue * multiplier
+    guard bytes.isFinite else { return nil }
+    return bytes >= Double(UInt64.max) ? UInt64.max : UInt64(bytes)
   }
 
   nonisolated private static func shouldInclude(

@@ -20,19 +20,29 @@ final class MemStatsAppState: ObservableObject {
 
   static let showsSystemUsersKey = "showSystemUsers"
 
-  private let memoryService: MemoryStatsService
-  private let processService: ProcessSnapshotService
+  private let memoryService: any MemoryStatsProviding
+  private let processService: any ProcessSnapshotProviding
   private let defaults: UserDefaults
   private let samplingQueue = DispatchQueue(label: "com.chungxon.memstats.sampling", qos: .utility)
 
   private var timer: DispatchSourceTimer?
   private var lastSampleAt: Date?
+  /// True while a sample runs on `samplingQueue`, so overlapping requests do not queue up
+  /// extra `top` runs.
+  private(set) var isSampling = false
+  /// Set when a sample is requested while one is running; exactly one more sample follows.
+  private var needsResample = false
 
-  init(startSampling: Bool = true, defaults: UserDefaults = .standard) {
+  init(
+    startSampling: Bool = true,
+    defaults: UserDefaults = .standard,
+    memoryService: (any MemoryStatsProviding)? = nil,
+    processService: (any ProcessSnapshotProviding)? = nil
+  ) {
     memoryVM = MemoryViewModel()
     processVM = ProcessViewModel()
-    memoryService = MemoryStatsService()
-    processService = ProcessSnapshotService()
+    self.memoryService = memoryService ?? MemoryStatsService()
+    self.processService = processService ?? ProcessSnapshotService()
     self.defaults = defaults
     // Shown by default to match Activity Monitor's all-users view.
     showsSystemUsers = defaults.object(forKey: Self.showsSystemUsersKey) as? Bool ?? true
@@ -62,11 +72,14 @@ final class MemStatsAppState: ObservableObject {
     guard nextMode != samplingMode else { return }
 
     samplingMode = nextMode
-    restartSamplingTimer()
+    // Opening samples right away (unless one ran moments ago). Closing only switches to the
+    // idle interval, counted from the last sample.
+    restartSamplingTimer(waitsFullInterval: !isPresented)
   }
 
+  /// Samples now. If a sample is already running, one more runs right after it instead.
   func sampleImmediately() {
-    performSample()
+    performSample(coalescesWhenBusy: true)
     // Push the next scheduled tick a full interval out so it does not run right after this one.
     restartSamplingTimer()
   }
@@ -96,14 +109,15 @@ final class MemStatsAppState: ObservableObject {
     return max(0, interval - elapsed)
   }
 
-  private func restartSamplingTimer() {
+  private func restartSamplingTimer(waitsFullInterval: Bool = false) {
     timer?.cancel()
 
     let interval = samplingInterval(for: samplingMode)
     let delay = Self.initialSamplingDelay(
       lastSampleAt: lastSampleAt,
       now: Date(),
-      interval: interval
+      interval: interval,
+      minimumGap: waitsFullInterval ? .infinity : 2
     )
     let nextTimer = DispatchSource.makeTimerSource(queue: samplingQueue)
     nextTimer.schedule(
@@ -112,7 +126,8 @@ final class MemStatsAppState: ObservableObject {
     )
     nextTimer.setEventHandler { [weak self] in
       Task { @MainActor [weak self] in
-        self?.performSample()
+        // A tick that lands during a slow sample is dropped; the next tick catches up.
+        self?.performSample(coalescesWhenBusy: false)
       }
     }
 
@@ -120,7 +135,15 @@ final class MemStatsAppState: ObservableObject {
     nextTimer.resume()
   }
 
-  private func performSample() {
+  private func performSample(coalescesWhenBusy: Bool) {
+    guard !isSampling else {
+      if coalescesWhenBusy {
+        needsResample = true
+      }
+      return
+    }
+
+    isSampling = true
     lastSampleAt = Date()
     let memoryService = memoryService
     let processService = processService
@@ -176,7 +199,18 @@ final class MemStatsAppState: ObservableObject {
           sampledAt: finalizedSampledAt
         )
         self.lastSamplingError = finalizedError
+        self.finishSample()
       }
+    }
+  }
+
+  private func finishSample() {
+    isSampling = false
+    if needsResample {
+      needsResample = false
+      performSample(coalescesWhenBusy: false)
+      // Count the next tick from the follow-up sample, like a direct `sampleImmediately()`.
+      restartSamplingTimer()
     }
   }
 
@@ -192,11 +226,14 @@ final class MemStatsAppState: ObservableObject {
       memoryVM.apply(stats: stats, sampledAt: sampledAt)
     }
     if let processes {
+      let targetUsedBytes = memoryVM.currentStats.map {
+        $0.totalBytes - min($0.freeBytes, $0.totalBytes)
+      }
       processVM.apply(
         snapshots: processes,
         appIdentities: appIdentities,
         topLimit: 8,
-        targetUsedBytes: memoryVM.currentStats.map { $0.totalBytes - min($0.freeBytes, $0.totalBytes) },
+        targetUsedBytes: targetUsedBytes,
         sampledAt: sampledAt
       )
       refreshGrowthHints()

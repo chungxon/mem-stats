@@ -5,6 +5,60 @@ import Testing
 @testable import MemStats
 
 struct MemStatsTests {
+  private struct StubMemoryStatsProvider: MemoryStatsProviding {
+    nonisolated func fetchMemoryStats() throws -> MemoryStats {
+      MemoryStats(
+        totalBytes: 1_000,
+        usedBytes: 600,
+        freeBytes: 400,
+        activeBytes: 0,
+        inactiveBytes: 0,
+        wiredBytes: 0,
+        compressedBytes: 0,
+        swapUsedBytes: 0,
+        pressureLevel: .normal
+      )
+    }
+  }
+
+  /// Blocks the first fetch until `releaseFirstFetch()`, so a test can request samples while
+  /// one is still running.
+  private final class GatedProcessProvider: ProcessSnapshotProviding, @unchecked Sendable {
+    private let lock = NSLock()
+    private let gate = DispatchSemaphore(value: 0)
+    // Guarded by `lock`.
+    nonisolated(unsafe) private var calls = 0
+
+    nonisolated var fetchCount: Int {
+      lock.withLock { calls }
+    }
+
+    nonisolated func releaseFirstFetch() {
+      gate.signal()
+    }
+
+    nonisolated func fetchProcesses(includeRootUser: Bool, includeSystemUsers: Bool) throws
+      -> [ProcessSnapshot]
+    {
+      let call = lock.withLock {
+        calls += 1
+        return calls
+      }
+      if call == 1 {
+        gate.wait()
+      }
+      return [ProcessSnapshot(user: "alice", pid: 1, rssBytes: 500, command: "/a")]
+    }
+
+    nonisolated func fetchTopProcesses(
+      limit: Int,
+      includeRootUser: Bool,
+      includeSystemUsers: Bool
+    ) throws -> [ProcessSnapshot] {
+      try fetchProcesses(includeRootUser: includeRootUser, includeSystemUsers: includeSystemUsers)
+    }
+  }
+
   private final class MockLoginItemRegistrant: LoginItemRegistrant {
     var status: SMAppService.Status
     var statusAfterRegister: SMAppService.Status
@@ -603,6 +657,67 @@ struct MemStatsTests {
     #expect(
       MemStatsAppState.initialSamplingDelay(
         lastSampleAt: now.addingTimeInterval(10), now: now, interval: 5) == 0)
+  }
+
+  @Test func initialSamplingDelayWaitsFullIntervalWhenPopoverCloses() {
+    let now = Date(timeIntervalSince1970: 1_000)
+
+    // Closing never samples right away: the next sample lands one idle interval after the last.
+    #expect(
+      MemStatsAppState.initialSamplingDelay(
+        lastSampleAt: now.addingTimeInterval(-3), now: now, interval: 15, minimumGap: .infinity
+      ) == 12)
+    #expect(
+      MemStatsAppState.initialSamplingDelay(
+        lastSampleAt: now.addingTimeInterval(-20), now: now, interval: 15, minimumGap: .infinity
+      ) == 0)
+  }
+
+  @Test func parseTopMemoryTokenHandlesChangeMarkersAndClamps() {
+    #expect(TopProcessSnapshotParser.parseTopMemoryToken("12G+") == UInt64(12) * 1_073_741_824)
+    #expect(TopProcessSnapshotParser.parseTopMemoryToken("512K-") == UInt64(512) * 1_024)
+    #expect(TopProcessSnapshotParser.parseTopMemoryToken("300M") == UInt64(300) * 1_048_576)
+    #expect(TopProcessSnapshotParser.parseTopMemoryToken("99999999999T") == UInt64.max)
+    #expect(TopProcessSnapshotParser.parseTopMemoryToken("+") == nil)
+    #expect(TopProcessSnapshotParser.parseTopMemoryToken("-5M") == nil)
+
+    let snapshots = TopProcessSnapshotParser.parse(
+      topOutput: """
+        10 son 12G+ /Applications/Xcode.app
+        11 son 512K- /usr/bin/vim
+        """,
+      limit: nil
+    )
+    #expect(snapshots.map(\.pid) == [10, 11])
+  }
+
+  @MainActor @Test func appStateCoalescesRefreshesWhileSampling() async {
+    let processProvider = GatedProcessProvider()
+    let appState = MemStatsAppState(
+      startSampling: false,
+      memoryService: StubMemoryStatsProvider(),
+      processService: processProvider
+    )
+
+    appState.sampleImmediately()
+    #expect(appState.isSampling)
+    // Repeated clicks while `top` runs collapse into a single follow-up sample.
+    appState.sampleImmediately()
+    appState.sampleImmediately()
+    appState.sampleImmediately()
+    processProvider.releaseFirstFetch()
+
+    var waits = 0
+    while (appState.isSampling || processProvider.fetchCount < 2) && waits < 200 {
+      try? await Task.sleep(for: .milliseconds(10))
+      waits += 1
+    }
+    // Give a stray third sample a chance to show up before checking the count.
+    try? await Task.sleep(for: .milliseconds(50))
+
+    #expect(processProvider.fetchCount == 2)
+    #expect(appState.isSampling == false)
+    #expect(appState.processVM.allProcesses.count == 1)
   }
 
   @MainActor @Test func appStatePersistsShowSystemUsersOption() {

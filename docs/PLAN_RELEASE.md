@@ -52,13 +52,13 @@ Files: `Services/ProcessSnapshotService.swift`, `ViewModels/MemStatsAppState.swi
 
 Bug: `top -l 1 -n 500` đo được 1.4s trên máy dev, timeout chỉ 2s. Khi máy tải nặng, mọi sample fail và banner lỗi đứng luôn. Bấm "Refresh Now" liên tục thì mỗi lần bấm xếp thêm 1 lần chạy `top` vào queue.
 
-- [ ] Nâng timeout `top` lên 6s.
-- [ ] Kiểm tra kết quả `readGroup.wait`, throw nếu reader chưa xong (tránh đọc buffer khi reader còn ghi).
-- [ ] Thêm cờ `isSampling`: nếu đang sample thì không enqueue thêm, chỉ đánh dấu `needsResample` và chạy thêm đúng 1 lần sau khi xong.
-- [ ] Đóng popover chỉ đổi interval, không sample ngay (chỉ mở popover mới sample ngay theo rule 2s).
-- [ ] Parser cột mem: bỏ hậu tố `+`/`-`, clamp giá trị trước khi đổi sang `UInt64`.
-- [ ] Test: parse `12G+`, `512K-`; coalesce nhiều lần refresh liên tiếp.
-- [ ] Cập nhật §5.1 trong docs (rule khi đóng popover, coalesce Refresh Now).
+- [x] Nâng timeout `top` lên 6s.
+- [x] Kiểm tra kết quả `readGroup.wait`, throw nếu reader chưa xong (tránh đọc buffer khi reader còn ghi).
+- [x] Thêm cờ `isSampling`: nếu đang sample thì không enqueue thêm, chỉ đánh dấu `needsResample` và chạy thêm đúng 1 lần sau khi xong.
+- [x] Đóng popover chỉ đổi interval, không sample ngay (chỉ mở popover mới sample ngay theo rule 2s).
+- [x] Parser cột mem: bỏ hậu tố `+`/`-`, clamp giá trị trước khi đổi sang `UInt64`.
+- [x] Test: parse `12G+`, `512K-`; coalesce nhiều lần refresh liên tiếp.
+- [x] Cập nhật §5.1 trong docs (rule khi đóng popover, coalesce Refresh Now).
 
 Commit: `fix(sampling): raise top timeout and coalesce overlapping samples`
 

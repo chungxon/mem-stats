@@ -143,8 +143,12 @@ UI refresh: every 5s
 
 👉 Process parsing is the expensive part (`top` snapshot + parse).
 
-* Opening/closing the popover switches the interval. If a sample started less than 2s ago, the next one waits for the new interval instead of running immediately.
+* Opening the popover switches to the active interval and samples right away, unless a sample started less than 2s ago; then the next one waits for the new interval.
+* Closing the popover only switches to the idle interval. It never samples right away: the next sample runs one idle interval after the last one.
 * `Refresh Now` samples immediately and pushes the next scheduled tick a full interval out.
+* Only one sample runs at a time. `Refresh Now` (or any other immediate request) while a sample is running marks one follow-up sample instead of queueing another `top` run, so repeated clicks run `top` at most once more. A timer tick that lands during a running sample is skipped.
+* `top` gets 6s before it is stopped (it takes about 1.4s on an idle machine). Its output is only read after both pipe readers finish.
+* The `top` mem column can end with `+` or `-` (changed since the last sample); the marker is ignored, and values are clamped before converting to bytes.
 
 ---
 
