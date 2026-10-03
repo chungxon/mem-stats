@@ -67,7 +67,7 @@ Commit: `fix(ui): use monospaced digits for live memory values`
 
 Files: `PopoverRootView.swift`
 
-- [ ] Mỗi section chỉ còn 1 tiêu đề, đổi theo trạng thái filter.
+- [x] Mỗi section chỉ còn 1 tiêu đề, đổi theo trạng thái filter.
 
 Commit: `fix(ui): show a single filter-aware title per section`
 

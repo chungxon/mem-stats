@@ -345,15 +345,6 @@ struct PopoverRootView: View {
   private var appSection: some View {
     GroupBox {
       VStack(alignment: .leading, spacing: 8) {
-        HStack {
-          Text(processVM.selectedUser == nil ? "Top Apps" : "Filtered Apps")
-            .font(.subheadline.weight(.semibold))
-          Spacer()
-          Text("\(processVM.visibleApps.count)")
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-        }
-
         if processVM.visibleApps.isEmpty {
           Text("No app data available")
             .font(.footnote)
@@ -393,8 +384,7 @@ struct PopoverRootView: View {
       }
       .frame(maxWidth: .infinity, alignment: .leading)
     } label: {
-      Text("Top Apps")
-        .font(.headline)
+      sectionLabel(title: "Top Apps", count: processVM.visibleApps.count)
     }
     .background(Color(nsColor: .controlBackgroundColor))
   }
@@ -402,15 +392,6 @@ struct PopoverRootView: View {
   private var processSection: some View {
     GroupBox {
       VStack(alignment: .leading, spacing: 8) {
-        HStack {
-          Text(processVM.selectedUser == nil ? "Top Processes" : "Filtered Processes")
-            .font(.subheadline.weight(.semibold))
-          Spacer()
-          Text("\(processVM.visibleProcesses.count)")
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-        }
-
         if processVM.visibleProcesses.isEmpty {
           Text("No process data available")
             .font(.footnote)
@@ -470,8 +451,7 @@ struct PopoverRootView: View {
       }
       .frame(maxWidth: .infinity, alignment: .leading)
     } label: {
-      Text("Top Processes")
-        .font(.headline)
+      sectionLabel(title: "Top Processes", count: processVM.visibleProcesses.count)
     }
     .background(Color(nsColor: .controlBackgroundColor))
   }
@@ -667,6 +647,24 @@ struct PopoverRootView: View {
 
     let total = donutSlices.reduce(0.0) { $0 + $1.angleValue }
     return (angle / (Double.pi * 2)) * total
+  }
+
+  /// Single section title that also reflects the active user filter.
+  private func sectionLabel(title: String, count: Int) -> some View {
+    HStack(spacing: 4) {
+      Text(title)
+        .font(.headline)
+      if let selectedUser = processVM.selectedUser {
+        Text("· \(selectedUser)")
+          .font(.headline)
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+      }
+      Spacer()
+      Text(verbatim: String(count))
+        .font(.footnote.monospacedDigit())
+        .foregroundStyle(.secondary)
+    }
   }
 
   @ViewBuilder
