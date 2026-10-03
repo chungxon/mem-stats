@@ -211,9 +211,9 @@ Process timer (top):                        default every 5s, setting 3-60s
 
 * Left: `All Users`, or the focused slice label
 * Right:
-  * nothing focused: system `Used X / Total (GB)`
-  * user, "Others" or "Unattributed Used" slice focused: `<slice GB> / Used X`, which replaces the system summary while focused
-  * "Free" slice focused: `<free GB> / Total Y`, since free memory is not part of used RAM
+  * nothing focused: system `Used X / Total Y`
+  * user, "Others" or "Unattributed Used" slice focused: `<slice size> / Used X`, which replaces the system summary while focused
+  * "Free" slice focused: `<free size> / Total Y`, since free memory is not part of used RAM
 * Both texts stay on one line; the right side keeps priority, so a long user name truncates instead of the numbers
 * Percentages (center label, VoiceOver value) are rounded to the nearest whole number, the same way as the total
 
@@ -226,7 +226,7 @@ Process timer (top):                        default every 5s, setting 3-60s
   * show slice info in the center label and in the info row (no floating tooltip):
 
     * user name (center label and info row)
-    * memory (GB) (info row only)
+    * memory (MB/GB) (info row only)
     * % (center label only)
 
 * Click slice:
@@ -266,6 +266,7 @@ Process timer (top):                        default every 5s, setting 3-60s
   * The "Used" legend swatch uses the current pressure color
   * Legend items never wrap internally; when the row is full, only the overflowing items move to the next row
 * Memory growth hints (see §14.3) are shown below the badges
+* Y axis: about four ticks from `0 GB` to total RAM, 1, 2, 4, 8... GB apart; the top tick is always total RAM, and a step tick too close to it is dropped
 
 ### Time ranges
 
@@ -306,8 +307,9 @@ maxSamples = min(600, ceil(600 / memoryInterval)) // 120 at the default 5s
 ### Columns
 
 * In display order: `USER`, `PID`, `PROCESS`, `MEM`
-* `PROCESS` is the executable name parsed from the command (quotes and escapes handled); hovering shows the full command line
-* Memory (MB/GB)
+* `USER` truncates at the end when long; hovering shows the full name
+* `PROCESS` is the executable name parsed from the command (quotes and escapes handled), truncated in the middle when long; hovering shows the full command line
+* `MEM`: `%.0f MB` below 1 GB, `%.2f GB` from 1 GB (binary units, like Activity Monitor). The same format is used everywhere memory is shown in the popover
 
 ### Footer
 
@@ -333,7 +335,7 @@ maxSamples = min(600, ceil(600 / memoryInterval)) // 120 at the default 5s
 ### Display
 
 * Top N apps in descending memory order (N from Settings, default 8, separate from the process count)
-* Columns: App, process count, Memory
+* Columns: App (truncated in the middle when long), process count, Memory (MB/GB, as in §8)
 * Hover an app row → tooltip with bundle/executable path
 * When a user is selected, only that user's processes are aggregated
 * Top Apps and Top Processes each have one section title with the row count; when filtered it reads `Top Apps · <user>`

@@ -211,11 +211,11 @@ Kiểm tra:
 
 Files: `PopoverRootView.swift`, `docs/DESCRIPTION.md`
 
-- [ ] Dưới 1 GB hiển thị `%.0f MB`, từ 1 GB hiển thị `%.2f GB` (spec §8 yêu cầu MB/GB).
-- [ ] Cột MEM rộng khoảng 64pt.
-- [ ] Cột USER: `.lineLimit(1)`, `.truncationMode(.tail)`, `.help(user)`.
-- [ ] Tên app/process: `.truncationMode(.middle)`.
-- [ ] Trục Y history: tick dùng `%.0f GB`, tick 0 cũng có đơn vị.
+- [x] Dưới 1 GB hiển thị `%.0f MB`, từ 1 GB hiển thị `%.2f GB` (spec §8 yêu cầu MB/GB).
+- [x] Cột MEM rộng khoảng 64pt.
+- [x] Cột USER: `.lineLimit(1)`, `.truncationMode(.tail)`, `.help(user)`.
+- [x] Tên app/process: `.truncationMode(.middle)`.
+- [x] Trục Y history: tick dùng `%.0f GB`, tick 0 cũng có đơn vị. (tick đặt ở bội số GB tròn 1/2/4/8..., định dạng gom vào `Models/MemoryFormat.swift` có test)
 
 Commit: `fix(ui): format memory as MB/GB and truncate long names`
 

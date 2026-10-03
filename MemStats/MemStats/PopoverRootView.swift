@@ -37,7 +37,7 @@ struct PopoverRootView: View {
 
   private var donutAccessibilityValue: String {
     donutSlices
-      .map { "\($0.label) \(formatGigabytes($0.bytes)), \(percentText($0.fractionOfTotal))" }
+      .map { "\($0.label) \(MemoryFormat.size($0.bytes)), \(percentText($0.fractionOfTotal))" }
       .joined(separator: "; ")
   }
 
@@ -77,7 +77,7 @@ struct PopoverRootView: View {
       return "Loading memory data..."
     }
 
-    return "Used \(formatGigabytes(stats.usedBytes)) / \(formatGigabytes(stats.totalBytes))"
+    return "Used \(MemoryFormat.size(stats.usedBytes)) / \(MemoryFormat.size(stats.totalBytes))"
   }
 
   private var modeLabel: String {
@@ -329,12 +329,15 @@ struct PopoverRootView: View {
           .chartYScale(domain: 0...historyScaleUpperBound)
           .chartXAxis(.hidden)
           .chartYAxis {
-            AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { value in
+            AxisMarks(
+              position: .leading,
+              values: MemoryFormat.axisTickValues(upperBound: historyScaleUpperBound)
+            ) { value in
               AxisGridLine()
               AxisTick()
               AxisValueLabel {
                 if let bytes = value.as(Double.self) {
-                  Text(formatBytesAsGigabytes(bytes))
+                  Text(MemoryFormat.axisTick(bytes))
                 }
               }
             }
@@ -385,7 +388,7 @@ struct PopoverRootView: View {
             Text("PROCS")
               .frame(width: 50, alignment: .trailing)
             Text("MEM")
-              .frame(width: 56, alignment: .trailing)
+              .frame(width: 64, alignment: .trailing)
           }
           .font(.caption2.weight(.semibold))
           .foregroundStyle(.secondary)
@@ -395,6 +398,7 @@ struct PopoverRootView: View {
               Text(app.name)
                 .font(.footnote)
                 .lineLimit(1)
+                .truncationMode(.middle)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .help(app.path ?? app.name)
 
@@ -403,10 +407,10 @@ struct PopoverRootView: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 50, alignment: .trailing)
 
-              Text(formatGigabytes(app.bytes))
+              Text(MemoryFormat.size(app.bytes))
                 .font(.footnote.monospacedDigit())
                 .foregroundStyle(.secondary)
-                .frame(width: 56, alignment: .trailing)
+                .frame(width: 64, alignment: .trailing)
             }
           }
         }
@@ -434,7 +438,7 @@ struct PopoverRootView: View {
             Text("PROCESS")
               .frame(maxWidth: .infinity, alignment: .leading)
             Text("MEM")
-              .frame(width: 56, alignment: .trailing)
+              .frame(width: 64, alignment: .trailing)
           }
           .font(.caption2.weight(.semibold))
           .foregroundStyle(.secondary)
@@ -444,7 +448,10 @@ struct PopoverRootView: View {
               Text(process.user)
                 .font(.footnote.monospaced())
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
                 .frame(width: 58, alignment: .leading)
+                .help(process.user)
 
               Text(verbatim: String(process.pid))
                 .font(.footnote.monospacedDigit())
@@ -454,13 +461,14 @@ struct PopoverRootView: View {
               Text(processDisplayName(process.command))
                 .font(.footnote)
                 .lineLimit(1)
+                .truncationMode(.middle)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .help(process.command)
 
-              Text(formatGigabytes(process.rssBytes))
+              Text(MemoryFormat.size(process.rssBytes))
                 .font(.footnote.monospacedDigit())
                 .foregroundStyle(.secondary)
-                .frame(width: 56, alignment: .trailing)
+                .frame(width: 64, alignment: .trailing)
             }
           }
         }
@@ -493,13 +501,13 @@ struct PopoverRootView: View {
   private var selectionSubtitle: String {
     guard let slice = activeFocusSlice else { return memorySummary }
     guard let stats = memoryVM.currentStats else {
-      return "\(formatGigabytes(slice.bytes))"
+      return "\(MemoryFormat.size(slice.bytes))"
     }
     // Free memory is not part of used RAM, so it is compared against total RAM instead.
     if case .free = slice.category {
-      return "\(formatGigabytes(slice.bytes)) / Total \(formatGigabytes(stats.totalBytes))"
+      return "\(MemoryFormat.size(slice.bytes)) / Total \(MemoryFormat.size(stats.totalBytes))"
     }
-    return "\(formatGigabytes(slice.bytes)) / Used \(formatGigabytes(stats.usedBytes))"
+    return "\(MemoryFormat.size(slice.bytes)) / Used \(MemoryFormat.size(stats.usedBytes))"
   }
 
   private func shouldDim(_ slice: DonutSlice) -> Bool {
@@ -564,19 +572,6 @@ struct PopoverRootView: View {
   private func userColor(_ user: String) -> Color {
     let palette: [Color] = [.blue, .purple, .mint, .indigo, .teal, .cyan, .pink, .brown]
     return palette[DonutDataBuilder.paletteIndex(for: user, paletteCount: palette.count)]
-  }
-
-  private func formatGigabytes(_ bytes: UInt64) -> String {
-    let gb = Double(bytes) / 1_073_741_824
-    return String(format: "%.2f GB", gb)
-  }
-
-  private func formatBytesAsGigabytes(_ bytes: Double) -> String {
-    let gb = bytes / 1_073_741_824
-    if gb == 0 {
-      return "0"
-    }
-    return String(format: "%.2f GB", gb)
   }
 
   private func processDisplayName(_ command: String) -> String {
@@ -705,7 +700,7 @@ struct PopoverRootView: View {
   }
 
   private func growthHintText(_ hint: MemoryGrowthHint) -> String {
-    let growth = formatGigabytes(hint.growthBytes)
+    let growth = MemoryFormat.size(hint.growthBytes)
     switch hint.kind {
     case .suddenJump:
       return "\(hint.user) jumped +\(growth) since the last sample"
@@ -737,11 +732,11 @@ struct PopoverRootView: View {
     if let latestSample = orderedMemoryHistory.last {
       legendItem(
         color: pressureColor(for: latestSample.pressureLevel),
-        label: "Used \(formatGigabytes(latestSample.usedBytes))"
+        label: "Used \(MemoryFormat.size(latestSample.usedBytes))"
       )
       legendItem(
         color: Color(nsColor: .systemGray),
-        label: "Swap \(formatGigabytes(latestSample.swapUsedBytes))"
+        label: "Swap \(MemoryFormat.size(latestSample.swapUsedBytes))"
       )
       pressureBadge(level: latestSample.pressureLevel)
     }

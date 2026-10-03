@@ -785,6 +785,31 @@ struct MemStatsTests {
     #expect(!sampler.isSampling)
   }
 
+  @Test func memoryFormatUsesMegabytesBelowOneGigabyte() {
+    let mb: UInt64 = 1_048_576
+    let gb: UInt64 = 1_073_741_824
+
+    #expect(MemoryFormat.size(0) == "0 MB")
+    #expect(MemoryFormat.size(512 * mb) == "512 MB")
+    #expect(MemoryFormat.size(1023 * mb) == "1023 MB")
+    // 1023.6 MB would print as "1024 MB", so it switches to GB.
+    #expect(MemoryFormat.size(1023 * mb + 600 * 1024) == "1.00 GB")
+    #expect(MemoryFormat.size(gb) == "1.00 GB")
+    #expect(MemoryFormat.size(gb * 3 / 2) == "1.50 GB")
+  }
+
+  @Test func memoryFormatAxisTicksUseWholeGigabytes() {
+    let gb = 1_073_741_824.0
+
+    #expect(MemoryFormat.axisTickValues(upperBound: 16 * gb) == [0, 4, 8, 12, 16].map { $0 * gb })
+    #expect(MemoryFormat.axisTickValues(upperBound: 24 * gb) == [0, 8, 16, 24].map { $0 * gb })
+    #expect(MemoryFormat.axisTickValues(upperBound: 18 * gb) == [0, 8, 18].map { $0 * gb })
+    #expect(MemoryFormat.axisTickValues(upperBound: 36 * gb) == [0, 16, 36].map { $0 * gb })
+    #expect(MemoryFormat.axisTickValues(upperBound: 0.5 * gb) == [0])
+    #expect(MemoryFormat.axisTick(0) == "0 GB")
+    #expect(MemoryFormat.axisTick(8 * gb) == "8 GB")
+  }
+
   @Test func parseTopMemoryTokenHandlesChangeMarkersAndClamps() {
     #expect(TopProcessSnapshotParser.parseTopMemoryToken("12G+") == UInt64(12) * 1_073_741_824)
     #expect(TopProcessSnapshotParser.parseTopMemoryToken("512K-") == UInt64(512) * 1_024)
