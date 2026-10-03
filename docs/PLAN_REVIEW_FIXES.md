@@ -113,9 +113,9 @@ Commit: `chore(ui): stable chart ids, modern activate API, donut accessibility`
 
 Files: `ViewModels/*`, `PopoverRootView.swift`, `MemStatsTests.swift`
 
-- [ ] Detector dựa trên user history: tăng liên tục 12 sample, hoặc nhảy > max(500MB, 5% RAM) giữa 2 sample.
-- [ ] Hiện hint nhỏ cho user bị nghi.
-- [ ] Test cho cả 2 điều kiện.
+- [x] Detector dựa trên user history: tăng liên tục 12 sample, hoặc nhảy > max(500MB, 5% RAM) giữa 2 sample.
+- [x] Hiện hint nhỏ cho user bị nghi.
+- [x] Test cho cả 2 điều kiện.
 
 Commit: `feat(history): add per-user memory growth and jump hints`
 

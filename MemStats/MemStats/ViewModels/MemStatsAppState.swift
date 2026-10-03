@@ -11,6 +11,7 @@ final class MemStatsAppState: ObservableObject {
   @Published private(set) var samplingMode: SamplingMode = .idle
   @Published private(set) var lastSamplingError: String?
   @Published private(set) var donutSlices: [DonutSlice] = []
+  @Published private(set) var growthHints: [MemoryGrowthHint] = []
 
   let memoryVM: MemoryViewModel
   let processVM: ProcessViewModel
@@ -174,8 +175,41 @@ final class MemStatsAppState: ObservableObject {
         topLimit: 8,
         sampledAt: sampledAt
       )
+      refreshGrowthHints()
     }
     refreshDonutSlices()
+  }
+
+  /// Only users in the current snapshot are checked, so a user that disappeared does not
+  /// keep a stale hint.
+  private func refreshGrowthHints() {
+    guard let totalBytes = memoryVM.currentStats?.totalBytes else {
+      if !growthHints.isEmpty {
+        growthHints = []
+      }
+      return
+    }
+
+    let currentUsers = Set(processVM.allProcesses.map(\.user))
+    let nextHints =
+      currentUsers
+      .compactMap { user in
+        MemoryGrowthDetector.hint(
+          user: user,
+          history: processVM.history(for: user).map(\.rssBytes),
+          totalBytes: totalBytes
+        )
+      }
+      .sorted { lhs, rhs in
+        if lhs.growthBytes == rhs.growthBytes {
+          return lhs.user < rhs.user
+        }
+        return lhs.growthBytes > rhs.growthBytes
+      }
+
+    if nextHints != growthHints {
+      growthHints = nextHints
+    }
   }
 
   /// Donut grouping walks the whole process snapshot, so it runs once per sample here

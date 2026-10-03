@@ -526,6 +526,62 @@ struct MemStatsTests {
     #expect(appState.samplingInterval(for: .idle) == 15)
   }
 
+  @Test func growthDetectorFlagsContinuousGrowth() {
+    let mb: UInt64 = 1024 * 1024
+    let total: UInt64 = 16 * 1024 * mb
+    let growing = (0..<12).map { UInt64($0) * 20 * mb + 1_000 * mb }
+
+    let hint = MemoryGrowthDetector.hint(user: "alice", history: growing, totalBytes: total)
+    #expect(
+      hint
+        == MemoryGrowthHint(
+          user: "alice", kind: .continuousGrowth(samples: 12), growthBytes: 220 * mb))
+
+    // One dip in the window breaks the streak.
+    var withDip = growing
+    withDip[6] = withDip[5]
+    #expect(MemoryGrowthDetector.hint(user: "alice", history: withDip, totalBytes: total) == nil)
+
+    // Too few samples, or growth too small to matter.
+    let shortHistory = Array(growing.prefix(11))
+    let shortHint = MemoryGrowthDetector.hint(
+      user: "alice", history: shortHistory, totalBytes: total)
+    #expect(shortHint == nil)
+    let tinyGrowth = (0..<12).map { UInt64($0) * mb + 1_000 * mb }
+    #expect(MemoryGrowthDetector.hint(user: "alice", history: tinyGrowth, totalBytes: total) == nil)
+  }
+
+  @MainActor @Test func processViewModelResetsHistoryForUsersThatDisappear() {
+    let vm = ProcessViewModel()
+    let start = Date(timeIntervalSince1970: 1_000)
+    let alice = ProcessSnapshot(user: "alice", pid: 1, rssBytes: 100, command: "/a")
+    let bob = ProcessSnapshot(user: "bob", pid: 2, rssBytes: 50, command: "/b")
+
+    vm.apply(snapshots: [alice, bob], sampledAt: start)
+    vm.apply(snapshots: [bob], sampledAt: start.addingTimeInterval(5))
+    vm.apply(snapshots: [alice, bob], sampledAt: start.addingTimeInterval(10))
+
+    #expect(vm.history(for: "alice").count == 1)
+    #expect(vm.history(for: "bob").count == 3)
+  }
+
+  @Test func growthDetectorFlagsSuddenJumpAboveThreshold() {
+    let mb: UInt64 = 1024 * 1024
+    let total: UInt64 = 16 * 1024 * mb  // 5% = ~819 MB, above the 500 MB floor.
+
+    let jump = MemoryGrowthDetector.hint(
+      user: "bob", history: [1_000 * mb, 1_900 * mb], totalBytes: total)
+    #expect(jump == MemoryGrowthHint(user: "bob", kind: .suddenJump, growthBytes: 900 * mb))
+
+    let belowThreshold = MemoryGrowthDetector.hint(
+      user: "bob", history: [1_000 * mb, 1_700 * mb], totalBytes: total)
+    #expect(belowThreshold == nil)
+
+    let drop = MemoryGrowthDetector.hint(
+      user: "bob", history: [1_900 * mb, 1_000 * mb], totalBytes: total)
+    #expect(drop == nil)
+  }
+
   @Test func initialSamplingDelaySkipsResampleRightAfterASample() {
     let now = Date(timeIntervalSince1970: 1_000)
 

@@ -51,6 +51,10 @@ final class ProcessViewModel: ObservableObject {
       rssByUser[snapshot.user, default: 0] += snapshot.rssBytes
     }
 
+    // Drop history for users missing from this snapshot, so a user that comes back starts a
+    // fresh series instead of bridging the gap (which would look like a sudden jump).
+    userHistoryByUser = userHistoryByUser.filter { rssByUser[$0.key] != nil }
+
     for (user, rssBytes) in rssByUser {
       var history = userHistoryByUser[user, default: []]
       history.append(
@@ -92,5 +96,9 @@ final class ProcessViewModel: ObservableObject {
   var selectedUserHistory: [UserMemoryHistorySample] {
     guard let selectedUser else { return [] }
     return userHistoryByUser[selectedUser] ?? []
+  }
+
+  func history(for user: String) -> [UserMemoryHistorySample] {
+    userHistoryByUser[user] ?? []
   }
 }

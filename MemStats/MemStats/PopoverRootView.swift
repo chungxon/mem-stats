@@ -352,6 +352,14 @@ struct PopoverRootView: View {
           }
           .font(.caption)
         }
+
+        ForEach(appState.growthHints.prefix(2), id: \.user) { hint in
+          Text(growthHintText(hint))
+            .font(.caption)
+            .foregroundStyle(.orange)
+            .lineLimit(1)
+            .help("Possible memory leak hint, based on recent samples")
+        }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
     } label: {
@@ -666,6 +674,16 @@ struct PopoverRootView: View {
 
     let total = donutSlices.reduce(0.0) { $0 + $1.angleValue }
     return (angle / (Double.pi * 2)) * total
+  }
+
+  private func growthHintText(_ hint: MemoryGrowthHint) -> String {
+    let growth = formatGigabytes(hint.growthBytes)
+    switch hint.kind {
+    case .suddenJump:
+      return "\(hint.user) jumped +\(growth) since the last sample"
+    case .continuousGrowth(let samples):
+      return "\(hint.user) grew +\(growth) over the last \(samples) samples"
+    }
   }
 
   /// Single section title that also reflects the active user filter.
