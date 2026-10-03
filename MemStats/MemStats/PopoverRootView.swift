@@ -3,7 +3,7 @@ import Foundation
 import SwiftUI
 
 struct PopoverRootView: View {
-  @ObservedObject private var appState: RamStatsAppState
+  @ObservedObject private var appState: MemStatsAppState
   @ObservedObject private var memoryVM: MemoryViewModel
   @ObservedObject private var processVM: ProcessViewModel
 
@@ -13,7 +13,7 @@ struct PopoverRootView: View {
   @State private var hoveredAngleValue: Double?
 
   init(
-    appState: RamStatsAppState,
+    appState: MemStatsAppState,
     onOpenActivityMonitor: @escaping () -> Void = {},
     onOpenOptionsMenu: @escaping () -> Void = {}
   ) {
@@ -120,7 +120,7 @@ struct PopoverRootView: View {
 
       Spacer()
 
-      Text("RAM Stats")
+      Text("MemStats")
         .font(.title3.weight(.semibold))
 
       Spacer()

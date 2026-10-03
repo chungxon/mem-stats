@@ -79,8 +79,8 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
     let errorPipe = Pipe()
     process.standardError = errorPipe
 
-    let outputQueue = DispatchQueue(label: "com.chungxon.ramstats.top.stdout")
-    let errorQueue = DispatchQueue(label: "com.chungxon.ramstats.top.stderr")
+    let outputQueue = DispatchQueue(label: "com.chungxon.memstats.top.stdout")
+    let errorQueue = DispatchQueue(label: "com.chungxon.memstats.top.stderr")
     let readGroup = DispatchGroup()
     var outputData = Data()
     var errorData = Data()

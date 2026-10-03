@@ -1,4 +1,4 @@
-# 🧭 Ram Stats
+# 🧭 MemStats
 
 Similar to iStat Menus/Stats, but focused on **memory monitoring** for multiple users.
 

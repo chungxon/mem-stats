@@ -1,4 +1,4 @@
-# Ram Stats - Remediation Plan (Post Review)
+# MemStats - Remediation Plan (Post Review)
 
 ## Scope
 
@@ -150,7 +150,7 @@ TODO:
 
 - [x] Run lint trên toàn bộ file Swift trong repo.
 - [x] Run `xcodebuild build` với `-derivedDataPath .derivedData`.
-- [x] Run `xcodebuild test -only-testing:RamStatsTests`.
+- [x] Run `xcodebuild test -only-testing:MemStatsTests`.
 - [x] Cập nhật notes kết quả verification và rủi ro môi trường.
 
 Acceptance Criteria:
@@ -162,9 +162,9 @@ Latest Verification Notes (2026-05-19):
 
 - Lint: `swiftlint` chưa có trong môi trường local; dùng `xcrun swift-format lint` để kiểm tra thay thế.
 - Build: `xcodebuild build` pass với `CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO`.
-- Test: `xcodebuild test -only-testing:RamStatsTests` fail do sandbox chặn `com.apple.testmanagerd.control` (không phải lỗi logic runtime của app).
+- Test: `xcodebuild test -only-testing:MemStatsTests` fail do sandbox chặn `com.apple.testmanagerd.control` (không phải lỗi logic runtime của app).
 - Environment follow-up: cần chạy test ngoài sandbox hoặc trên máy local có quyền testmanagerd đầy đủ để có kết quả test chính thức.
-- Full lint snapshot: có warning format trong `RamStatsUITests/*` (template indentation/line length), không phải file logic chính của app.
+- Full lint snapshot: có warning format trong `MemStatsUITests/*` (template indentation/line length), không phải file logic chính của app.
 
 ## Task 9 - Process Memory Metric Alignment With Activity Monitor
 
@@ -309,16 +309,57 @@ Objective:
 
 TODO:
 
-- [x] Sửa capture mutable vars trong `RamStatsAppState.performSample` trước khi hop sang `MainActor`.
-- [x] Sửa warning actor-isolated `Equatable` check trong `RamStatsTests` bằng assertion không phụ thuộc enum compare context.
+- [x] Sửa capture mutable vars trong `MemStatsAppState.performSample` trước khi hop sang `MainActor`.
+- [x] Sửa warning actor-isolated `Equatable` check trong `MemStatsTests` bằng assertion không phụ thuộc enum compare context.
 - [x] Run lint cho file Swift thay đổi.
 - [x] Run build + test verification.
 
 Acceptance Criteria:
 
-- Không còn warning capture mutable var trong `RamStatsAppState`.
+- Không còn warning capture mutable var trong `MemStatsAppState`.
 - Không còn warning `DonutSlice.Category` compare trong test đã sửa.
 - Build/test pass sau cleanup.
+
+## Task 17 - Rename RamStats -> MemStats
+
+Objective:
+
+- Đổi tên app từ `RamStats` sang `MemStats`.
+
+TODO:
+
+- [x] Đổi tên hiển thị app (bundle display name, menu bar, popover title).
+- [x] Đổi tên project/target/scheme/module và test target.
+- [x] Cập nhật bundle identifier nếu cần (`com.chungxon.MemStats`, settings/login item cũ sẽ reset).
+- [x] Cập nhật docs (`docs/PLAN.md`, `docs/DESCRIPTION.md`, `docs/PLAN_REMEDIATION.md`).
+- [x] Run lint cho file Swift thay đổi.
+- [x] Run build + test verification.
+
+Acceptance Criteria:
+
+- Không còn tên `RamStats` hiển thị với người dùng.
+- Build/test pass sau khi rename.
+
+## Task 18 - View RAM By App
+
+Objective:
+
+- Thêm chế độ xem RAM theo app (gộp các process thuộc cùng một app) bên cạnh view theo user/process.
+
+TODO:
+
+- [ ] Xác định cách gộp process theo app (bundle/executable path, helper process).
+- [ ] Bổ sung model + aggregation theo app trong pipeline sampling.
+- [ ] Thêm UI view RAM theo app trong popover.
+- [ ] Bổ sung test cho logic aggregation.
+- [ ] Cập nhật `docs/DESCRIPTION.md`.
+- [ ] Run lint cho file Swift thay đổi.
+- [ ] Run build + test verification.
+
+Acceptance Criteria:
+
+- Hiển thị được RAM theo từng app, các helper process được gộp vào đúng app.
+- Build/test pass.
 
 ## Execution Order
 
@@ -338,6 +379,8 @@ Acceptance Criteria:
 14. Task 14 (one-command top sampling)
 15. Task 15 (docs and parser alignment cleanup)
 16. Task 16 (Swift 6 warning cleanup)
+17. Task 17 (rename RamStats -> MemStats)
+18. Task 18 (view RAM by app)
 
 ## Review Gates
 

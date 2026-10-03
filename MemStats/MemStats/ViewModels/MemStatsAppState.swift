@@ -2,7 +2,7 @@ import Combine
 import Foundation
 
 @MainActor
-final class RamStatsAppState: ObservableObject {
+final class MemStatsAppState: ObservableObject {
   enum SamplingMode: Equatable {
     case active
     case idle
@@ -16,7 +16,7 @@ final class RamStatsAppState: ObservableObject {
 
   private let memoryService: MemoryStatsService
   private let processService: ProcessSnapshotService
-  private let samplingQueue = DispatchQueue(label: "com.chungxon.ramstats.sampling", qos: .utility)
+  private let samplingQueue = DispatchQueue(label: "com.chungxon.memstats.sampling", qos: .utility)
 
   private var timer: DispatchSourceTimer?
 

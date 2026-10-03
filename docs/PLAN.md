@@ -1,4 +1,4 @@
-# Ram Stats - Project Plan
+# MemStats - Project Plan
 
 ## Goal
 
@@ -115,7 +115,7 @@ Task 3 TODO:
 
 - [x] Add `MemoryVM` with bounded history buffer (`maxSamples = 120`)
 - [x] Add `ProcessVM` for top-process state and user selection consistency
-- [x] Add shared `RamStatsAppState` to coordinate sampling and services
+- [x] Add shared `MemStatsAppState` to coordinate sampling and services
 - [x] Implement 5s sampling when popover is open
 - [x] Implement 15s sampling when popover is closed
 - [x] Wire popover open/close lifecycle to sampling mode

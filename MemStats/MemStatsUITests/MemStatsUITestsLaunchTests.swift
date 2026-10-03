@@ -1,13 +1,13 @@
 //
-//  RamStatsUITestsLaunchTests.swift
-//  RamStatsUITests
+//  MemStatsUITestsLaunchTests.swift
+//  MemStatsUITests
 //
 //  Created by Son on 18/5/26.
 //
 
 import XCTest
 
-final class RamStatsUITestsLaunchTests: XCTestCase {
+final class MemStatsUITestsLaunchTests: XCTestCase {
 
   override class var runsForEachTargetApplicationUIConfiguration: Bool {
     true

@@ -5,7 +5,7 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   private let popover = NSPopover()
   private var statusItem: NSStatusItem?
-  private let appState = RamStatsAppState()
+  private let appState = MemStatsAppState()
   private let loginItemService = LoginItemService()
   private var cancellables: Set<AnyCancellable> = []
   private var lastDisplayedUsedBytes: UInt64?

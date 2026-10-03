@@ -1,13 +1,13 @@
 //
-//  RamStatsUITests.swift
-//  RamStatsUITests
+//  MemStatsUITests.swift
+//  MemStatsUITests
 //
 //  Created by Son on 18/5/26.
 //
 
 import XCTest
 
-final class RamStatsUITests: XCTestCase {
+final class MemStatsUITests: XCTestCase {
 
   override func setUpWithError() throws {
     // Put setup code here. This method is called before the invocation of each test method in the class.

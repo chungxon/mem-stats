@@ -2,9 +2,9 @@ import Foundation
 import ServiceManagement
 import Testing
 
-@testable import RamStats
+@testable import MemStats
 
-struct RamStatsTests {
+struct MemStatsTests {
   private final class MockLoginItemRegistrant: LoginItemRegistrant {
     var status: SMAppService.Status
     var didRegister = false
@@ -383,15 +383,15 @@ struct RamStatsTests {
   }
 
   @MainActor @Test func appStateUsesExpectedSamplingIntervals() {
-    let appState = RamStatsAppState(startSampling: false)
+    let appState = MemStatsAppState(startSampling: false)
 
     #expect(appState.samplingInterval(for: .active) == 5)
     #expect(appState.samplingInterval(for: .idle) == 15)
   }
 
   @Test func loginItemServiceSyncsAndPersistsState() {
-    let defaults = UserDefaults(suiteName: "RamStatsTests.LoginItem.Sync")!
-    defaults.removePersistentDomain(forName: "RamStatsTests.LoginItem.Sync")
+    let defaults = UserDefaults(suiteName: "MemStatsTests.LoginItem.Sync")!
+    defaults.removePersistentDomain(forName: "MemStatsTests.LoginItem.Sync")
 
     let registrant = MockLoginItemRegistrant(status: .enabled)
     let service = LoginItemService(defaults: defaults, registrant: registrant)
@@ -403,8 +403,8 @@ struct RamStatsTests {
   }
 
   @Test func loginItemServiceToggleCallsRegisterAndUnregister() throws {
-    let defaults = UserDefaults(suiteName: "RamStatsTests.LoginItem.Toggle")!
-    defaults.removePersistentDomain(forName: "RamStatsTests.LoginItem.Toggle")
+    let defaults = UserDefaults(suiteName: "MemStatsTests.LoginItem.Toggle")!
+    defaults.removePersistentDomain(forName: "MemStatsTests.LoginItem.Toggle")
 
     let registrant = MockLoginItemRegistrant(status: .notRegistered)
     let service = LoginItemService(defaults: defaults, registrant: registrant)
