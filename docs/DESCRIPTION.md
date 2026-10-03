@@ -193,7 +193,14 @@ UI refresh: every 5s
 ### Center label
 
 * Default: `% used RAM`
-* `Used / Total (GB)` is always shown in the summary line below the donut
+* Focused slice (hover or selected): slice label + `%`
+
+### Info row (below the donut)
+
+* Left: `All Users`, or the focused slice label
+* Right:
+  * nothing focused: system `Used X / Total (GB)`
+  * slice focused: `<slice GB> / Used X`, which replaces the system summary while focused
 
 ### Interaction
 
@@ -201,16 +208,17 @@ UI refresh: every 5s
 
   * highlight slice (larger radius)
   * dim others
-  * show slice info in the center label and in the info row below the donut (no floating tooltip):
+  * show slice info in the center label and in the info row (no floating tooltip):
 
-    * user name
-    * memory (GB)
-    * %
+    * user name (center label and info row)
+    * memory (GB) (info row only)
+    * % (center label only)
 
 * Click slice:
 
   * set `selectedUser`
   * filter process list
+  * show a "Clear Filter" button in the Top Users header (overlaid, so it does not shift the layout)
 
 * Click again:
 
@@ -234,6 +242,7 @@ UI refresh: every 5s
   * Red = critical
   * Each pair of adjacent samples is its own chart series, colored by the later sample's pressure, so the line never joins non-adjacent samples
   * The "Used" legend swatch uses the current pressure color
+  * Legend items never wrap internally; when the row is full, only the overflowing items move to the next row
 * Memory growth hints (see §14.3) are shown below the badges
 
 ### Time ranges

@@ -157,6 +157,10 @@ struct PopoverRootView: View {
             .font(.footnote)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, minHeight: 150, alignment: .center)
+
+          Text(memorySummary)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
         } else {
           ZStack {
             Chart(donutSlices) { slice in
@@ -226,7 +230,15 @@ struct PopoverRootView: View {
               .font(.footnote)
               .foregroundStyle(.secondary)
           }
-
+        }
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+    } label: {
+      // Overlay keeps the button out of the label's layout, so showing it does not push the box down.
+      Text("Top Users")
+        .font(.headline)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .trailing) {
           if processVM.selectedUser != nil {
             Button("Clear Filter") {
               processVM.selectedUser = nil
@@ -235,15 +247,6 @@ struct PopoverRootView: View {
             .controlSize(.small)
           }
         }
-
-        Text(memorySummary)
-          .font(.footnote)
-          .foregroundStyle(.secondary)
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
-    } label: {
-      Text("Top Users")
-        .font(.headline)
     }
     .background(Color(nsColor: .controlBackgroundColor))
   }
@@ -333,23 +336,11 @@ struct PopoverRootView: View {
           }
           .frame(height: 130)
 
-          HStack(spacing: 10) {
-            if let latestSample = orderedMemoryHistory.last {
-              legendItem(
-                color: pressureColor(for: latestSample.pressureLevel),
-                label: "Used \(formatGigabytes(latestSample.usedBytes))"
-              )
-              legendItem(
-                color: .orange,
-                label: "Swap \(formatGigabytes(latestSample.swapUsedBytes))"
-              )
-              pressureBadge(level: latestSample.pressureLevel)
-            }
-            if processVM.selectedUser != nil {
-              legendItem(color: .teal, label: "Selected")
-            }
-            Spacer()
+          // Items wrap one by one, so adding "Selected" only moves that item to the next row.
+          LegendFlowLayout(horizontalSpacing: 10, verticalSpacing: 4) {
+            legendItems
           }
+          .frame(maxWidth: .infinity, alignment: .leading)
           .font(.caption)
         }
 
@@ -489,10 +480,11 @@ struct PopoverRootView: View {
   }
 
   private var selectionSubtitle: String {
-    guard let slice = activeFocusSlice else {
-      return "Hover or click a slice to filter the process list"
+    guard let slice = activeFocusSlice else { return memorySummary }
+    guard let usedBytes = memoryVM.currentStats?.usedBytes else {
+      return "\(formatGigabytes(slice.bytes))"
     }
-    return "\(formatGigabytes(slice.bytes)) | \(Int(slice.fractionOfTotal * 100))% of total RAM"
+    return "\(formatGigabytes(slice.bytes)) / \(formatGigabytes(usedBytes))"
   }
 
   private func shouldDim(_ slice: DonutSlice) -> Bool {
@@ -646,7 +638,7 @@ struct PopoverRootView: View {
     }
 
     if let slice = activeFocusSlice {
-      return "\(formatGigabytes(slice.bytes)) | \(Int(slice.fractionOfTotal * 100))%"
+      return "\(Int(slice.fractionOfTotal * 100))%"
     }
 
     let ratio = stats.totalBytes > 0 ? Double(stats.usedBytes) / Double(stats.totalBytes) : 0
@@ -705,6 +697,23 @@ struct PopoverRootView: View {
   }
 
   @ViewBuilder
+  private var legendItems: some View {
+    if let latestSample = orderedMemoryHistory.last {
+      legendItem(
+        color: pressureColor(for: latestSample.pressureLevel),
+        label: "Used \(formatGigabytes(latestSample.usedBytes))"
+      )
+      legendItem(
+        color: .orange,
+        label: "Swap \(formatGigabytes(latestSample.swapUsedBytes))"
+      )
+      pressureBadge(level: latestSample.pressureLevel)
+    }
+    if processVM.selectedUser != nil {
+      legendItem(color: .teal, label: "Selected")
+    }
+  }
+
   private func legendItem(color: Color, label: String) -> some View {
     HStack(spacing: 4) {
       RoundedRectangle(cornerRadius: 2)
@@ -712,6 +721,8 @@ struct PopoverRootView: View {
         .frame(width: 10, height: 10)
       Text(label)
         .foregroundStyle(.secondary)
+        .lineLimit(1)
+        .fixedSize()
     }
   }
 
@@ -723,6 +734,8 @@ struct PopoverRootView: View {
         .frame(width: 10, height: 10)
       Text("Pressure \(pressureLabel(for: level))")
         .foregroundStyle(.secondary)
+        .lineLimit(1)
+        .fixedSize()
     }
   }
 
@@ -746,5 +759,69 @@ struct PopoverRootView: View {
     case .critical:
       return "Critical"
     }
+  }
+}
+
+/// Lays out subviews left to right and starts a new row when the next one does not fit.
+private struct LegendFlowLayout: Layout {
+  var horizontalSpacing: CGFloat
+  var verticalSpacing: CGFloat
+
+  func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+    let rows = arrangeRows(maxWidth: proposal.width ?? .infinity, subviews: subviews)
+    let height = rows.map(\.height).reduce(0, +)
+      + verticalSpacing * CGFloat(max(rows.count - 1, 0))
+    // Report the proposed width when there is one, so placeSubviews wraps against the same width.
+    if let proposedWidth = proposal.width, proposedWidth.isFinite {
+      return CGSize(width: proposedWidth, height: height)
+    }
+    return CGSize(width: rows.map(\.width).max() ?? 0, height: height)
+  }
+
+  func placeSubviews(
+    in bounds: CGRect,
+    proposal: ProposedViewSize,
+    subviews: Subviews,
+    cache: inout ()
+  ) {
+    let rows = arrangeRows(maxWidth: bounds.width, subviews: subviews)
+    var y = bounds.minY
+    for row in rows {
+      var x = bounds.minX
+      for index in row.indices {
+        let size = subviews[index].sizeThatFits(.unspecified)
+        subviews[index].place(
+          at: CGPoint(x: x, y: y + (row.height - size.height) / 2),
+          proposal: ProposedViewSize(size)
+        )
+        x += size.width + horizontalSpacing
+      }
+      y += row.height + verticalSpacing
+    }
+  }
+
+  private struct Row {
+    var indices: [Int] = []
+    var width: CGFloat = 0
+    var height: CGFloat = 0
+  }
+
+  private func arrangeRows(maxWidth: CGFloat, subviews: Subviews) -> [Row] {
+    var rows: [Row] = []
+    var current = Row()
+    for index in subviews.indices {
+      let size = subviews[index].sizeThatFits(.unspecified)
+      if !current.indices.isEmpty, current.width + horizontalSpacing + size.width > maxWidth {
+        rows.append(current)
+        current = Row()
+      }
+      current.width += (current.indices.isEmpty ? 0 : horizontalSpacing) + size.width
+      current.height = max(current.height, size.height)
+      current.indices.append(index)
+    }
+    if !current.indices.isEmpty {
+      rows.append(current)
+    }
+    return rows
   }
 }

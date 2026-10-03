@@ -152,3 +152,16 @@ Bug: app báo critical (đỏ) trong khi Activity Monitor vẫn normal. Nguyên 
 - [x] Cập nhật nguồn pressure trong `docs/DESCRIPTION.md`.
 
 Commit: `fix(pressure): derive level only from memorystatus pressure sysctl`
+
+## Task 15 - Refine Top Users Info Row And History Legend
+
+Files: `PopoverRootView.swift`, `docs/DESCRIPTION.md`
+
+- [x] Bỏ dòng hint "Hover or click a slice..." và dòng summary riêng dưới donut.
+- [x] Dòng info dưới donut: bên phải hiện `Used X / Total` của hệ thống khi không focus, khi hover/select thì đổi thành `<slice GB> / Used X` (so với used RAM của hệ thống).
+- [x] Center label khi hover/select chỉ hiện tên slice + `%`, bỏ phần GB.
+- [x] Nút "Clear Filter" chuyển lên header Top Users, dùng overlay để không đẩy layout.
+- [x] Legend History dùng flow layout: label không bị wrap, chỉ item tràn mới xuống dòng.
+- [x] Cập nhật §6 (center label, info row, Clear Filter) và §7 (legend) trong docs.
+
+Commit: `feat(popover): refine Top Users info row and history legend layout`
