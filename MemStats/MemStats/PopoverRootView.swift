@@ -28,6 +28,19 @@ struct PopoverRootView: View {
     appState.donutSlices
   }
 
+  private var donutUserSlices: [DonutSlice] {
+    donutSlices.filter {
+      if case .user = $0.category { return true }
+      return false
+    }
+  }
+
+  private var donutAccessibilityValue: String {
+    donutSlices
+      .map { "\($0.label) \(formatGigabytes($0.bytes)), \(Int($0.fractionOfTotal * 100))%" }
+      .joined(separator: "; ")
+  }
+
   private var activeSelectedSlice: DonutSlice? {
     guard let selectedUser = processVM.selectedUser else { return nil }
 
@@ -192,6 +205,18 @@ struct PopoverRootView: View {
 
             donutCenterOverlay
           }
+          // The hover/tap overlay is mouse only, so expose the slices and the filter to VoiceOver.
+          .accessibilityElement(children: .ignore)
+          .accessibilityLabel("Memory by user")
+          .accessibilityValue(donutAccessibilityValue)
+          .accessibilityActions {
+            ForEach(donutUserSlices) { slice in
+              let isSelected = processVM.selectedUser == slice.label
+              Button(isSelected ? "Clear filter" : "Filter \(slice.label)") {
+                processVM.selectedUser = isSelected ? nil : slice.label
+              }
+            }
+          }
 
           HStack {
             Text(selectionTitle)
@@ -279,11 +304,12 @@ struct PopoverRootView: View {
             }
 
             if processVM.selectedUser != nil {
-              ForEach(Array(orderedSelectedUserHistory.enumerated()), id: \.offset) {
-                _, sample in
+              // Timestamps are unique and monotonic, so they stay stable as old samples drop.
+              ForEach(orderedSelectedUserHistory, id: \.timestamp) { sample in
                 LineMark(
                   x: .value("Time", sample.timestamp),
-                  y: .value("Selected User", Double(sample.rssBytes))
+                  y: .value("Selected User", Double(sample.rssBytes)),
+                  series: .value("Segment", "selected-user")
                 )
                 .foregroundStyle(.teal)
                 .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 3]))

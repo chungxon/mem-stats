@@ -211,7 +211,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   @objc
   private func showAbout() {
     NSApp.orderFrontStandardAboutPanel(nil)
-    NSApp.activate(ignoringOtherApps: true)
+    NSApp.activate()
   }
 
   private func openActivityMonitor() {

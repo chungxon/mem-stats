@@ -103,9 +103,9 @@ Commit: `perf(sampling): avoid immediate resample when popover toggles rapidly`
 
 Files: `PopoverRootView.swift`, `AppDelegate.swift`
 
-- [ ] History `ForEach` dùng `timestamp` làm id.
-- [ ] `NSApp.activate(ignoringOtherApps:)` -> `NSApp.activate()`.
-- [ ] Accessibility label/value cho donut.
+- [x] History `ForEach` dùng `timestamp` làm id.
+- [x] `NSApp.activate(ignoringOtherApps:)` -> `NSApp.activate()`.
+- [x] Accessibility label/value cho donut.
 
 Commit: `chore(ui): stable chart ids, modern activate API, donut accessibility`
 
