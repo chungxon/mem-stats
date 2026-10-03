@@ -90,15 +90,15 @@ Commit: `fix(pressure): unify warning color and label the menu bar item`
 
 Files: `MemStats.xcodeproj/project.pbxproj`, scheme, `README.md`
 
-- [ ] Điền `INFOPLIST_KEY_NSHumanReadableCopyright` (About panel đang trống).
-- [ ] Thêm `INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.utilities`.
-- [ ] Xoá entitlement `user-selected files` còn sót từ template.
-- [ ] `MACOSX_DEPLOYMENT_TARGET` = 14.0 cho tất cả target. Build lại, sửa mọi lỗi/warning về API chỉ có từ macOS 15 (thêm `if #available` nếu cần).
+- [x] Điền `INFOPLIST_KEY_NSHumanReadableCopyright` (About panel đang trống).
+- [x] Thêm `INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.utilities`.
+- [x] Xoá entitlement `user-selected files` còn sót từ template.
+- [x] `MACOSX_DEPLOYMENT_TARGET` = 14.0 cho tất cả target. Build lại, sửa mọi lỗi/warning về API chỉ có từ macOS 15 (thêm `if #available` nếu cần).
   - Đã build thử với target 14.0: chỉ lỗi 1 chỗ, `Color.mix(with:by:)` (macOS 15+) cho màu slice Unattributed ở `PopoverRootView.swift:530`. Thay bằng `NSColor(name:dynamicProvider:)` blend `systemGray` với trắng theo appearance, để màu vẫn đúng ở cả light/dark mode.
-- [ ] Bỏ target `MemStatsUITests` khỏi Test action của scheme (đang là template, test launch performance chậm và dễ fail), hoặc xoá hẳn target.
-- [ ] Kiểm tra version `1.0` (build `1`).
-- [ ] Release build ký ad-hoc (`CODE_SIGN_IDENTITY = "-"`, Sign to Run Locally) thay cho cert Apple Development của team cá nhân, để app chạy được trên máy khác mà không gắn với Apple ID dev.
-- [ ] README thêm các mục:
+- [x] Bỏ target `MemStatsUITests` khỏi Test action của scheme (đang là template, test launch performance chậm và dễ fail), hoặc xoá hẳn target.
+- [x] Kiểm tra version `1.0` (build `1`).
+- [x] Release build ký ad-hoc (`CODE_SIGN_IDENTITY = "-"`, Sign to Run Locally) thay cho cert Apple Development của team cá nhân, để app chạy được trên máy khác mà không gắn với Apple ID dev.
+- [x] README thêm các mục:
   - Requirements: macOS 14.0 trở lên.
   - Install qua GitHub Releases (tải zip, kéo vào Applications) và qua Homebrew tap.
   - Mở lần đầu: app chưa notarize nên macOS sẽ chặn. Vào System Settings > Privacy & Security > "Open Anyway", hoặc chạy `xattr -dr com.apple.quarantine /Applications/MemStats.app`.

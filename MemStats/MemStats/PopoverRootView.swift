@@ -540,11 +540,22 @@ struct PopoverRootView: View {
     case .others:
       return Color(nsColor: .systemGray)
     case .unattributed:
-      // Opaque lighter gray so it reads differently from the "Others" slice.
-      return Color(nsColor: .systemGray).mix(with: .white, by: 0.45)
+      return Color(nsColor: Self.unattributedColor)
     case .user(let user):
       return userColor(user)
     }
+  }
+
+  /// Opaque lighter gray so it reads differently from the "Others" slice. Resolved per
+  /// appearance, since `Color.mix(with:by:)` needs macOS 15.
+  private static let unattributedColor = NSColor(name: nil) { appearance in
+    var color = NSColor.systemGray
+    appearance.performAsCurrentDrawingAppearance {
+      color =
+        NSColor.systemGray.usingColorSpace(.sRGB)?.blended(withFraction: 0.45, of: .white)
+        ?? .systemGray
+    }
+    return color
   }
 
   /// Stable per-user color. Green, orange and red are left out so a user never looks like the
