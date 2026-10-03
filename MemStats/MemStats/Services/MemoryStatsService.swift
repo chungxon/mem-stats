@@ -153,20 +153,13 @@ struct MemoryStatsService: MemoryStatsProviding {
     return .normal
   }
 
+  /// Reads the kernel pressure level, the same source Activity Monitor colors its graph by.
+  /// `vm.memory_pressure` is deliberately ignored: it is a reclaim/pageout activity counter
+  /// (often in the hundreds while the system is still normal), not a pressure level.
   nonisolated private func readSystemPressureLevel() -> MemoryPressureLevel? {
-    let vmPressure = readInt32Sysctl(name: "vm.memory_pressure").map(Self.levelFromVMMemoryPressure)
-    let memorystatusPressure = readInt32Sysctl(name: "kern.memorystatus_vm_pressure_level").map(
+    readInt32Sysctl(name: "kern.memorystatus_vm_pressure_level").map(
       Self.levelFromMemorystatusPressure
     )
-
-    switch (vmPressure, memorystatusPressure) {
-    case (.some(let lhs), .some(let rhs)):
-      return Self.maxPressureLevel(lhs, rhs)
-    case (.some(let level), .none), (.none, .some(let level)):
-      return level
-    case (.none, .none):
-      return nil
-    }
   }
 
   nonisolated private func readInt32Sysctl(name: String) -> Int32? {
@@ -177,16 +170,7 @@ struct MemoryStatsService: MemoryStatsProviding {
     return value
   }
 
-  nonisolated static func levelFromVMMemoryPressure(_ value: Int32) -> MemoryPressureLevel {
-    if value >= 2 {
-      return .critical
-    }
-    if value >= 1 {
-      return .warning
-    }
-    return .normal
-  }
-
+  /// Maps the dispatch-style kernel level: 1 = normal, 2 = warning, 4 = critical.
   nonisolated static func levelFromMemorystatusPressure(_ value: Int32) -> MemoryPressureLevel {
     if value >= 4 {
       return .critical
@@ -195,24 +179,5 @@ struct MemoryStatsService: MemoryStatsProviding {
       return .warning
     }
     return .normal
-  }
-
-  nonisolated static func maxPressureLevel(_ lhs: MemoryPressureLevel, _ rhs: MemoryPressureLevel)
-    -> MemoryPressureLevel
-  {
-    let lhsRank = pressureRank(lhs)
-    let rhsRank = pressureRank(rhs)
-    return lhsRank >= rhsRank ? lhs : rhs
-  }
-
-  nonisolated private static func pressureRank(_ level: MemoryPressureLevel) -> Int {
-    switch level {
-    case .normal:
-      return 0
-    case .warning:
-      return 1
-    case .critical:
-      return 2
-    }
   }
 }

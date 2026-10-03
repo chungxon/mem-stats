@@ -139,3 +139,16 @@ Files: `docs/DESCRIPTION.md`
 - [x] §14.2 và §14.4: ghi rõ đã bỏ và lý do. §14.3: mô tả hint đã làm.
 
 Commit: `docs: sync description with implemented behavior`
+
+## Task 14 - Pressure Level Only From memorystatus
+
+Files: `Services/MemoryStatsService.swift`, `MemStatsTests.swift`, `docs/DESCRIPTION.md`
+
+Bug: app báo critical (đỏ) trong khi Activity Monitor vẫn normal. Nguyên nhân: `vm.memory_pressure` là bộ đếm hoạt động reclaim/pageout (đo được giá trị 476), không phải level, nhưng code map `>= 2` thành critical rồi lấy max với level thật.
+
+- [x] `readSystemPressureLevel()` chỉ đọc `kern.memorystatus_vm_pressure_level` (1/2/4 = normal/warning/critical).
+- [x] Xoá `levelFromVMMemoryPressure` và `maxPressureLevel` (không còn chỗ dùng) cùng test tương ứng.
+- [x] Giữ fallback theo tỉ lệ used/total khi không đọc được sysctl.
+- [x] Cập nhật nguồn pressure trong `docs/DESCRIPTION.md`.
+
+Commit: `fix(pressure): derive level only from memorystatus pressure sysctl`

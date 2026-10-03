@@ -27,7 +27,9 @@ All inside **one popup window**.
     * Used RAM = App Memory (`internal_page_count - purgeable_count`) + Wired + Compressed, matching Activity Monitor "Memory Used"
     * Free (available) = Total - Used, so file cache counts as available
   * `sysctl` → total RAM
-  * `sysctl vm.memory_pressure` + `kern.memorystatus_vm_pressure_level` → memory pressure level
+  * `sysctl kern.memorystatus_vm_pressure_level` → memory pressure level (1 normal, 2 warning, 4 critical), same source as Activity Monitor
+    * `vm.memory_pressure` is not used: it is a reclaim activity counter, not a level
+    * Fallback when the sysctl is unavailable: used/total ratio (≥ 75% warning, ≥ 90% critical)
   * `top -l 1 -o mem -stats pid,user,mem,command` → processes
   * `proc_pidpath(pid)` → executable path, used to group processes by app
 * State:
