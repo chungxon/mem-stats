@@ -213,15 +213,14 @@ struct MemStatsTests {
   }
 
   @MainActor @Test func processViewModelSelectedUserUsesTopLimitFromAllProcesses() {
-    let vm = ProcessViewModel()
+    let vm = ProcessViewModel(topProcessesLimit: 2)
     vm.apply(
       snapshots: [
         ProcessSnapshot(user: "bob", pid: 1, rssBytes: 900, command: "/bin/b1"),
         ProcessSnapshot(user: "alice", pid: 2, rssBytes: 800, command: "/bin/a1"),
         ProcessSnapshot(user: "alice", pid: 3, rssBytes: 700, command: "/bin/a2"),
         ProcessSnapshot(user: "alice", pid: 4, rssBytes: 600, command: "/bin/a3"),
-      ],
-      topLimit: 2
+      ]
     )
 
     vm.selectedUser = "alice"
@@ -305,7 +304,7 @@ struct MemStatsTests {
       )
     }
 
-    vm.apply(snapshots: snapshots, topLimit: 8)
+    vm.apply(snapshots: snapshots)
 
     #expect(vm.allProcesses.count == 30)
     #expect(vm.topProcesses.count == 8)
@@ -318,12 +317,11 @@ struct MemStatsTests {
     vm.apply(
       snapshots: [
         ProcessSnapshot(user: "alice", pid: 1, rssBytes: 1024, command: "/bin/a")
-      ],
-      topLimit: 8
+      ]
     )
     vm.selectedUser = "alice"
 
-    vm.apply(snapshots: [], topLimit: 8)
+    vm.apply(snapshots: [])
 
     #expect(vm.allProcesses.isEmpty)
     #expect(vm.topProcesses.isEmpty)
@@ -580,11 +578,99 @@ struct MemStatsTests {
     #expect(MemoryStatsService.levelFromMemorystatusPressure(4) == .critical)
   }
 
-  @MainActor @Test func appStateUsesExpectedSamplingIntervals() {
-    let appState = MemStatsAppState(startSampling: false)
+  @Test func effectiveIntervalUsesSettingWhenActiveAndAtLeast15sWhenIdle() {
+    #expect(MemStatsAppState.effectiveInterval(setting: 5, mode: .active) == 5)
+    #expect(MemStatsAppState.effectiveInterval(setting: 1, mode: .active) == 1)
+    #expect(MemStatsAppState.effectiveInterval(setting: 5, mode: .idle) == 15)
+    #expect(MemStatsAppState.effectiveInterval(setting: 15, mode: .idle) == 15)
+    #expect(MemStatsAppState.effectiveInterval(setting: 30, mode: .idle) == 30)
+  }
 
-    #expect(appState.samplingInterval(for: .active) == 5)
-    #expect(appState.samplingInterval(for: .idle) == 15)
+  @Test func historyCapacityKeepsAboutTenMinutes() {
+    #expect(MemStatsAppState.historyCapacity(interval: 5) == 120)
+    #expect(MemStatsAppState.historyCapacity(interval: 1) == 600)
+    #expect(MemStatsAppState.historyCapacity(interval: 3) == 200)
+    #expect(MemStatsAppState.historyCapacity(interval: 60) == 10)
+    #expect(MemStatsAppState.historyCapacity(interval: 0) == 600)
+  }
+
+  @Test func settingsStoreUsesDefaultsPersistsAndRejectsInvalidValues() {
+    let suiteName = "MemStatsTests.SettingsStore"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+
+    let store = SettingsStore(defaults: defaults)
+    #expect(store.memoryInterval == 5)
+    #expect(store.processInterval == 5)
+    #expect(store.topAppsCount == 8)
+    #expect(store.topProcessesCount == 8)
+
+    store.memoryInterval = 2
+    store.processInterval = 30
+    store.topAppsCount = 15
+    store.topProcessesCount = 20
+    let restored = SettingsStore(defaults: defaults)
+    #expect(restored.memoryInterval == 2)
+    #expect(restored.processInterval == 30)
+    #expect(restored.topAppsCount == 15)
+    #expect(restored.topProcessesCount == 20)
+
+    // A value outside the options falls back to the default, both when set and when read.
+    restored.processInterval = 1
+    #expect(restored.processInterval == 5)
+    #expect(defaults.integer(forKey: SettingsStore.processIntervalKey) == 5)
+
+    defaults.set(7, forKey: SettingsStore.memoryIntervalKey)
+    defaults.set("many", forKey: SettingsStore.topAppsCountKey)
+    defaults.set(0, forKey: SettingsStore.topProcessesCountKey)
+    let invalid = SettingsStore(defaults: defaults)
+    #expect(invalid.memoryInterval == 5)
+    #expect(invalid.topAppsCount == 8)
+    #expect(invalid.topProcessesCount == 8)
+  }
+
+  @MainActor @Test func processViewModelUsesSeparateLimitsForAppsAndProcesses() {
+    let vm = ProcessViewModel(topAppsLimit: 2, topProcessesLimit: 5)
+    let snapshots = (1...10).map { index in
+      ProcessSnapshot(
+        user: "alice",
+        pid: Int32(index),
+        rssBytes: UInt64((11 - index) * 100),
+        command: "/bin/tool\(index)"
+      )
+    }
+    vm.apply(snapshots: snapshots)
+
+    #expect(vm.topProcesses.count == 5)
+    #expect(vm.visibleApps.count == 2)
+
+    // Changing the row counts re-slices the current snapshot without a new sample.
+    vm.setLimits(topApps: 8, topProcesses: 3)
+    #expect(vm.topProcesses.map(\.pid) == [1, 2, 3])
+    #expect(vm.visibleApps.count == 8)
+
+    vm.selectedUser = "alice"
+    #expect(vm.visibleProcesses.count == 3)
+  }
+
+  @MainActor @Test func appStateAppliesRowCountAndHistorySettings() {
+    let suiteName = "MemStatsTests.AppStateSettings"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+
+    let appState = MemStatsAppState(startSampling: false, defaults: defaults)
+    #expect(appState.memoryVM.maxSamples == 120)
+    #expect(appState.processVM.topProcessesLimit == 8)
+
+    appState.settings.memoryInterval = 1
+    appState.settings.processInterval = 10
+    appState.settings.topAppsCount = 5
+    appState.settings.topProcessesCount = 15
+
+    #expect(appState.memoryVM.maxSamples == 600)
+    #expect(appState.processVM.maxSamples == 60)
+    #expect(appState.processVM.topAppsLimit == 5)
+    #expect(appState.processVM.topProcessesLimit == 15)
   }
 
   @Test func growthDetectorFlagsContinuousGrowth() {
@@ -646,16 +732,16 @@ struct MemStatsTests {
   @Test func initialSamplingDelaySkipsResampleRightAfterASample() {
     let now = Date(timeIntervalSince1970: 1_000)
 
-    #expect(MemStatsAppState.initialSamplingDelay(lastSampleAt: nil, now: now, interval: 5) == 0)
+    #expect(PeriodicSampler.initialDelay(lastSampleAt: nil, now: now, interval: 5) == 0)
     #expect(
-      MemStatsAppState.initialSamplingDelay(
+      PeriodicSampler.initialDelay(
         lastSampleAt: now.addingTimeInterval(-0.5), now: now, interval: 5) == 4.5)
     #expect(
-      MemStatsAppState.initialSamplingDelay(
+      PeriodicSampler.initialDelay(
         lastSampleAt: now.addingTimeInterval(-3), now: now, interval: 5) == 0)
     // Clock moved backwards: sample right away instead of waiting.
     #expect(
-      MemStatsAppState.initialSamplingDelay(
+      PeriodicSampler.initialDelay(
         lastSampleAt: now.addingTimeInterval(10), now: now, interval: 5) == 0)
   }
 
@@ -664,13 +750,39 @@ struct MemStatsTests {
 
     // Closing never samples right away: the next sample lands one idle interval after the last.
     #expect(
-      MemStatsAppState.initialSamplingDelay(
+      PeriodicSampler.initialDelay(
         lastSampleAt: now.addingTimeInterval(-3), now: now, interval: 15, minimumGap: .infinity
       ) == 12)
     #expect(
-      MemStatsAppState.initialSamplingDelay(
+      PeriodicSampler.initialDelay(
         lastSampleAt: now.addingTimeInterval(-20), now: now, interval: 15, minimumGap: .infinity
       ) == 0)
+  }
+
+  @MainActor @Test func periodicSamplerRunsOneFollowUpForRequestsDuringARun() {
+    var runs = 0
+    var pendingCompletion: (@MainActor () -> Void)?
+    let sampler = PeriodicSampler(timerQueue: DispatchQueue(label: "test.sampler")) { completion in
+      runs += 1
+      pendingCompletion = completion
+    }
+
+    sampler.sampleNow()
+    #expect(runs == 1)
+    #expect(sampler.isSampling)
+
+    // Several requests during a run collapse into one follow-up.
+    sampler.sampleNow()
+    sampler.sampleNow()
+    #expect(runs == 1)
+
+    pendingCompletion?()
+    #expect(runs == 2)
+    #expect(sampler.isSampling)
+
+    pendingCompletion?()
+    #expect(runs == 2)
+    #expect(!sampler.isSampling)
   }
 
   @Test func parseTopMemoryTokenHandlesChangeMarkersAndClamps() {

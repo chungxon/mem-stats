@@ -142,36 +142,36 @@ Settings (lưu `UserDefaults`, đổi là áp dụng ngay, giá trị lưu sai t
 
 Sampling:
 
-- [ ] `SettingsStore` (`ObservableObject`) giữ 4 setting trên, đọc/ghi `UserDefaults`, validate theo danh sách lựa chọn.
-- [ ] Tách thành 2 timer trên `samplingQueue`:
+- [x] `SettingsStore` (`ObservableObject`) giữ 4 setting trên, đọc/ghi `UserDefaults`, validate theo danh sách lựa chọn.
+- [x] Tách thành 2 timer trên `samplingQueue`: (thực tế: timer chạy trên 1 queue, còn công việc sample chạy trên 2 serial queue riêng để `top` chậm không chặn memory sample; logic timer + coalesce gom vào `PeriodicSampler`)
   - Memory timer: `host_statistics64` + `sysctl`, cập nhật menu bar, history, donut (dùng process snapshot gần nhất).
   - Process timer: `top`, cập nhật Top Apps, Top Processes, donut, growth hints.
-- [ ] Giữ idle mode: khi popover mở dùng interval đã chọn, khi đóng dùng `max(interval đã chọn, 15s)` cho từng timer.
-- [ ] Giữ rule 2s khi mở/đóng popover và coalesce sample (Task 2) cho cả 2 timer.
-- [ ] Refresh Now chạy ngay cả 2 loại sample.
-- [ ] History giữ cửa sổ khoảng 10 phút: `maxSamples = ceil(600 / memory interval)`, giới hạn trên 600 điểm.
-- [ ] Growth hint giữ rule "12 sample liên tiếp" theo process timer, ghi rõ trong docs là khoảng thời gian thay đổi theo interval.
-- [ ] Dòng "Sampling: Active (5s) / Idle (15s)" trong History hiện đúng interval thực tế.
-- [ ] `ProcessViewModel`: tách `topAppsLimit` và `topProcessesLimit`, đổi số dòng thì cắt lại danh sách hiện có, không cần resample.
+- [x] Giữ idle mode: khi popover mở dùng interval đã chọn, khi đóng dùng `max(interval đã chọn, 15s)` cho từng timer.
+- [x] Giữ rule 2s khi mở/đóng popover và coalesce sample (Task 2) cho cả 2 timer.
+- [x] Refresh Now chạy ngay cả 2 loại sample.
+- [x] History giữ cửa sổ khoảng 10 phút: `maxSamples = ceil(600 / memory interval)`, giới hạn trên 600 điểm.
+- [x] Growth hint giữ rule "12 sample liên tiếp" theo process timer, ghi rõ trong docs là khoảng thời gian thay đổi theo interval.
+- [x] Dòng "Sampling: Active (5s) / Idle (15s)" trong History hiện đúng interval thực tế.
+- [x] `ProcessViewModel`: tách `topAppsLimit` và `topProcessesLimit`, đổi số dòng thì cắt lại danh sách hiện có, không cần resample.
 
 Settings window:
 
-- [ ] Cửa sổ Settings tự quản lý (`NSWindow` + `NSHostingController`) trong `AppDelegate`, vì app là `LSUIElement` nên mở `Settings` scene của SwiftUI từ `NSMenu` không ổn định. Mở cửa sổ thì `NSApp.activate()` và đưa lên trước, mở lại thì dùng lại cửa sổ cũ.
-- [ ] `SettingsView`: `Form` với `.formStyle(.grouped)`, `Picker` kiểu `.menu`, giống ảnh mẫu:
+- [x] Cửa sổ Settings tự quản lý (`NSWindow` + `NSHostingController`) trong `AppDelegate`, vì app là `LSUIElement` nên mở `Settings` scene của SwiftUI từ `NSMenu` không ổn định. Mở cửa sổ thì `NSApp.activate()` và đưa lên trước, mở lại thì dùng lại cửa sổ cũ.
+- [x] `SettingsView`: `Form` với `.formStyle(.grouped)`, `Picker` kiểu `.menu`, giống ảnh mẫu:
   - Section 1: Update interval, Update interval for top processes.
   - Section 2: Number of top apps, Number of top processes.
   - Section 3: Open at Login, Show System Users (dùng chung logic với context menu, đồng bộ 2 chiều).
-- [ ] Context menu thêm "Settings…" (Cmd+,) phía trên About. Nút gear trong popover mở context menu nên cũng vào được Settings.
-- [ ] Bỏ `Settings { EmptyView() }` trong `MemStatsApp.swift` (thay bằng scene rỗng phù hợp) để Cmd+, không mở cửa sổ trống.
+- [x] Context menu thêm "Settings…" (Cmd+,) phía trên About. Nút gear trong popover mở context menu nên cũng vào được Settings.
+- [x] Bỏ `Settings { EmptyView() }` trong `MemStatsApp.swift` (thay bằng scene rỗng phù hợp) để Cmd+, không mở cửa sổ trống.
 
 Tests và docs:
 
-- [ ] Test `SettingsStore`: mặc định, lưu/đọc lại, giá trị không hợp lệ về mặc định.
-- [ ] Test interval khi idle: `max(setting, 15)`.
-- [ ] Test `ProcessViewModel` với limit khác nhau cho apps và processes.
-- [ ] Test `maxSamples` theo interval.
-- [ ] Cập nhật docs: §3 (context menu thêm Settings…), §5.1, §5.3, §7 (maxSamples), §8, §8.1 (số dòng theo setting), §14.1, §14.3, thêm mục Settings.
-- [ ] README: ghi chú interval thấp làm tăng CPU (nhất là top processes).
+- [x] Test `SettingsStore`: mặc định, lưu/đọc lại, giá trị không hợp lệ về mặc định.
+- [x] Test interval khi idle: `max(setting, 15)`.
+- [x] Test `ProcessViewModel` với limit khác nhau cho apps và processes.
+- [x] Test `maxSamples` theo interval.
+- [x] Cập nhật docs: §3 (context menu thêm Settings…), §5.1, §5.3, §7 (maxSamples), §8, §8.1 (số dòng theo setting), §14.1, §14.3, thêm mục Settings.
+- [x] README: ghi chú interval thấp làm tăng CPU (nhất là top processes).
 
 Commit: `feat(settings): add settings window for update intervals and row counts`
 

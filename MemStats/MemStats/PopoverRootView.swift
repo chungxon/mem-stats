@@ -81,12 +81,13 @@ struct PopoverRootView: View {
   }
 
   private var modeLabel: String {
-    switch appState.samplingMode {
-    case .active:
-      return "Active (5s)"
-    case .idle:
-      return "Idle (15s)"
+    let mode = appState.samplingMode == .active ? "Active" : "Idle"
+    let memorySeconds = Int(appState.memorySamplingInterval)
+    let processSeconds = Int(appState.processSamplingInterval)
+    if memorySeconds == processSeconds {
+      return "\(mode) (\(memorySeconds)s)"
     }
+    return "\(mode) (\(memorySeconds)s, processes \(processSeconds)s)"
   }
 
   private var historyScaleUpperBound: Double {

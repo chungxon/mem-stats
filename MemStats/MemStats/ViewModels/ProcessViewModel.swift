@@ -23,25 +23,44 @@ final class ProcessViewModel: ObservableObject {
   }
 
   private var userHistoryByUser: [String: [UserMemoryHistorySample]] = [:]
-  private let maxSamples: Int
-  private var topLimit: Int = 8
+  private(set) var maxSamples: Int
+  private(set) var topAppsLimit: Int
+  private(set) var topProcessesLimit: Int
   private var appIdentities: [Int32: AppIdentity] = [:]
 
-  init(maxSamples: Int = 120) {
+  init(maxSamples: Int = 120, topAppsLimit: Int = 8, topProcessesLimit: Int = 8) {
     self.maxSamples = max(maxSamples, 1)
+    self.topAppsLimit = max(topAppsLimit, 0)
+    self.topProcessesLimit = max(topProcessesLimit, 0)
+  }
+
+  /// Changes the row counts and re-slices the current snapshot, without a new sample.
+  func setLimits(topApps: Int, topProcesses: Int) {
+    let nextAppsLimit = max(topApps, 0)
+    let nextProcessesLimit = max(topProcesses, 0)
+    guard nextAppsLimit != topAppsLimit || nextProcessesLimit != topProcessesLimit else { return }
+
+    topAppsLimit = nextAppsLimit
+    topProcessesLimit = nextProcessesLimit
+    self.topProcesses = Array(allProcesses.prefix(topProcessesLimit))
+    refreshVisibleApps()
+  }
+
+  /// Changes how many samples each user's history keeps and drops the oldest extra ones.
+  func setMaxSamples(_ maxSamples: Int) {
+    self.maxSamples = max(maxSamples, 1)
+    userHistoryByUser = userHistoryByUser.mapValues { Array($0.suffix(self.maxSamples)) }
   }
 
   func apply(
     snapshots: [ProcessSnapshot],
     appIdentities: [Int32: AppIdentity] = [:],
-    topLimit: Int = 8,
     targetUsedBytes: UInt64? = nil,
     sampledAt: Date = Date()
   ) {
-    self.topLimit = max(topLimit, 0)
     self.appIdentities = appIdentities
     allProcesses = snapshots
-    topProcesses = Array(snapshots.prefix(self.topLimit))
+    topProcesses = Array(snapshots.prefix(topProcessesLimit))
     let adjustedTimestamp: Date
     let latestTimestamp = userHistoryByUser.values.compactMap(\.last?.timestamp).max()
     if let latestTimestamp, sampledAt <= latestTimestamp {
@@ -88,7 +107,7 @@ final class ProcessViewModel: ObservableObject {
 
   var visibleProcesses: [ProcessSnapshot] {
     guard let selectedUser else { return topProcesses }
-    return Array(allProcesses.filter { $0.user == selectedUser }.prefix(topLimit))
+    return Array(allProcesses.filter { $0.user == selectedUser }.prefix(topProcessesLimit))
   }
 
   private func refreshVisibleApps() {
@@ -102,7 +121,7 @@ final class ProcessViewModel: ObservableObject {
     visibleApps = AppMemoryAggregator.aggregate(
       processes: scopedProcesses,
       identities: appIdentities,
-      limit: topLimit
+      limit: topAppsLimit
     )
   }
 

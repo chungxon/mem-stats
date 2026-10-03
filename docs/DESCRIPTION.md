@@ -90,6 +90,8 @@ All inside **one popup window**.
 ```text
 • Open at Login [✓]
 • Show System Users [✓]
+---
+• Settings…   ⌘,
 • About
 • Quit
 ```
@@ -105,6 +107,8 @@ All inside **one popup window**.
 * The checkmark always reflects `SMAppService.mainApp.status` (re-read after each change and each time the menu opens)
 * If macOS needs approval (`.requiresApproval`), show an alert that opens System Settings > Login Items
 * `Show System Users`: see §14.5
+* `Settings…`: opens the Settings window (§15)
+* Open at Login and Show System Users are also in Settings and stay in sync both ways
 
 ---
 
@@ -132,20 +136,25 @@ This is where most people mess up.
 
 DO NOT run everything every second.
 
-#### Suggested
+#### Two timers
 
 ```text
-Memory stats: every 5s
-Process list: every 5s
-UI refresh: every 5s
+Memory timer  (host_statistics64 + sysctl): default every 5s, setting 1-60s
+Process timer (top):                        default every 5s, setting 3-60s
 ```
 
-👉 Process parsing is the expensive part (`top` snapshot + parse).
+👉 Process parsing is the expensive part (`top` snapshot + parse), so it has its own interval with a 3s minimum.
 
-* Opening the popover switches to the active interval and samples right away, unless a sample started less than 2s ago; then the next one waits for the new interval.
-* Closing the popover only switches to the idle interval. It never samples right away: the next sample runs one idle interval after the last one.
-* `Refresh Now` samples immediately and pushes the next scheduled tick a full interval out.
-* Only one sample runs at a time. `Refresh Now` (or any other immediate request) while a sample is running marks one follow-up sample instead of queueing another `top` run, so repeated clicks run `top` at most once more. A timer tick that lands during a running sample is skipped.
+* Memory timer: updates the menu bar, history and donut (using the latest process snapshot).
+* Process timer: updates Top Apps, Top Processes, the donut and the growth hints.
+* Each timer samples on its own serial queue, so a slow `top` run never delays a memory sample.
+* While the popover is open each timer uses its setting; while it is closed it uses `max(setting, 15s)` (§14.1).
+* The rules below apply to each timer separately:
+  * Opening the popover switches to the active interval and samples right away, unless a sample started less than 2s ago; then the next one waits for the new interval.
+  * Closing the popover only switches to the idle interval. It never samples right away: the next sample runs one interval after the last one.
+  * Changing an interval in Settings works the same way: the new interval counts from the last sample.
+  * Only one sample of a kind runs at a time. An immediate request while one is running marks one follow-up sample instead of queueing another run, so repeated `Refresh Now` clicks run `top` at most once more. A timer tick that lands during a running sample is skipped.
+* `Refresh Now` samples memory and processes immediately and pushes each timer's next tick a full interval out.
 * `top` gets 6s before it is stopped (it takes about 1.4s on an idle machine). Its output is only read after both pipe readers finish.
 * The `top` mem column can end with `+` or `-` (changed since the last sample); the marker is ignored, and values are clamped before converting to bytes.
 
@@ -170,7 +179,7 @@ UI refresh: every 5s
   * keep a broader process set (for example top 500 from `top`) to support donut/user aggregation accurately
 * UI list:
 
-  * show top 8 processes in the popover
+  * show the top N processes in the popover (Settings, default 8)
 
 ---
 
@@ -241,7 +250,7 @@ UI refresh: every 5s
 
 ### Status rows
 
-* `Sampling`: current mode and interval, `Active (5s)` while the popover is open, `Idle (15s)` while it is closed
+* `Sampling`: current mode and the intervals the timers run at, for example `Active (5s)` while the popover is open and `Idle (15s)` while it is closed. When the two timers differ: `Active (2s, processes 10s)`
 * `History Samples`: number of samples currently kept
 
 ### Metrics (In-memory)
@@ -260,13 +269,14 @@ UI refresh: every 5s
 
 ### Time ranges
 
-Don’t sample processes too frequently -> 5-10s interval
-
-* Keep last:
+* Keep about 10 minutes of samples at the configured interval. While the popover is closed and samples come every 15s, the same buffer covers a longer stretch:
 
 ```swift
-let maxSamples = 120 // ~10 minutes if 5s interval
+maxSamples = min(600, ceil(600 / memoryInterval)) // 120 at the default 5s
 ```
+
+* The selected user series uses the same rule with the process interval
+* Changing the interval trims the oldest samples that no longer fit
 
 ### Behavior
 
@@ -282,7 +292,8 @@ let maxSamples = 120 // ~10 minutes if 5s interval
 ### Default
 
 * Runtime keeps all sampled processes (all users by default)
-* UI shows **Top 8 processes** in descending memory order
+* UI shows the **top N processes** in descending memory order (N from Settings, default 8)
+* Changing N re-slices the current snapshot right away, without a new sample
 
 ### When user selected
 
@@ -321,7 +332,7 @@ let maxSamples = 120 // ~10 minutes if 5s interval
 
 ### Display
 
-* Top 8 apps in descending memory order
+* Top N apps in descending memory order (N from Settings, default 8, separate from the process count)
 * Columns: App, process count, Memory
 * Hover an app row → tooltip with bundle/executable path
 * When a user is selected, only that user's processes are aggregated
@@ -427,12 +438,11 @@ DispatchQueue.global(qos: .utility)
 
 * When popup closed:
 
-  * reduce sampling:
+  * reduce sampling, each timer to `max(setting, 15s)`:
 
     ```text
-    Memory stats: every 15s
-    Process list: every 15s
-    UI refresh: every 15s
+    Memory stats: every 15s (or the setting if it is longer)
+    Process list: every 15s (or the setting if it is longer)
     ```
 
 ### 14.2 Smart highlighting (dropped)
@@ -443,7 +453,7 @@ DispatchQueue.global(qos: .utility)
 
 * Detect per user (only users in the current snapshot):
 
-  * continuous growth: memory rises on each of the last 12 samples, with at least 100 MB total growth
+  * continuous growth: memory rises on each of the last 12 process samples, with at least 100 MB total growth. The time this covers follows the process interval (1 minute at 5s, 12 minutes at 60s)
   * sudden jump: growth between the last two samples > max(500 MB, 5% of total RAM)
 * A user missing from a snapshot loses its history, so coming back is not counted as a jump
 * Up to 2 hints show as secondary caption lines in the History section, each with a swatch in the user's stable palette color, the same one its donut slice uses when it has its own slice (orange is reserved for the warning pressure level)
@@ -454,12 +464,33 @@ DispatchQueue.global(qos: .utility)
 
 ### 14.5 Show/Hide system users
 
-System users can add noise, so they can be hidden with the `Show System Users` context menu option.
+System users can add noise, so they can be hidden with the `Show System Users` option in the context menu or in Settings.
 
 * System users: `root` and `_*`
 * Default: shown, to match Activity Monitor's all-users view
 * When hidden: excluded from the sampled processes, so they disappear from the donut, history (selected user series), Top Apps and Top Processes. Their memory is still part of the system "Used" total, so it shows up in the "Unattributed Used" donut slice.
 * The choice persists via `UserDefaults` and triggers an immediate resample
+
+---
+
+## 15. Settings
+
+Opened from `Settings…` (⌘,) in the context menu, which the popover gear also opens.
+
+| Setting | Options | Default |
+| --- | --- | --- |
+| Update interval (RAM, pressure, swap, menu bar, history) | 1, 2, 3, 5, 10, 15, 30, 60s | 5s |
+| Update interval for top processes (`top`) | 3, 5, 10, 15, 30, 60s | 5s |
+| Number of top apps | 5, 8, 10, 15, 20 | 8 |
+| Number of top processes | 5, 8, 10, 15, 20 | 8 |
+| Open at Login | on / off | off |
+| Show System Users | on / off | on |
+
+* Stored in `UserDefaults`, applied right away. A stored value outside the options falls back to the default.
+* `top` takes about 1.4s per run, so the process interval starts at 3s. Short intervals cost more CPU, mostly for the process timer.
+* Window: a self-managed `NSWindow` + `NSHostingController` (the app is an `LSUIElement` accessory, and opening a SwiftUI `Settings` scene from an `NSMenu` is not reliable). Opening it activates the app and brings the window to the front; reopening reuses the same window. ⌘W closes it.
+* Layout: `Form` with `.formStyle(.grouped)` and `.menu` pickers in three sections (intervals, row counts, Open at Login + Show System Users).
+* The app has no SwiftUI `Settings` scene (its scene is a `MenuBarExtra` that is never inserted), so ⌘, never opens an empty window.
 
 ---
 
@@ -478,7 +509,8 @@ System users can add noise, so they can be hidden with the `Show System Users` c
 
 * Lightweight sampling
 * Run at login
-* Context menu (Open at Login, Show System Users, About, Quit)
+* Context menu (Open at Login, Show System Users, Settings…, About, Quit)
+* Settings window (§15)
 
 ### Note
 

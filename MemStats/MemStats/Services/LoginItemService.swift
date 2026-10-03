@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import ServiceManagement
 
@@ -21,12 +22,13 @@ struct MainAppLoginItemRegistrant: LoginItemRegistrant {
   }
 }
 
-final class LoginItemService {
+/// Observable so the Settings window and the context menu always show the same state.
+final class LoginItemService: ObservableObject {
   private let openAtLoginKey = "openAtLogin"
   private let defaults: UserDefaults
   private let registrant: LoginItemRegistrant
 
-  private(set) var isEnabled: Bool
+  @Published private(set) var isEnabled: Bool
 
   init(
     defaults: UserDefaults = .standard,
@@ -39,7 +41,9 @@ final class LoginItemService {
 
   func syncWithSystem() {
     let enabled = registrant.status == .enabled
-    isEnabled = enabled
+    if isEnabled != enabled {
+      isEnabled = enabled
+    }
     defaults.set(enabled, forKey: openAtLoginKey)
   }
 

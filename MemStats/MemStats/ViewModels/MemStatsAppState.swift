@@ -8,7 +8,16 @@ final class MemStatsAppState: ObservableObject {
     case idle
   }
 
+  /// While the popover is closed, neither timer runs faster than this.
+  nonisolated static let idleMinimumInterval = 15
+  /// History keeps about this many seconds of samples, whatever the interval.
+  nonisolated static let historyWindowSeconds = 600
+  nonisolated static let maxHistorySamples = 600
+
   @Published private(set) var samplingMode: SamplingMode = .idle
+  /// Intervals the timers currently run at, for the History status row.
+  @Published private(set) var memorySamplingInterval: TimeInterval
+  @Published private(set) var processSamplingInterval: TimeInterval
   @Published private(set) var lastSamplingError: String?
   @Published private(set) var donutSlices: [DonutSlice] = []
   @Published private(set) var growthHints: [MemoryGrowthHint] = []
@@ -17,39 +26,81 @@ final class MemStatsAppState: ObservableObject {
 
   let memoryVM: MemoryViewModel
   let processVM: ProcessViewModel
+  let settings: SettingsStore
 
   static let showsSystemUsersKey = "showSystemUsers"
 
   private let memoryService: any MemoryStatsProviding
   private let processService: any ProcessSnapshotProviding
   private let defaults: UserDefaults
-  private let samplingQueue = DispatchQueue(label: "com.chungxon.memstats.sampling", qos: .utility)
+  private let timerQueue = DispatchQueue(label: "com.chungxon.memstats.timers", qos: .utility)
+  /// Separate queues, so a slow `top` run never delays a memory sample.
+  private let memoryQueue = DispatchQueue(label: "com.chungxon.memstats.memory", qos: .utility)
+  private let processQueue = DispatchQueue(label: "com.chungxon.memstats.process", qos: .utility)
 
-  private var timer: DispatchSourceTimer?
-  private var lastSampleAt: Date?
-  /// True while a sample runs on `samplingQueue`, so overlapping requests do not queue up
-  /// extra `top` runs.
-  private(set) var isSampling = false
-  /// Set when a sample is requested while one is running; exactly one more sample follows.
-  private var needsResample = false
+  private lazy var memorySampler = PeriodicSampler(timerQueue: timerQueue) {
+    [weak self] completion in
+    self?.runMemorySample(completion: completion)
+  }
+  private lazy var processSampler = PeriodicSampler(timerQueue: timerQueue) {
+    [weak self] completion in
+    self?.runProcessSample(completion: completion)
+  }
+  private var memoryError: String?
+  private var processError: String?
+  private var cancellables: Set<AnyCancellable> = []
 
   init(
     startSampling: Bool = true,
     defaults: UserDefaults = .standard,
+    settings: SettingsStore? = nil,
     memoryService: (any MemoryStatsProviding)? = nil,
     processService: (any ProcessSnapshotProviding)? = nil
   ) {
-    memoryVM = MemoryViewModel()
-    processVM = ProcessViewModel()
+    let settings = settings ?? SettingsStore(defaults: defaults)
+    self.settings = settings
+    memoryVM = MemoryViewModel(
+      maxSamples: Self.historyCapacity(interval: settings.memoryInterval))
+    processVM = ProcessViewModel(
+      maxSamples: Self.historyCapacity(interval: settings.processInterval),
+      topAppsLimit: settings.topAppsCount,
+      topProcessesLimit: settings.topProcessesCount
+    )
     self.memoryService = memoryService ?? MemoryStatsService()
     self.processService = processService ?? ProcessSnapshotService()
     self.defaults = defaults
     // Shown by default to match Activity Monitor's all-users view.
     showsSystemUsers = defaults.object(forKey: Self.showsSystemUsersKey) as? Bool ?? true
+    memorySamplingInterval = Self.effectiveInterval(setting: settings.memoryInterval, mode: .idle)
+    processSamplingInterval = Self.effectiveInterval(
+      setting: settings.processInterval, mode: .idle)
+
+    // `@Published` emits before the property changes, so use the emitted values.
+    Publishers.CombineLatest4(
+      settings.$memoryInterval,
+      settings.$processInterval,
+      settings.$topAppsCount,
+      settings.$topProcessesCount
+    )
+    .dropFirst()
+    .removeDuplicates { $0 == $1 }
+    .sink { [weak self] memoryInterval, processInterval, topApps, topProcesses in
+      self?.applySettings(
+        memoryInterval: memoryInterval,
+        processInterval: processInterval,
+        topApps: topApps,
+        topProcesses: topProcesses
+      )
+    }
+    .store(in: &cancellables)
 
     if startSampling {
-      restartSamplingTimer()
+      restartTimers()
     }
+  }
+
+  var isSampling: Bool {
+    memorySampler.isSampling || processSampler.isSampling
   }
 
   func setShowsSystemUsers(_ shows: Bool) {
@@ -58,13 +109,9 @@ final class MemStatsAppState: ObservableObject {
     showsSystemUsers = shows
     defaults.set(shows, forKey: Self.showsSystemUsersKey)
     // Resample right away so every section reflects the new filter.
-    if timer != nil {
-      sampleImmediately()
+    if processSampler.isScheduled {
+      processSampler.sampleNow()
     }
-  }
-
-  deinit {
-    timer?.cancel()
   }
 
   func setPopoverPresented(_ isPresented: Bool) {
@@ -74,148 +121,129 @@ final class MemStatsAppState: ObservableObject {
     samplingMode = nextMode
     // Opening samples right away (unless one ran moments ago). Closing only switches to the
     // idle interval, counted from the last sample.
-    restartSamplingTimer(waitsFullInterval: !isPresented)
+    restartTimers(waitsFullInterval: !isPresented)
   }
 
-  /// Samples now. If a sample is already running, one more runs right after it instead.
+  /// Samples memory and processes now. A kind that is already running gets exactly one
+  /// follow-up run instead.
   func sampleImmediately() {
-    performSample(coalescesWhenBusy: true)
-    // Push the next scheduled tick a full interval out so it does not run right after this one.
-    restartSamplingTimer()
+    memorySampler.sampleNow()
+    processSampler.sampleNow()
   }
 
-  func samplingInterval(for mode: SamplingMode) -> TimeInterval {
+  /// Interval for a timer: the setting while the popover is open, at least
+  /// `idleMinimumInterval` while it is closed. Never below 1s, since `SettingsStore` briefly
+  /// publishes an invalid value before falling back to the default.
+  nonisolated static func effectiveInterval(setting: Int, mode: SamplingMode) -> TimeInterval {
     switch mode {
     case .active:
-      return 5
+      return TimeInterval(max(setting, 1))
     case .idle:
-      return 15
+      return TimeInterval(max(setting, idleMinimumInterval))
     }
   }
 
-  /// Delay before the first sample after the timer restarts. Opening and closing the popover
-  /// restarts the timer, so a sample taken moments ago is reused instead of spawning `top`
-  /// again right away.
-  nonisolated static func initialSamplingDelay(
-    lastSampleAt: Date?,
-    now: Date,
-    interval: TimeInterval,
-    minimumGap: TimeInterval = 2
-  ) -> TimeInterval {
-    guard let lastSampleAt else { return 0 }
-
-    let elapsed = now.timeIntervalSince(lastSampleAt)
-    guard elapsed >= 0, elapsed < minimumGap else { return 0 }
-    return max(0, interval - elapsed)
+  /// Samples kept for about `historyWindowSeconds` at the given interval, capped at
+  /// `maxHistorySamples`.
+  nonisolated static func historyCapacity(interval: Int) -> Int {
+    let samples = (Double(historyWindowSeconds) / Double(max(interval, 1))).rounded(.up)
+    return min(maxHistorySamples, Int(samples))
   }
 
-  private func restartSamplingTimer(waitsFullInterval: Bool = false) {
-    timer?.cancel()
-
-    let interval = samplingInterval(for: samplingMode)
-    let delay = Self.initialSamplingDelay(
-      lastSampleAt: lastSampleAt,
-      now: Date(),
-      interval: interval,
-      minimumGap: waitsFullInterval ? .infinity : 2
-    )
-    let nextTimer = DispatchSource.makeTimerSource(queue: samplingQueue)
-    nextTimer.schedule(
-      deadline: .now() + delay,
-      repeating: interval
-    )
-    nextTimer.setEventHandler { [weak self] in
-      Task { @MainActor [weak self] in
-        // A tick that lands during a slow sample is dropped; the next tick catches up.
-        self?.performSample(coalescesWhenBusy: false)
-      }
-    }
-
-    timer = nextTimer
-    nextTimer.resume()
+  private func restartTimers(waitsFullInterval: Bool = false) {
+    memorySamplingInterval = Self.effectiveInterval(
+      setting: settings.memoryInterval, mode: samplingMode)
+    processSamplingInterval = Self.effectiveInterval(
+      setting: settings.processInterval, mode: samplingMode)
+    memorySampler.start(interval: memorySamplingInterval, waitsFullInterval: waitsFullInterval)
+    processSampler.start(interval: processSamplingInterval, waitsFullInterval: waitsFullInterval)
   }
 
-  private func performSample(coalescesWhenBusy: Bool) {
-    guard !isSampling else {
-      if coalescesWhenBusy {
-        needsResample = true
-      }
-      return
-    }
+  private func applySettings(
+    memoryInterval: Int,
+    processInterval: Int,
+    topApps: Int,
+    topProcesses: Int
+  ) {
+    memoryVM.setMaxSamples(Self.historyCapacity(interval: memoryInterval))
+    processVM.setMaxSamples(Self.historyCapacity(interval: processInterval))
+    processVM.setLimits(topApps: topApps, topProcesses: topProcesses)
 
-    isSampling = true
-    lastSampleAt = Date()
+    // A new interval takes effect from the last sample, so a change never forces a sample.
+    let nextMemoryInterval = Self.effectiveInterval(setting: memoryInterval, mode: samplingMode)
+    if memorySampler.isScheduled, nextMemoryInterval != memorySamplingInterval {
+      memorySamplingInterval = nextMemoryInterval
+      memorySampler.start(interval: nextMemoryInterval, waitsFullInterval: true)
+    }
+    let nextProcessInterval = Self.effectiveInterval(setting: processInterval, mode: samplingMode)
+    if processSampler.isScheduled, nextProcessInterval != processSamplingInterval {
+      processSamplingInterval = nextProcessInterval
+      processSampler.start(interval: nextProcessInterval, waitsFullInterval: true)
+    }
+  }
+
+  private func runMemorySample(completion: @escaping @MainActor () -> Void) {
     let memoryService = memoryService
+    memoryQueue.async { [weak self] in
+      let sampledAt = Date()
+      let result = Result { try memoryService.fetchMemoryStats() }
+      Task { @MainActor [weak self] in
+        defer { completion() }
+        guard let self else { return }
+        switch result {
+        case .success(let stats):
+          self.memoryError = nil
+          self.applySample(stats: stats, processes: nil, sampledAt: sampledAt)
+        case .failure(let error):
+          self.memoryError = "Memory: \(error.localizedDescription)"
+        }
+        self.publishSamplingError()
+      }
+    }
+  }
+
+  private func runProcessSample(completion: @escaping @MainActor () -> Void) {
     let processService = processService
     let includesSystemUsers = showsSystemUsers
-
-    samplingQueue.async { [weak self] in
-      guard self != nil else { return }
+    processQueue.async { [weak self] in
       let sampledAt = Date()
-      var messages: [String] = []
-      var sampledMemoryStats: MemoryStats?
-      var sampledProcesses: [ProcessSnapshot] = []
-      var sampledAppIdentities: [Int32: AppIdentity] = [:]
-      var didSampleProcesses = false
-
-      let memoryResult = Result { try memoryService.fetchMemoryStats() }
-      switch memoryResult {
-      case .success(let stats):
-        sampledMemoryStats = stats
-      case .failure(let error):
-        let message = "Memory: \(error.localizedDescription)"
-        messages.append(message)
-      }
-
-      let processResult = Result {
-        try processService.fetchProcesses(
+      let result = Result {
+        let processes = try processService.fetchProcesses(
           includeRootUser: includesSystemUsers,
           includeSystemUsers: includesSystemUsers
         )
+        return (processes, AppIdentityResolver.resolve(pids: processes.map(\.pid)))
       }
-      switch processResult {
-      case .success(let processes):
-        sampledProcesses = processes
-        sampledAppIdentities = AppIdentityResolver.resolve(pids: processes.map(\.pid))
-        didSampleProcesses = true
-      case .failure(let error):
-        let message = "Process: \(error.localizedDescription)"
-        messages.append(message)
-      }
-
-      let sampledError = messages.isEmpty ? nil : messages.joined(separator: " | ")
-      let finalizedMemoryStats = sampledMemoryStats
-      let finalizedProcesses = sampledProcesses
-      let finalizedAppIdentities = sampledAppIdentities
-      let finalizedDidSampleProcesses = didSampleProcesses
-      let finalizedError = sampledError
-      let finalizedSampledAt = sampledAt
       Task { @MainActor [weak self] in
+        defer { completion() }
         guard let self else { return }
-        self.applySample(
-          stats: finalizedMemoryStats,
-          processes: finalizedDidSampleProcesses ? finalizedProcesses : nil,
-          appIdentities: finalizedAppIdentities,
-          sampledAt: finalizedSampledAt
-        )
-        self.lastSamplingError = finalizedError
-        self.finishSample()
+        switch result {
+        case .success(let (processes, identities)):
+          self.processError = nil
+          self.applySample(
+            stats: nil,
+            processes: processes,
+            appIdentities: identities,
+            sampledAt: sampledAt
+          )
+        case .failure(let error):
+          self.processError = "Process: \(error.localizedDescription)"
+        }
+        self.publishSamplingError()
       }
     }
   }
 
-  private func finishSample() {
-    isSampling = false
-    if needsResample {
-      needsResample = false
-      performSample(coalescesWhenBusy: false)
-      // Count the next tick from the follow-up sample, like a direct `sampleImmediately()`.
-      restartSamplingTimer()
+  private func publishSamplingError() {
+    let messages = [memoryError, processError].compactMap { $0 }
+    let nextError = messages.isEmpty ? nil : messages.joined(separator: " | ")
+    if nextError != lastSamplingError {
+      lastSamplingError = nextError
     }
   }
 
-  /// Applies one sampling result. A `nil` value means that part of the sample failed and the
-  /// previous data is kept.
+  /// Applies one sampling result. A `nil` value means that part was not sampled this time
+  /// (it failed, or only the other kind ran), so the previous data is kept.
   func applySample(
     stats: MemoryStats?,
     processes: [ProcessSnapshot]?,
@@ -232,7 +260,6 @@ final class MemStatsAppState: ObservableObject {
       processVM.apply(
         snapshots: processes,
         appIdentities: appIdentities,
-        topLimit: 8,
         targetUsedBytes: targetUsedBytes,
         sampledAt: sampledAt
       )

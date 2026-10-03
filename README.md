@@ -36,7 +36,18 @@ MemStats is signed ad hoc and not notarized yet, so macOS blocks it the first ti
   xattr -dr com.apple.quarantine /Applications/MemStats.app
   ```
 
-After that, MemStats opens normally. It lives in the menu bar only (no Dock icon). Right-click (or Option-click) the menu bar item for Open at Login, Show System Users, About and Quit.
+After that, MemStats opens normally. It lives in the menu bar only (no Dock icon). Right-click (or Option-click) the menu bar item for Open at Login, Show System Users, Settings, About and Quit.
+
+## Settings
+
+Settings (⌘, in the menu bar item's menu) lets you change:
+
+* Update interval for RAM, pressure, swap, the menu bar and history (1 to 60s, default 5s)
+* Update interval for top processes (3 to 60s, default 5s)
+* Number of top apps and top processes shown (5 to 20, default 8)
+* Open at Login and Show System Users
+
+Short intervals use more CPU, mostly the top processes interval, since each update runs `top` (about 1.4s of work). While the popover is closed, both intervals are at least 15s.
 
 ## Update
 

@@ -6,10 +6,18 @@ final class MemoryViewModel: ObservableObject {
   @Published private(set) var currentStats: MemoryStats?
   @Published private(set) var history: [MemoryHistorySample] = []
 
-  private let maxSamples: Int
+  private(set) var maxSamples: Int
 
   init(maxSamples: Int = 120) {
     self.maxSamples = max(maxSamples, 1)
+  }
+
+  /// Changes how many samples are kept and drops the oldest ones that no longer fit.
+  func setMaxSamples(_ maxSamples: Int) {
+    self.maxSamples = max(maxSamples, 1)
+    if history.count > self.maxSamples {
+      history.removeFirst(history.count - self.maxSamples)
+    }
   }
 
   func apply(stats: MemoryStats, sampledAt: Date = Date()) {

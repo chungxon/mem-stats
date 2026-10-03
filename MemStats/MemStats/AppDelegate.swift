@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   private var statusItem: NSStatusItem?
   private let appState = MemStatsAppState()
   private let loginItemService = LoginItemService()
+  private var settingsWindow: NSWindow?
   private var cancellables: Set<AnyCancellable> = []
   private var lastDisplayedUsedBytes: UInt64?
   private var lastDisplayedPressureLevel: MemoryPressureLevel?
@@ -198,23 +199,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     showSystemUsers.state = appState.showsSystemUsers ? .on : .off
     showSystemUsers.toolTip = "Include root and _* system accounts"
 
+    let settings = NSMenuItem(
+      title: "Settings…",
+      action: #selector(showSettings),
+      keyEquivalent: ","
+    )
+    settings.target = self
+
     let about = NSMenuItem(title: "About", action: #selector(showAbout), keyEquivalent: "")
     about.target = self
 
     let quit = NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q")
     quit.target = self
 
-    menu.items = [openAtLogin, showSystemUsers, .separator(), about, quit]
+    menu.items = [openAtLogin, showSystemUsers, .separator(), settings, about, quit]
     statusItem?.menu = menu
     button.performClick(nil)
     statusItem?.menu = nil
   }
 
+  /// Shared by the context menu and the Settings window. The menu re-reads the state each
+  /// time it opens, and Settings observes `loginItemService`.
   @objc
-  private func toggleOpenAtLogin(_ sender: NSMenuItem) {
+  private func toggleOpenAtLogin() {
     do {
-      let enabled = try loginItemService.toggle()
-      sender.state = enabled ? .on : .off
+      try loginItemService.toggle()
       if loginItemService.requiresApproval {
         // Present after the status item menu finishes tracking.
         DispatchQueue.main.async { [weak self] in
@@ -222,7 +231,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         }
       }
     } catch {
-      sender.state = loginItemService.isEnabled ? .on : .off
       DispatchQueue.main.async { [weak self] in
         self?.presentLoginItemError(error)
       }
@@ -233,6 +241,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   private func toggleShowSystemUsers(_ sender: NSMenuItem) {
     appState.setShowsSystemUsers(!appState.showsSystemUsers)
     sender.state = appState.showsSystemUsers ? .on : .off
+  }
+
+  /// A self-managed window, since opening a SwiftUI `Settings` scene from an accessory app's
+  /// `NSMenu` is not reliable. Reopening reuses the same window.
+  @objc
+  private func showSettings() {
+    loginItemService.syncWithSystem()
+    popover.performClose(nil)
+
+    let window = settingsWindow ?? makeSettingsWindow()
+    settingsWindow = window
+    NSApp.activate()
+    window.makeKeyAndOrderFront(nil)
+  }
+
+  private func makeSettingsWindow() -> NSWindow {
+    let controller = NSHostingController(
+      rootView: SettingsView(
+        appState: appState,
+        loginItemService: loginItemService,
+        onToggleOpenAtLogin: { [weak self] in
+          self?.toggleOpenAtLogin()
+        }
+      )
+    )
+    controller.sizingOptions = .preferredContentSize
+
+    let window = SettingsWindow(contentViewController: controller)
+    window.title = "MemStats Settings"
+    window.styleMask = [.titled, .closable]
+    window.isReleasedWhenClosed = false
+    window.center()
+    return window
   }
 
   @objc
@@ -294,5 +335,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
   func popoverDidClose(_ notification: Notification) {
     appState.setPopoverPresented(false)
+  }
+}
+
+/// The app has no main menu (it is a menu bar accessory), so handle Cmd+W here.
+private final class SettingsWindow: NSWindow {
+  override func performKeyEquivalent(with event: NSEvent) -> Bool {
+    let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+    if flags == .command, event.charactersIgnoringModifiers == "w" {
+      performClose(nil)
+      return true
+    }
+    return super.performKeyEquivalent(with: event)
   }
 }
