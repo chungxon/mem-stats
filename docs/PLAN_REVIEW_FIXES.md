@@ -49,8 +49,8 @@ Commit: `fix(menubar): render pressure color explicitly on all displays`
 
 Files: `PopoverRootView.swift`
 
-- [ ] Vẽ used RAM thành segment theo từng cặp sample liền kề, mỗi segment 1 series, màu theo pressure.
-- [ ] Legend "Used" dùng màu theo pressure hiện tại thay vì `.blue`.
+- [x] Vẽ used RAM thành segment theo từng cặp sample liền kề, mỗi segment 1 series, màu theo pressure.
+- [x] Legend "Used" dùng màu theo pressure hiện tại thay vì `.blue`.
 
 Commit: `fix(history): draw pressure-colored segments and match legend color`
 

@@ -438,6 +438,29 @@ struct MemStatsTests {
     #expect(stats.usedBytes + stats.freeBytes == stats.totalBytes)
   }
 
+  @Test func historySegmentsPairAdjacentSamplesAndUseEndPressure() {
+    let start = Date(timeIntervalSince1970: 1_000)
+    let samples = [
+      MemoryHistorySample(
+        timestamp: start, usedBytes: 10, swapUsedBytes: 0, pressureLevel: .normal),
+      MemoryHistorySample(
+        timestamp: start.addingTimeInterval(5), usedBytes: 20, swapUsedBytes: 0,
+        pressureLevel: .warning),
+      MemoryHistorySample(
+        timestamp: start.addingTimeInterval(10), usedBytes: 15, swapUsedBytes: 0,
+        pressureLevel: .normal),
+    ]
+
+    let points = MemoryHistorySegmentPoint.segments(from: samples)
+
+    #expect(points.count == 4)
+    #expect(Set(points.map(\.segmentID)).count == 2)
+    #expect(Set(points.map(\.id)).count == 4)
+    #expect(points.map(\.usedBytes) == [10, 20, 20, 15])
+    #expect(points.map(\.pressureLevel) == [.warning, .warning, .normal, .normal])
+    #expect(MemoryHistorySegmentPoint.segments(from: Array(samples.prefix(1))).isEmpty)
+  }
+
   @Test func usedMemoryCountsAppWiredAndCompressedPages() {
     let used = MemoryStatsService.usedMemoryBytes(
       internalPages: 100,

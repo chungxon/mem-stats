@@ -58,6 +58,10 @@ struct PopoverRootView: View {
     memoryVM.history.sorted { $0.timestamp < $1.timestamp }
   }
 
+  private var historySegmentPoints: [MemoryHistorySegmentPoint] {
+    MemoryHistorySegmentPoint.segments(from: orderedMemoryHistory)
+  }
+
   private var orderedSelectedUserHistory: [ProcessViewModel.UserMemoryHistorySample] {
     processVM.selectedUserHistory.sorted { $0.timestamp < $1.timestamp }
   }
@@ -250,24 +254,35 @@ struct PopoverRootView: View {
             .frame(maxWidth: .infinity, minHeight: 120, alignment: .center)
         } else {
           Chart {
-            ForEach(Array(orderedMemoryHistory.enumerated()), id: \.offset) { _, sample in
+            ForEach(historySegmentPoints) { point in
               AreaMark(
-                x: .value("Time", sample.timestamp),
+                x: .value("Time", point.timestamp),
                 yStart: .value("Baseline", 0),
-                yEnd: .value("Used RAM", Double(sample.usedBytes))
+                yEnd: .value("Used RAM", Double(point.usedBytes)),
+                series: .value("Segment", point.segmentID)
               )
-              .foregroundStyle(pressureColor(for: sample.pressureLevel).opacity(0.18))
+              .foregroundStyle(pressureColor(for: point.pressureLevel).opacity(0.18))
               .interpolationMethod(.linear)
             }
 
-            ForEach(Array(orderedMemoryHistory.enumerated()), id: \.offset) { _, sample in
+            ForEach(historySegmentPoints) { point in
               LineMark(
+                x: .value("Time", point.timestamp),
+                y: .value("Used RAM", Double(point.usedBytes)),
+                series: .value("Segment", point.segmentID)
+              )
+              .foregroundStyle(pressureColor(for: point.pressureLevel))
+              .lineStyle(StrokeStyle(lineWidth: 2))
+              .interpolationMethod(.linear)
+            }
+
+            // A single sample has no segment yet, so show it as a point.
+            if orderedMemoryHistory.count == 1, let sample = orderedMemoryHistory.first {
+              PointMark(
                 x: .value("Time", sample.timestamp),
                 y: .value("Used RAM", Double(sample.usedBytes))
               )
               .foregroundStyle(pressureColor(for: sample.pressureLevel))
-              .lineStyle(StrokeStyle(lineWidth: 2))
-              .interpolationMethod(.linear)
             }
 
             if processVM.selectedUser != nil {
@@ -301,7 +316,10 @@ struct PopoverRootView: View {
 
           HStack(spacing: 10) {
             if let latestSample = orderedMemoryHistory.last {
-              legendItem(color: .blue, label: "Used \(formatGigabytes(latestSample.usedBytes))")
+              legendItem(
+                color: pressureColor(for: latestSample.pressureLevel),
+                label: "Used \(formatGigabytes(latestSample.usedBytes))"
+              )
               legendItem(
                 color: .orange,
                 label: "Swap \(formatGigabytes(latestSample.swapUsedBytes))"
