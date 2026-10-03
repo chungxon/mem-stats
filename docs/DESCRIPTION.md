@@ -24,6 +24,8 @@ All inside **one popup window**.
 * Data layer:
 
   * `host_statistics64` → memory stats
+    * Used RAM = App Memory (`internal_page_count - purgeable_count`) + Wired + Compressed, matching Activity Monitor "Memory Used"
+    * Free (available) = Total - Used, so file cache counts as available
   * `sysctl` → total RAM
   * `sysctl vm.memory_pressure` + `kern.memorystatus_vm_pressure_level` → memory pressure level
   * `top -l 1 -o mem -stats pid,user,mem,command` → processes
@@ -67,6 +69,8 @@ All inside **one popup window**.
   * Color reflects **memory pressure**
 
     * 🟢 / 🟡 / 🔴 (system pressure level)
+    * Color is baked into a non-template icon and an attributed title, because the active display's menu bar renders template content and `contentTintColor` as monochrome
+    * Title uses monospaced digits so the item width stays stable
 
 * Click:
   → show **popover (main UI)**
@@ -93,6 +97,8 @@ All inside **one popup window**.
 * Persist toggle via:
 
   * `UserDefaults`
+* The checkmark always reflects `SMAppService.mainApp.status` (re-read after each change and each time the menu opens)
+* If macOS needs approval (`.requiresApproval`), show an alert that opens System Settings > Login Items
 * `Show System Users`: see §14.5
 
 ---
@@ -135,6 +141,9 @@ UI refresh: every 5s
 
 👉 Process parsing is the expensive part (`top` snapshot + parse).
 
+* Opening/closing the popover switches the interval. If a sample started less than 2s ago, the next one waits for the new interval instead of running immediately.
+* `Refresh Now` samples immediately and pushes the next scheduled tick a full interval out.
+
 ---
 
 ### 5.2 Avoid heavy SwiftUI redraw
@@ -164,6 +173,7 @@ UI refresh: every 5s
 
 * Cache last result
 * Only recompute when process list updates
+* Donut slices are built once per sample in `MemStatsAppState` and published only when they change, so hover never regroups processes
 
 ---
 
@@ -174,21 +184,22 @@ UI refresh: every 5s
 * Each slice = **user total RAM**
 * Last slice = **Free memory**
 * If slice < 2% → merge into "Others"
+* Memory not covered by sampled processes → "Unattributed Used"
 * Sort users by memory DESC
+* User colors are picked with a stable hash (FNV-1a) so a user keeps the same color across launches
 
 ### Center label
 
 * Default: `% used RAM`
-* On hover:
-  → show tooltip: `Used / Total (GB)`
+* `Used / Total (GB)` is always shown in the summary line below the donut
 
 ### Interaction
 
 * Hover on slice:
 
-  * highlight slice
+  * highlight slice (larger radius)
   * dim others
-  * show tooltip:
+  * show slice info in the center label and in the info row below the donut (no floating tooltip):
 
     * user name
     * memory (GB)
@@ -204,6 +215,8 @@ UI refresh: every 5s
   * reset filter
   * If selectedUser no longer exists → auto reset selection
 
+* VoiceOver: the donut is one element with a value listing every slice, plus actions to filter or clear each user
+
 ---
 
 ## 7. History Chart
@@ -217,6 +230,9 @@ UI refresh: every 5s
   * Green = normal
   * Yellow = warning
   * Red = critical
+  * Each pair of adjacent samples is its own chart series, colored by the later sample's pressure, so the line never joins non-adjacent samples
+  * The "Used" legend swatch uses the current pressure color
+* Memory growth hints (see §14.3) are shown below the badges
 
 ### Time ranges
 
@@ -281,6 +297,7 @@ let maxSamples = 120 // ~10 minutes if 5s interval
 * Columns: App, process count, Memory
 * Hover an app row → tooltip with bundle/executable path
 * When a user is selected, only that user's processes are aggregated
+* Top Apps and Top Processes each have one section title with the row count; when filtered it reads `Top Apps · <user>`
 
 ---
 
@@ -288,17 +305,19 @@ let maxSamples = 120 // ~10 minutes if 5s interval
 
 ### Follow Apple style strictly
 
-* Use:
+* Surfaces: solid semantic system colors instead of materials (project rule: solid colors, few gradients)
 
-  * `.ultraThinMaterial`
-  * `.sidebar`
-  * `.regularMaterial`
+  * popover background: `windowBackgroundColor`
+  * sections: native `GroupBox` on `controlBackgroundColor`
+  * both adapt to light/dark mode automatically
 * Font:
 
-  * `.system(.body)`
+  * system text styles (`.headline`, `.footnote`, `.caption`)
+  * live numbers use monospaced digits
 * Spacing:
 
-  * 8pt grid
+  * 8pt grid as the base, with small optical adjustments
+* Icons: SF Symbols only, kept to a minimum (header buttons, menu bar)
 
 ### Avoid UI
 
@@ -312,11 +331,9 @@ let maxSamples = 120 // ~10 minutes if 5s interval
 
 ## Donut Chart
 
-* SwiftUI:
-
-  * `Canvas` OR
-  * custom `Shape`
+* Native `Charts` framework: `SectorMark` with `innerRadius: .ratio(0.62)`
 * Each arc = user %
+* Hover/click hit-testing is done in a `chartOverlay` by converting the pointer angle into a slice
 
 ---
 
@@ -394,25 +411,22 @@ DispatchQueue.global(qos: .utility)
     UI refresh: every 15s
     ```
 
-### 14.2 Smart highlighting
+### 14.2 Smart highlighting (dropped)
 
-* Highlight:
-
-  * user using >50% RAM
+* Not implemented: the donut already shows which user uses the most RAM (sorted, largest slice first).
 
 ### 14.3 Memory leak hint
 
-* Detect:
+* Detect per user (only users in the current snapshot):
 
-  * continuous growth over N samples
-  * detect sudden jump per user
+  * continuous growth: memory rises on each of the last 12 samples, with at least 100 MB total growth
+  * sudden jump: growth between the last two samples > max(500 MB, 5% of total RAM)
+* A user missing from a snapshot loses its history, so coming back is not counted as a jump
+* Up to 2 hints show as orange caption lines in the History section
 
-### 14.4 Alert system
+### 14.4 Alert system (dropped)
 
-* Notify when:
-
-  * pressure = red
-  * swap > threshold
+* No notifications: memory pressure is already shown by the menu bar color (🟢 / 🟡 / 🔴) and swap by the history badges.
 
 ### 14.5 Show/Hide system users
 
@@ -433,14 +447,14 @@ System users can add noise, so they can be hidden with the `Show System Users` c
 * Donut (Top Users + free)
 * Top apps (helpers grouped, filterable)
 * Memory pressure + swap
-* Short history (bounded)
+* Short history (bounded) + memory growth hints
 * Top processes (filterable)
 
 ### System
 
 * Lightweight sampling
 * Run at login
-* Context menu
+* Context menu (Open at Login, Show System Users, About, Quit)
 
 ### Note
 

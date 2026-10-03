@@ -133,9 +133,9 @@ Commit: `feat(users): add option to show or hide system users`
 
 Files: `docs/DESCRIPTION.md`
 
-- [ ] Công thức used memory (Task 1).
-- [ ] §6: thông tin hover hiển thị bên dưới donut.
-- [ ] §9: solid surfaces thay cho materials. §10: donut dùng `Charts.SectorMark`.
-- [ ] §14.2 và §14.4: ghi rõ đã bỏ và lý do. §14.3: mô tả hint đã làm.
+- [x] Công thức used memory (Task 1).
+- [x] §6: thông tin hover hiển thị bên dưới donut.
+- [x] §9: solid surfaces thay cho materials. §10: donut dùng `Charts.SectorMark`.
+- [x] §14.2 và §14.4: ghi rõ đã bỏ và lý do. §14.3: mô tả hint đã làm.
 
 Commit: `docs: sync description with implemented behavior`
