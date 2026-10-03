@@ -200,7 +200,10 @@ UI refresh: every 5s
 * Left: `All Users`, or the focused slice label
 * Right:
   * nothing focused: system `Used X / Total (GB)`
-  * slice focused: `<slice GB> / Used X`, which replaces the system summary while focused
+  * user, "Others" or "Unattributed Used" slice focused: `<slice GB> / Used X`, which replaces the system summary while focused
+  * "Free" slice focused: `<free GB> / Total Y`, since free memory is not part of used RAM
+* Both texts stay on one line; the right side keeps priority, so a long user name truncates instead of the numbers
+* Percentages (center label, VoiceOver value) are rounded to the nearest whole number, the same way as the total
 
 ### Interaction
 

@@ -37,7 +37,7 @@ struct PopoverRootView: View {
 
   private var donutAccessibilityValue: String {
     donutSlices
-      .map { "\($0.label) \(formatGigabytes($0.bytes)), \(Int($0.fractionOfTotal * 100))%" }
+      .map { "\($0.label) \(formatGigabytes($0.bytes)), \(percentText($0.fractionOfTotal))" }
       .joined(separator: "; ")
   }
 
@@ -225,10 +225,14 @@ struct PopoverRootView: View {
           HStack {
             Text(selectionTitle)
               .font(.subheadline.weight(.semibold))
+              .lineLimit(1)
             Spacer()
+            // Higher priority keeps the numbers whole; a long user name truncates instead.
             Text(selectionSubtitle)
               .font(.footnote)
               .foregroundStyle(.secondary)
+              .lineLimit(1)
+              .layoutPriority(1)
           }
         }
       }
@@ -481,10 +485,14 @@ struct PopoverRootView: View {
 
   private var selectionSubtitle: String {
     guard let slice = activeFocusSlice else { return memorySummary }
-    guard let usedBytes = memoryVM.currentStats?.usedBytes else {
+    guard let stats = memoryVM.currentStats else {
       return "\(formatGigabytes(slice.bytes))"
     }
-    return "\(formatGigabytes(slice.bytes)) / \(formatGigabytes(usedBytes))"
+    // Free memory is not part of used RAM, so it is compared against total RAM instead.
+    if case .free = slice.category {
+      return "\(formatGigabytes(slice.bytes)) / Total \(formatGigabytes(stats.totalBytes))"
+    }
+    return "\(formatGigabytes(slice.bytes)) / Used \(formatGigabytes(stats.usedBytes))"
   }
 
   private func shouldDim(_ slice: DonutSlice) -> Bool {
@@ -638,12 +646,16 @@ struct PopoverRootView: View {
     }
 
     if let slice = activeFocusSlice {
-      return "\(Int(slice.fractionOfTotal * 100))%"
+      return percentText(slice.fractionOfTotal)
     }
 
     let ratio = stats.totalBytes > 0 ? Double(stats.usedBytes) / Double(stats.totalBytes) : 0
-    let percent = Int((ratio * 100).rounded())
-    return "\(percent)%"
+    return percentText(ratio)
+  }
+
+  /// Rounds the same way everywhere, so a slice and the total never disagree by one point.
+  private func percentText(_ fraction: Double) -> String {
+    "\(Int((fraction * 100).rounded()))%"
   }
 
   private func hoverAngleValue(at location: CGPoint, plotFrame: CGRect) -> Double? {
@@ -769,7 +781,8 @@ private struct LegendFlowLayout: Layout {
 
   func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
     let rows = arrangeRows(maxWidth: proposal.width ?? .infinity, subviews: subviews)
-    let height = rows.map(\.height).reduce(0, +)
+    let height =
+      rows.map(\.height).reduce(0, +)
       + verticalSpacing * CGFloat(max(rows.count - 1, 0))
     // Report the proposed width when there is one, so placeSubviews wraps against the same width.
     if let proposedWidth = proposal.width, proposedWidth.isFinite {

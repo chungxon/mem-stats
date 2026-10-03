@@ -36,13 +36,13 @@ Files: `PopoverRootView.swift`, `docs/DESCRIPTION.md`
 
 Bug: hover slice **Free** hiện `8.00 GB / 5.00 GB` (free so với used RAM), sai nghĩa.
 
-- [ ] `selectionSubtitle` theo loại slice:
+- [x] `selectionSubtitle` theo loại slice:
   - User / Others / Unattributed: `<slice GB> / Used X` (giữ như hiện tại).
   - Free: `<free GB> / Total Y`.
   - Không hover/select: `Used X / Total Y` (giữ như hiện tại).
-- [ ] Làm tròn % thống nhất: center label của slice dùng `.rounded()` giống % tổng thay vì `Int(x * 100)`.
-- [ ] Thêm `.lineLimit(1)` cho 2 text của info row, subtitle có `.layoutPriority(1)` để tên user dài không đè số.
-- [ ] Cập nhật §6 Info row trong docs.
+- [x] Làm tròn % thống nhất: center label của slice dùng `.rounded()` giống % tổng thay vì `Int(x * 100)`.
+- [x] Thêm `.lineLimit(1)` cho 2 text của info row, subtitle có `.layoutPriority(1)` để tên user dài không đè số.
+- [x] Cập nhật §6 Info row trong docs.
 
 Commit: `fix(donut): show free slice against total RAM in the info row`
 
