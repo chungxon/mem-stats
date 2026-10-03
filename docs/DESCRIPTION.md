@@ -67,7 +67,7 @@ All inside **one popup window**.
 
 * Default:
 
-  * Icon + % usage
+  * `memorychip` icon + title `RAM N%` (used RAM / total, rounded)
   * Color reflects **memory pressure**
 
     * 🟢 / 🟠 / 🔴 (system pressure level): green normal, orange warning, red critical
@@ -118,13 +118,9 @@ All inside **one popup window**.
 
 * Left: **Open Activity Monitor**
 
-  * launch:
+  * launched by bundle id `com.apple.ActivityMonitor` through `NSWorkspace.urlForApplication(withBundleIdentifier:)` + `openApplication(at:configuration:)`, so it works regardless of the app name or language
 
-    ```bash
-    open -a "Activity Monitor"
-    ```
-
-* Right: ***Open Context Menu**
+* Right: **Open Context Menu** (same menu as right-clicking the menu bar item)
 
 ---
 
@@ -243,6 +239,11 @@ UI refresh: every 5s
 
 ## 7. History Chart
 
+### Status rows
+
+* `Sampling`: current mode and interval, `Active (5s)` while the popover is open, `Idle (15s)` while it is closed
+* `History Samples`: number of samples currently kept
+
 ### Metrics (In-memory)
 
 * Total used RAM (primary plotted series)
@@ -293,10 +294,14 @@ let maxSamples = 120 // ~10 minutes if 5s interval
 
 ### Columns
 
-* Process name
-* PID
-* User
+* In display order: `USER`, `PID`, `PROCESS`, `MEM`
+* `PROCESS` is the executable name parsed from the command (quotes and escapes handled); hovering shows the full command line
 * Memory (MB/GB)
+
+### Footer
+
+* The last sampling error (if any) shows in red below the list
+* `Refresh Now` samples immediately (see §5.1 for how repeated clicks are coalesced)
 
 ### Sorting
 
@@ -389,18 +394,14 @@ DispatchQueue.global(qos: .utility)
 
 ### 11.2 Debounce updates
 
-* Only update UI if:
-
-  * diff > threshold
-  * threshold = max(100MB, 1–2% of total RAM)
+* Applies to the menu bar title only: it is redrawn when used RAM moved by at least max(100 MB, 1% of total RAM) since the last redraw, or when the pressure level changed
+* The popover updates on every sample (it is only sampled at the active interval while open)
 
 ---
 
-### 11.3 Lazy load UI sections
+### 11.3 Lazy load UI sections (not implemented)
 
-* Chart:
-
-  * render only when visible
+* Not lazy: the popover is small and always shows every section, so the charts render with the popover. Nothing is rendered while the popover is closed.
 
 ---
 

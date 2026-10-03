@@ -32,6 +32,8 @@ Acceptance Criteria:
 
 ## Task 2 - Align Top Processes With Spec
 
+Note (2026-10-03): hint text và tooltip % ở task này đã được thay bởi Task 15 trong `PLAN_REVIEW_FIXES.md` (info row + center label, không còn floating tooltip).
+
 Objective:
 
 - Đưa phần Top Processes về đúng kỳ vọng trong `docs/DESCRIPTION.md`.
@@ -49,6 +51,8 @@ Acceptance Criteria:
 - Không còn mismatch count 8 nhưng chỉ render 5 dòng.
 
 ## Task 3 - Improve Donut Interaction UX
+
+Note (2026-10-03): hint text và tooltip % ở task này đã được thay bởi Task 15 trong `PLAN_REVIEW_FIXES.md` (info row + center label, không còn floating tooltip).
 
 Objective:
 
@@ -120,6 +124,8 @@ Acceptance Criteria:
 
 ## Task 7 - History Chart Readability Stabilization
 
+Status (2026-10-03): đường `Swap` nét đứt và dải overlay `Pressure` đã được **thay bằng badge** (latest-value status badges dưới chart). Xem Current Note bên dưới.
+
 Objective:
 
 - Làm chart lịch sử dễ đọc hơn và tránh cảm giác "line bị chéo lạ" khi hiển thị đồng thời Used/Swap/Pressure.
@@ -168,6 +174,8 @@ Latest Verification Notes (2026-05-19):
 
 ## Task 9 - Process Memory Metric Alignment With Activity Monitor
 
+Status (2026-10-03): **dropped**. Theo Decision Note của Task 14, process sampling chỉ dùng `top` (single source), code `phys_footprint` đã bị gỡ. Chuyển sang `proc_pid_rusage` (`ri_phys_footprint`) được lên kế hoạch lại sau release ở `PLAN_RELEASE.md` Task 14.
+
 Objective:
 
 - Giảm độ lệch giữa Top Processes trong app và cột Memory của Activity Monitor.
@@ -185,6 +193,8 @@ Acceptance Criteria:
 - Không làm hỏng parser/filter hiện có.
 
 ## Task 10 - Improve Memory Metric Fallback Coverage
+
+Status (2026-10-03): **dropped**. Theo Decision Note của Task 14, process sampling chỉ dùng `top` (single source), code fallback `proc_pidinfo` đã bị gỡ. Chuyển sang `proc_pid_rusage` (`ri_phys_footprint`) được lên kế hoạch lại sau release ở `PLAN_RELEASE.md` Task 14.
 
 Objective:
 
@@ -223,6 +233,8 @@ Acceptance Criteria:
 
 ## Task 12 - Prevent System Process Under-Reporting
 
+Status (2026-10-03): **dropped**. Theo Decision Note của Task 14, process sampling chỉ dùng `top` (single source), code chọn `max(...)` giữa các metric đã bị gỡ. Chuyển sang `proc_pid_rusage` (`ri_phys_footprint`) được lên kế hoạch lại sau release ở `PLAN_RELEASE.md` Task 14.
+
 Objective:
 
 - Tránh việc một số system process (như `WindowServer`) bị tụt top do metric fallback trả về thấp bất thường.
@@ -240,6 +252,8 @@ Acceptance Criteria:
 - Top list ổn định hơn khi dữ liệu từ API quyền thấp không nhất quán.
 
 ## Task 13 - Add `top` Memory Merge For Protected Processes
+
+Status (2026-10-03): **dropped**. Theo Decision Note của Task 14, process sampling chỉ dùng `top` (single source), code merge `top mem` theo PID đã bị gỡ. Chuyển sang `proc_pid_rusage` (`ri_phys_footprint`) được lên kế hoạch lại sau release ở `PLAN_RELEASE.md` Task 14.
 
 Objective:
 

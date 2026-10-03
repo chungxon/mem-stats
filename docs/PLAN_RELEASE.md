@@ -111,10 +111,10 @@ Commit: `chore(release): set app metadata and drop template UI tests`
 
 Files: `docs/PLAN.md`, `docs/PLAN_REMEDIATION.md`, `docs/DESCRIPTION.md`
 
-- [ ] `PLAN_REMEDIATION.md` Task 9-11 (`phys_footprint`, `proc_pidinfo`, merge `top mem`): đổi sang "dropped" theo Decision Note (vẫn dùng `top`).
-- [ ] `PLAN_REMEDIATION.md` Task 7 (đường swap nét đứt, dải pressure) và `PLAN.md` Task 6 (plot swap/pressure series): ghi rõ đã thay bằng badge.
-- [ ] `PLAN_REMEDIATION.md` Task 2/3: ghi chú hint text và tooltip % đã được thay bởi Task 15 trong `PLAN_REVIEW_FIXES.md`.
-- [ ] `DESCRIPTION.md`:
+- [x] `PLAN_REMEDIATION.md` Task 9-11 (`phys_footprint`, `proc_pidinfo`, merge `top mem`): đổi sang "dropped" theo Decision Note (vẫn dùng `top`).
+- [x] `PLAN_REMEDIATION.md` Task 7 (đường swap nét đứt, dải pressure) và `PLAN.md` Task 6 (plot swap/pressure series): ghi rõ đã thay bằng badge.
+- [x] `PLAN_REMEDIATION.md` Task 2/3: ghi chú hint text và tooltip % đã được thay bởi Task 15 trong `PLAN_REVIEW_FIXES.md`.
+- [x] `DESCRIPTION.md`:
   - §4: mở Activity Monitor bằng bundle id `com.apple.ActivityMonitor` qua `NSWorkspace`.
   - §11.2: debounce hiện chỉ áp dụng cho menu bar title, popover cập nhật mỗi sample.
   - §11.3: ghi rõ chưa lazy (popover nhỏ, luôn hiện đủ) hoặc bỏ mục.

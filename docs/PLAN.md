@@ -225,11 +225,15 @@ Task 6 TODO:
 
 - [x] Replace history placeholder with native `Charts` line chart
 - [x] Plot total used RAM series from bounded memory history
-- [x] Plot swap-used series from bounded memory history
-- [x] Plot memory-pressure series with consistent scaling for readability
+- [x] Plot swap-used series from bounded memory history (later replaced by a latest-value badge below the chart)
+- [x] Plot memory-pressure series with consistent scaling for readability (later replaced by a pressure badge and pressure-colored Used segments)
 - [x] Add optional selected-user history overlay when a user is selected
 - [x] Keep chart updates driven by sampling ticks only (history append path)
 - [x] Add tests for selected-user history tracking with bounded samples
+
+Update (2026-10-03):
+
+- Swap and pressure are no longer plotted as series. They show as latest-value badges below the chart, and the Used line is colored by pressure per segment. See `docs/DESCRIPTION.md` §7.
 
 Review gate:
 
