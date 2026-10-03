@@ -43,6 +43,11 @@ final class LoginItemService {
     defaults.set(enabled, forKey: openAtLoginKey)
   }
 
+  /// True when the login item is registered but still waits for user approval in System Settings.
+  var requiresApproval: Bool {
+    registrant.status == .requiresApproval
+  }
+
   func setEnabled(_ enabled: Bool) throws {
     if enabled {
       try registrant.register()
@@ -50,14 +55,13 @@ final class LoginItemService {
       try registrant.unregister()
     }
 
-    isEnabled = enabled
-    defaults.set(enabled, forKey: openAtLoginKey)
+    // `register()` can succeed while the item still needs approval, so trust the system status.
+    syncWithSystem()
   }
 
   @discardableResult
   func toggle() throws -> Bool {
-    let nextValue = !isEnabled
-    try setEnabled(nextValue)
-    return nextValue
+    try setEnabled(!isEnabled)
+    return isEnabled
   }
 }

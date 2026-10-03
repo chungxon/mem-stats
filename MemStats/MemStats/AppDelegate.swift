@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import ServiceManagement
 import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
@@ -147,6 +148,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
       keyEquivalent: ""
     )
     openAtLogin.target = self
+    // The user can change login items in System Settings while the app runs.
+    loginItemService.syncWithSystem()
     openAtLogin.state = loginItemService.isEnabled ? .on : .off
 
     let about = NSMenuItem(title: "About", action: #selector(showAbout), keyEquivalent: "")
@@ -166,9 +169,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     do {
       let enabled = try loginItemService.toggle()
       sender.state = enabled ? .on : .off
+      if loginItemService.requiresApproval {
+        // Present after the status item menu finishes tracking.
+        DispatchQueue.main.async { [weak self] in
+          self?.presentLoginItemApprovalPrompt()
+        }
+      }
     } catch {
       sender.state = loginItemService.isEnabled ? .on : .off
-      presentLoginItemError(error)
+      DispatchQueue.main.async { [weak self] in
+        self?.presentLoginItemError(error)
+      }
     }
   }
 
@@ -205,7 +216,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     alert.messageText = "Could not update Open at Login"
     alert.informativeText = error.localizedDescription
     alert.addButton(withTitle: "OK")
+    NSApp.activate()
     alert.runModal()
+  }
+
+  private func presentLoginItemApprovalPrompt() {
+    let alert = NSAlert()
+    alert.alertStyle = .informational
+    alert.messageText = "Allow MemStats to open at login"
+    alert.informativeText =
+      "macOS needs your approval. Turn on MemStats in System Settings > General > Login Items."
+    alert.addButton(withTitle: "Open System Settings")
+    alert.addButton(withTitle: "Cancel")
+
+    // Accessory apps are not active by default, so bring the alert to the front.
+    NSApp.activate()
+    if alert.runModal() == .alertFirstButtonReturn {
+      SMAppService.openSystemSettingsLoginItems()
+    }
   }
 
   private func color(for pressure: MemoryPressureLevel) -> NSColor {

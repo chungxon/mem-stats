@@ -26,10 +26,10 @@ Commit: `fix(memory): compute used memory like Activity Monitor`
 
 Files: `Services/LoginItemService.swift`, `AppDelegate.swift`, `MemStatsTests.swift`
 
-- [ ] Sau `register()`/`unregister()`, đọc lại `registrant.status` thay vì tin input.
-- [ ] Nếu `.requiresApproval`: thông báo và mở System Settings > Login Items.
-- [ ] Re-sync status mỗi lần mở context menu.
-- [ ] Test với mock status `.requiresApproval`.
+- [x] Sau `register()`/`unregister()`, đọc lại `registrant.status` thay vì tin input.
+- [x] Nếu `.requiresApproval`: thông báo và mở System Settings > Login Items.
+- [x] Re-sync status mỗi lần mở context menu.
+- [x] Test với mock status `.requiresApproval`.
 
 Commit: `fix(login): reflect real SMAppService status and handle requiresApproval`
 

@@ -7,19 +7,26 @@ import Testing
 struct MemStatsTests {
   private final class MockLoginItemRegistrant: LoginItemRegistrant {
     var status: SMAppService.Status
+    var statusAfterRegister: SMAppService.Status
     var didRegister = false
     var didUnregister = false
 
-    init(status: SMAppService.Status = .notRegistered) {
+    init(
+      status: SMAppService.Status = .notRegistered,
+      statusAfterRegister: SMAppService.Status = .enabled
+    ) {
       self.status = status
+      self.statusAfterRegister = statusAfterRegister
     }
 
     func register() throws {
       didRegister = true
+      status = statusAfterRegister
     }
 
     func unregister() throws {
       didUnregister = true
+      status = .notRegistered
     }
   }
 
@@ -517,6 +524,26 @@ struct MemStatsTests {
     let disabled = try service.toggle()
     #expect(disabled == false)
     #expect(registrant.didUnregister == true)
+    #expect(defaults.bool(forKey: "openAtLogin") == false)
+  }
+
+  @Test func loginItemServiceStaysDisabledWhenApprovalIsRequired() throws {
+    let suiteName = "MemStatsTests.LoginItem.Approval"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+
+    let registrant = MockLoginItemRegistrant(
+      status: .notRegistered,
+      statusAfterRegister: .requiresApproval
+    )
+    let service = LoginItemService(defaults: defaults, registrant: registrant)
+
+    let enabled = try service.toggle()
+
+    #expect(registrant.didRegister == true)
+    #expect(enabled == false)
+    #expect(service.isEnabled == false)
+    #expect(service.requiresApproval == true)
     #expect(defaults.bool(forKey: "openAtLogin") == false)
   }
 }
