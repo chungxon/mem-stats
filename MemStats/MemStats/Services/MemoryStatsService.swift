@@ -33,12 +33,20 @@ struct MemoryStatsService: MemoryStatsProviding {
     let pageSize = try hostPageSize()
     let vmStats = try vmStatistics()
 
-    let freeBytes = UInt64(vmStats.free_count) * pageSize
     let activeBytes = UInt64(vmStats.active_count) * pageSize
     let inactiveBytes = UInt64(vmStats.inactive_count) * pageSize
     let wiredBytes = UInt64(vmStats.wire_count) * pageSize
     let compressedBytes = UInt64(vmStats.compressor_page_count) * pageSize
-    let usedBytes = min(totalBytes, totalBytes &- freeBytes)
+    let usedBytes = Self.usedMemoryBytes(
+      internalPages: UInt64(vmStats.internal_page_count),
+      purgeablePages: UInt64(vmStats.purgeable_count),
+      wiredPages: UInt64(vmStats.wire_count),
+      compressedPages: UInt64(vmStats.compressor_page_count),
+      pageSize: pageSize,
+      totalBytes: totalBytes
+    )
+    // Cached and reclaimable pages count as available, matching Activity Monitor.
+    let freeBytes = totalBytes - usedBytes
     let swapUsedBytes = (try? swapUsedBytes()) ?? 0
     let pressureLevel = derivePressureLevel(usedBytes: usedBytes, totalBytes: totalBytes)
 
@@ -53,6 +61,23 @@ struct MemoryStatsService: MemoryStatsProviding {
       swapUsedBytes: swapUsedBytes,
       pressureLevel: pressureLevel
     )
+  }
+
+  /// Activity Monitor style "Memory Used": App Memory (anonymous pages minus purgeable)
+  /// + Wired + Compressed. File cache and free pages are treated as available.
+  nonisolated static func usedMemoryBytes(
+    internalPages: UInt64,
+    purgeablePages: UInt64,
+    wiredPages: UInt64,
+    compressedPages: UInt64,
+    pageSize: UInt64,
+    totalBytes: UInt64
+  ) -> UInt64 {
+    let appPages = internalPages > purgeablePages ? internalPages - purgeablePages : 0
+    let usedPages = appPages + wiredPages + compressedPages
+    let (usedBytes, overflow) = usedPages.multipliedReportingOverflow(by: pageSize)
+    guard !overflow else { return totalBytes }
+    return min(usedBytes, totalBytes)
   }
 
   nonisolated private func hostPageSize() throws -> UInt64 {

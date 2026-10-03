@@ -428,6 +428,41 @@ struct MemStatsTests {
     #expect(stats.totalBytes > 0)
     #expect(stats.usedBytes <= stats.totalBytes)
     #expect(stats.freeBytes <= stats.totalBytes)
+    #expect(stats.usedBytes + stats.freeBytes == stats.totalBytes)
+  }
+
+  @Test func usedMemoryCountsAppWiredAndCompressedPages() {
+    let used = MemoryStatsService.usedMemoryBytes(
+      internalPages: 100,
+      purgeablePages: 20,
+      wiredPages: 30,
+      compressedPages: 10,
+      pageSize: 4,
+      totalBytes: 10_000
+    )
+    #expect(used == (80 + 30 + 10) * 4)
+  }
+
+  @Test func usedMemoryClampsPurgeableAndTotal() {
+    let noAppMemory = MemoryStatsService.usedMemoryBytes(
+      internalPages: 10,
+      purgeablePages: 50,
+      wiredPages: 5,
+      compressedPages: 0,
+      pageSize: 1,
+      totalBytes: 100
+    )
+    #expect(noAppMemory == 5)
+
+    let capped = MemoryStatsService.usedMemoryBytes(
+      internalPages: 1_000,
+      purgeablePages: 0,
+      wiredPages: 0,
+      compressedPages: 0,
+      pageSize: 1,
+      totalBytes: 100
+    )
+    #expect(capped == 100)
   }
 
   @Test func vmMemoryPressureMappingUsesExpectedBands() {
