@@ -3,6 +3,9 @@ import Foundation
 import SwiftUI
 
 struct PopoverRootView: View {
+  /// Matches `NSPopover.contentSize` in `AppDelegate`.
+  static let popoverSize = CGSize(width: 380, height: 540)
+
   @ObservedObject private var appState: MemStatsAppState
   @ObservedObject private var memoryVM: MemoryViewModel
   @ObservedObject private var processVM: ProcessViewModel
@@ -90,6 +93,11 @@ struct PopoverRootView: View {
     return "\(mode) (\(memorySeconds)s, processes \(processSeconds)s)"
   }
 
+  /// "Loading…" until the first process sample lands or fails (the error shows below).
+  private func listPlaceholder(empty: String) -> String {
+    appState.isWaitingForFirstProcessSample ? "Loading…" : empty
+  }
+
   private var historyScaleUpperBound: Double {
     if let totalBytes = memoryVM.currentStats?.totalBytes, totalBytes > 0 {
       return Double(totalBytes)
@@ -100,17 +108,26 @@ struct PopoverRootView: View {
   }
 
   var body: some View {
-    ScrollView(.vertical, showsIndicators: false) {
-      VStack(alignment: .leading, spacing: 14) {
-        headerSection
-        donutSection
-        historySection
-        appSection
-        processSection
+    // The header stays outside the scroll view so its buttons are always reachable.
+    VStack(spacing: 0) {
+      headerSection
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+
+      Divider()
+
+      ScrollView(.vertical, showsIndicators: true) {
+        VStack(alignment: .leading, spacing: 14) {
+          donutSection
+          historySection
+          appSection
+          processSection
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
       }
-      .padding(16)
-      .frame(maxWidth: .infinity, alignment: .topLeading)
     }
+    .frame(width: Self.popoverSize.width, height: Self.popoverSize.height)
     .background(Color(nsColor: .windowBackgroundColor))
     .onChange(of: donutSlices.map(\.id)) { _, _ in
       validateSelectionState()
@@ -125,6 +142,8 @@ struct PopoverRootView: View {
       } label: {
         Image(systemName: "waveform.path.ecg")
           .imageScale(.medium)
+          .frame(width: 24, height: 24)
+          .contentShape(Rectangle())
       }
       .buttonStyle(.plain)
       .help("Open Activity Monitor")
@@ -142,12 +161,13 @@ struct PopoverRootView: View {
       } label: {
         Image(systemName: "gearshape")
           .imageScale(.medium)
+          .frame(width: 24, height: 24)
+          .contentShape(Rectangle())
       }
       .buttonStyle(.plain)
       .help("Open Options")
       .accessibilityLabel("Open Options")
     }
-    .padding(.bottom, 2)
   }
 
   private var donutSection: some View {
@@ -378,7 +398,7 @@ struct PopoverRootView: View {
     GroupBox {
       VStack(alignment: .leading, spacing: 8) {
         if processVM.visibleApps.isEmpty {
-          Text("No app data available")
+          Text(listPlaceholder(empty: "No app data available"))
             .font(.footnote)
             .foregroundStyle(.secondary)
         } else {
@@ -426,7 +446,7 @@ struct PopoverRootView: View {
     GroupBox {
       VStack(alignment: .leading, spacing: 8) {
         if processVM.visibleProcesses.isEmpty {
-          Text("No process data available")
+          Text(listPlaceholder(empty: "No process data available"))
             .font(.footnote)
             .foregroundStyle(.secondary)
         } else {

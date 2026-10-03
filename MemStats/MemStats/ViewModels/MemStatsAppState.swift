@@ -48,6 +48,13 @@ final class MemStatsAppState: ObservableObject {
   }
   private var memoryError: String?
   private var processError: String?
+
+  /// True until a process sample succeeds or fails. A memory error alone does not end it, since
+  /// the process lists are still waiting for `top`. Changes publish through `lastSamplingError`
+  /// and `processVM`.
+  var isWaitingForFirstProcessSample: Bool {
+    !processVM.hasSampled && processError == nil
+  }
   private var cancellables: Set<AnyCancellable> = []
 
   init(

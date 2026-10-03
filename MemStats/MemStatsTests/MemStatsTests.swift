@@ -59,6 +59,28 @@ struct MemStatsTests {
     }
   }
 
+  private struct FailingMemoryStatsProvider: MemoryStatsProviding {
+    nonisolated func fetchMemoryStats() throws -> MemoryStats {
+      throw CocoaError(.featureUnsupported)
+    }
+  }
+
+  private struct FailingProcessProvider: ProcessSnapshotProviding {
+    nonisolated func fetchProcesses(includeRootUser: Bool, includeSystemUsers: Bool) throws
+      -> [ProcessSnapshot]
+    {
+      throw CocoaError(.featureUnsupported)
+    }
+
+    nonisolated func fetchTopProcesses(
+      limit: Int,
+      includeRootUser: Bool,
+      includeSystemUsers: Bool
+    ) throws -> [ProcessSnapshot] {
+      throw CocoaError(.featureUnsupported)
+    }
+  }
+
   private final class MockLoginItemRegistrant: LoginItemRegistrant {
     var status: SMAppService.Status
     var statusAfterRegister: SMAppService.Status
@@ -629,6 +651,15 @@ struct MemStatsTests {
     #expect(invalid.topProcessesCount == 8)
   }
 
+  @MainActor @Test func processViewModelReportsFirstSample() {
+    let vm = ProcessViewModel()
+    #expect(!vm.hasSampled)
+
+    // An empty snapshot still counts, so the lists move from "Loading…" to "No data".
+    vm.apply(snapshots: [])
+    #expect(vm.hasSampled)
+  }
+
   @MainActor @Test func processViewModelUsesSeparateLimitsForAppsAndProcesses() {
     let vm = ProcessViewModel(topAppsLimit: 2, topProcessesLimit: 5)
     let snapshots = (1...10).map { index in
@@ -855,6 +886,41 @@ struct MemStatsTests {
     #expect(processProvider.fetchCount == 2)
     #expect(appState.isSampling == false)
     #expect(appState.processVM.allProcesses.count == 1)
+  }
+
+  @MainActor @Test func appStateKeepsLoadingUntilProcessSampleLandsOrFails() async {
+    // A memory error alone keeps the process lists loading.
+    let processProvider = GatedProcessProvider()
+    let gated = MemStatsAppState(
+      startSampling: false,
+      memoryService: FailingMemoryStatsProvider(),
+      processService: processProvider
+    )
+    #expect(gated.isWaitingForFirstProcessSample)
+    gated.sampleImmediately()
+    var waits = 0
+    while gated.lastSamplingError == nil && waits < 200 {
+      try? await Task.sleep(for: .milliseconds(10))
+      waits += 1
+    }
+    #expect(gated.lastSamplingError != nil)
+    #expect(gated.isWaitingForFirstProcessSample)
+    processProvider.releaseFirstFetch()
+
+    // A failed process sample ends loading.
+    let failing = MemStatsAppState(
+      startSampling: false,
+      memoryService: StubMemoryStatsProvider(),
+      processService: FailingProcessProvider()
+    )
+    failing.sampleImmediately()
+    waits = 0
+    while failing.isSampling && waits < 200 {
+      try? await Task.sleep(for: .milliseconds(10))
+      waits += 1
+    }
+    #expect(!failing.isWaitingForFirstProcessSample)
+    #expect(!failing.processVM.hasSampled)
   }
 
   @MainActor @Test func appStatePersistsShowSystemUsersOption() {

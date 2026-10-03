@@ -15,6 +15,8 @@ final class ProcessViewModel: ObservableObject {
   @Published private(set) var allProcesses: [ProcessSnapshot] = []
   @Published private(set) var topProcesses: [ProcessSnapshot] = []
   @Published private(set) var visibleApps: [AppMemoryUsage] = []
+  /// False until the first process sample lands, so the lists can show a loading state.
+  @Published private(set) var hasSampled = false
   @Published var selectedUser: String? {
     didSet {
       guard selectedUser != oldValue else { return }
@@ -60,6 +62,9 @@ final class ProcessViewModel: ObservableObject {
   ) {
     self.appIdentities = appIdentities
     allProcesses = snapshots
+    if !hasSampled {
+      hasSampled = true
+    }
     topProcesses = Array(snapshots.prefix(topProcessesLimit))
     let adjustedTimestamp: Date
     let latestTimestamp = userHistoryByUser.values.compactMap(\.last?.timestamp).max()

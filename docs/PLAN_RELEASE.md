@@ -223,10 +223,10 @@ Commit: `fix(ui): format memory as MB/GB and truncate long names`
 
 Files: `PopoverRootView.swift`, `ViewModels/ProcessViewModel.swift`
 
-- [ ] Hiện `Loading…` cho Top Apps / Top Processes đến khi có sample đầu tiên, sau đó mới hiện "No data".
-- [ ] Đưa header (Activity Monitor, gear) ra ngoài `ScrollView` để không bị cuộn mất, bật scroll indicator.
-- [ ] Header button: vùng bấm 24x24 (`contentShape`).
-- [ ] Pin kích thước popover trong SwiftUI (`.frame(width:height:)`) cho khớp `contentSize`.
+- [x] Hiện `Loading…` cho Top Apps / Top Processes đến khi có sample đầu tiên, sau đó mới hiện "No data".
+- [x] Đưa header (Activity Monitor, gear) ra ngoài `ScrollView` để không bị cuộn mất, bật scroll indicator.
+- [x] Header button: vùng bấm 24x24 (`contentShape`).
+- [x] Pin kích thước popover trong SwiftUI (`.frame(width:height:)`) cho khớp `contentSize`.
 
 Commit: `fix(ui): add loading state and keep header visible`
 

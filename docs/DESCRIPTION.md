@@ -125,6 +125,8 @@ All inside **one popup window**.
   * launched by bundle id `com.apple.ActivityMonitor` through `NSWorkspace.urlForApplication(withBundleIdentifier:)` + `openApplication(at:configuration:)`, so it works regardless of the app name or language
 
 * Right: **Open Context Menu** (same menu as right-clicking the menu bar item)
+* The header stays fixed above the scrolling content, with a divider; both buttons have a 24x24pt click area
+* The popover is 380x540pt; the content below the header scrolls with a visible scroll indicator
 
 ---
 
@@ -310,6 +312,11 @@ maxSamples = min(600, ceil(600 / memoryInterval)) // 120 at the default 5s
 * `USER` truncates at the end when long; hovering shows the full name
 * `PROCESS` is the executable name parsed from the command (quotes and escapes handled), truncated in the middle when long; hovering shows the full command line
 * `MEM`: `%.0f MB` below 1 GB, `%.2f GB` from 1 GB (binary units, like Activity Monitor). The same format is used everywhere memory is shown in the popover
+
+### Empty state
+
+* Top Apps and Top Processes show `Loading…` until the first process sample lands
+* After that (or once the process sample fails, with the error shown below; a memory error alone keeps `Loading…`), an empty list shows "No app data available" / "No process data available"
 
 ### Footer
 
