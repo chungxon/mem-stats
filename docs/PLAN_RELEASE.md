@@ -6,7 +6,7 @@ Plan này tổng hợp kết quả review trước release ngày 2026-10-03 (spe
 
 Thứ tự ưu tiên:
 
-- **P0**: phải xong trước release. Thứ tự: Task 1-6, Task 15 (Settings), cuối cùng Task 7 (publish).
+- **P0**: phải xong trước release. Thứ tự: Task 1-6, Task 15 (Settings), Task 16 (Check for Updates, Report a Bug), cuối cùng Task 7 (publish).
 - **P1**: nên làm trong bản release nếu kịp.
 - **P2**: dọn dẹp, có thể để bản sau.
 
@@ -19,9 +19,10 @@ Thứ tự ưu tiên:
 ## Decisions (cần anh chốt)
 
 - Giữ `top` cho bản 1.0. Chuyển sang `proc_pid_rusage` (`ri_phys_footprint`) để giảm CPU và khớp Activity Monitor hơn: để sau release (Task 14).
-- Phân phối ngoài Mac App Store qua GitHub Releases và Homebrew tap riêng. Không lên Store vì sandbox phải tắt để chạy `top` và đọc process của user khác.
+- Phân phối ngoài Mac App Store, chỉ qua GitHub Releases. Không lên Store vì sandbox phải tắt để chạy `top` và đọc process của user khác.
+- Bỏ Homebrew khỏi bản 1.0 (2026-10-04): app chưa ký Developer ID/notarize nên khó lên `homebrew/cask` chính thức. Khi ký được app thì thêm lại (tap riêng hoặc `homebrew/cask`).
 - Chưa có Apple Developer Program: bản 1.0 không notarize. README hướng dẫn mở app lần đầu ("Open Anyway" hoặc bỏ quarantine).
-- Không làm tự động cập nhật (Sparkle) hay check update trong app. User tự vào GitHub Releases để kiểm tra và tải bản mới.
+- Không làm tự động cập nhật (Sparkle) hay tự check update nền. Settings có nút "Check for Updates" (mở thẳng trang release mới nhất trên GitHub, không so version, app không gọi mạng) và nút "Report a Bug" mở trang tạo issue trên GitHub (Task 16).
 - Hạ deployment target từ macOS 15.7 xuống 14.0 để hỗ trợ rộng hơn (API dùng tối đa macOS 14). Không giới hạn max, build bằng SDK mới nhất (Xcode 27).
 - Context menu giữ `About` / `Quit` như hiện tại (menu ngắn, icon đã thể hiện app).
 - Màu warning thống nhất: **orange** (dễ đọc hơn yellow trên menu bar sáng), cập nhật docs từ 🟡 sang 🟠. Swap và growth hint đổi sang màu khác.
@@ -100,9 +101,9 @@ Files: `MemStats.xcodeproj/project.pbxproj`, scheme, `README.md`
 - [x] Release build ký ad-hoc (`CODE_SIGN_IDENTITY = "-"`, Sign to Run Locally) thay cho cert Apple Development của team cá nhân, để app chạy được trên máy khác mà không gắn với Apple ID dev.
 - [x] README thêm các mục:
   - Requirements: macOS 14.0 trở lên.
-  - Install qua GitHub Releases (tải zip, kéo vào Applications) và qua Homebrew tap.
+  - Install qua GitHub Releases (tải zip, kéo vào Applications). (Homebrew đã bỏ, xem Decisions.)
   - Mở lần đầu: app chưa notarize nên macOS sẽ chặn. Vào System Settings > Privacy & Security > "Open Anyway", hoặc chạy `xattr -dr com.apple.quarantine /Applications/MemStats.app`.
-  - Update: xem phiên bản trong About, so với trang GitHub Releases. Với Homebrew: `brew upgrade --cask memstats`.
+  - Update: xem phiên bản trong About, so với trang GitHub Releases.
   - Build from source.
 
 Commit: `chore(release): set app metadata and drop template UI tests`
@@ -175,26 +176,35 @@ Tests và docs:
 
 Commit: `feat(settings): add settings window for update intervals and row counts`
 
-## Task 7 - Publish Release On GitHub And Homebrew (thủ công)
+## Task 16 - Check For Updates And Report A Bug In Settings (làm trước Task 7)
+
+Files: `Services/AppLinks.swift` (mới), `SettingsView.swift`, `MemStatsTests.swift`, `docs/DESCRIPTION.md`, `README.md`
+
+Repo: `https://github.com/chungxon/mem-stats`.
+
+- [x] `AppLinks`: URL repo, trang Releases, `releases/latest`, trang tạo issue mới.
+- [x] Report a Bug: mở `issues/new` với title và body điền sẵn (mô tả, các bước tái hiện, kỳ vọng, môi trường: version app, macOS, model máy, kiến trúc).
+- [x] Check for Updates: mở thẳng `releases/latest` trên trình duyệt, không so version, không gọi GitHub API (đổi ý 2026-10-04, bỏ `UpdateChecker`).
+- [x] Settings thêm section cuối: Version, Check for Updates, Report a Bug.
+- [x] Test: URL `releases/latest`, URL issue có title, label và thông tin môi trường.
+- [x] Fix crash khi mở Settings: `LabeledContent` trong Form gây vòng lặp Update Constraints, đổi sang `HStack`. Thêm test mở cửa sổ Settings.
+- [x] Cập nhật docs §15 và README (Update, Report a Bug).
+
+Commit: `feat(settings): add check for updates and bug report links`
+
+## Task 7 - Publish Release On GitHub (thủ công)
 
 Build và đóng gói:
 
 - [ ] `xcodebuild -project MemStats/MemStats.xcodeproj -scheme MemStats -configuration Release -derivedDataPath build archive -archivePath build/MemStats.xcarchive`.
 - [ ] Lấy `MemStats.app` trong archive, nén bằng `ditto -c -k --keepParent MemStats.app MemStats-1.0.zip` (giữ đúng symlink và chữ ký, không dùng Finder Compress hay `zip`).
 - [ ] `codesign --verify --deep --strict MemStats.app` để chắc chữ ký ad-hoc hợp lệ.
-- [ ] `shasum -a 256 MemStats-1.0.zip` để lấy checksum cho cask.
+- [ ] `shasum -a 256 MemStats-1.0.zip` để lấy checksum ghi vào release notes.
 
 GitHub Release:
 
-- [ ] Tạo tag `v1.0` và release trên `chungxon/ram-stats`, đính kèm `MemStats-1.0.zip` và ghi checksum.
+- [ ] Tạo tag `v1.0` và release trên `chungxon/mem-stats`, đính kèm `MemStats-1.0.zip` và ghi checksum.
 - [ ] Release notes: tính năng chính, yêu cầu macOS, hướng dẫn mở lần đầu (giống README).
-
-Homebrew:
-
-- [ ] Tạo repo tap `chungxon/homebrew-tap`. Homebrew Cask chính thức không nhận app chưa notarize nên dùng tap riêng.
-- [ ] Thêm `Casks/memstats.rb`: `version`, `sha256`, `url` trỏ tới asset trên GitHub Releases, `app "MemStats.app"`, `depends_on macos: ">= :sonoma"`, `caveats` hướng dẫn mở lần đầu.
-- [ ] Kiểm tra `brew install --cask chungxon/tap/memstats` trên máy khác.
-- [ ] Mỗi bản mới: cập nhật `version` và `sha256` trong cask.
 
 Kiểm tra:
 

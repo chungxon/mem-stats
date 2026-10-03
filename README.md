@@ -11,17 +11,9 @@ See [docs/DESCRIPTION.md](docs/DESCRIPTION.md) for the full feature and architec
 
 ## Install
 
-### GitHub Releases
-
-1. Download `MemStats-<version>.zip` from [GitHub Releases](https://github.com/chungxon/ram-stats/releases).
+1. Download `MemStats-<version>.zip` from [GitHub Releases](https://github.com/chungxon/mem-stats/releases).
 2. Unzip it and drag `MemStats.app` into `/Applications`.
 3. Open it once as described in [First launch](#first-launch).
-
-### Homebrew
-
-```bash
-brew install --cask chungxon/tap/memstats
-```
 
 MemStats is distributed outside the Mac App Store, because it needs the App Sandbox turned off to run `top` and read processes of other users.
 
@@ -51,22 +43,19 @@ Short intervals use more CPU, mostly the top processes interval, since each upda
 
 ## Update
 
-There is no automatic update check.
+There is no automatic update. Open Settings and click "Check for Updates…" to open the latest release on [GitHub Releases](https://github.com/chungxon/mem-stats/releases), compare it with the version shown in Settings, then download and replace the app.
 
-* GitHub Releases: compare the version in About (menu bar item > right-click > About) with the latest version on [GitHub Releases](https://github.com/chungxon/ram-stats/releases), then download and replace the app.
-* Homebrew:
+## Report a Bug
 
-  ```bash
-  brew upgrade --cask memstats
-  ```
+Open Settings and click "Report a Bug…". It opens a new GitHub issue with your MemStats version, macOS version and Mac model already filled in, so you only describe the problem. You can also [open an issue](https://github.com/chungxon/mem-stats/issues/new) directly.
 
 ## Build From Source
 
 Requires Xcode 26 or later.
 
 ```bash
-git clone https://github.com/chungxon/ram-stats.git
-cd ram-stats
+git clone https://github.com/chungxon/mem-stats.git
+cd mem-stats
 xcodebuild -project MemStats/MemStats.xcodeproj -scheme MemStats -configuration Release -derivedDataPath build build
 open build/Build/Products/Release/MemStats.app
 ```

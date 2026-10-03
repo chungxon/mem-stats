@@ -4,6 +4,7 @@ struct SettingsView: View {
   @ObservedObject private var settings: SettingsStore
   @ObservedObject private var appState: MemStatsAppState
   @ObservedObject private var loginItemService: LoginItemService
+  @Environment(\.openURL) private var openURL
 
   /// Goes through the same path as the context menu, so approval prompts and errors match.
   private let onToggleOpenAtLogin: () -> Void
@@ -65,6 +66,39 @@ struct SettingsView: View {
           .font(.footnote)
           .foregroundStyle(.secondary)
         }
+      }
+
+      // HStack rows, not LabeledContent: with this window's preferred-content-size sizing,
+      // LabeledContent makes AppKit loop on Update Constraints and raise an exception.
+      Section {
+        HStack {
+          Text("Version")
+          Spacer()
+          Text(verbatim: "\(AppLinks.appVersion) (\(AppLinks.appBuild))")
+            .foregroundStyle(.secondary)
+            .textSelection(.enabled)
+        }
+        .accessibilityElement(children: .combine)
+        HStack {
+          Text("Updates")
+          Spacer()
+          Button("Check for Updates…") {
+            openURL(AppLinks.latestReleaseURL)
+          }
+        }
+        HStack {
+          Text("Feedback")
+          Spacer()
+          Button("Report a Bug…") {
+            openURL(AppLinks.bugReportURL())
+          }
+        }
+      } footer: {
+        Text(
+          "Check for Updates opens the latest release on GitHub. Report a Bug opens a new GitHub issue with your app and macOS versions filled in."
+        )
+        .font(.footnote)
+        .foregroundStyle(.secondary)
       }
     }
     .formStyle(.grouped)

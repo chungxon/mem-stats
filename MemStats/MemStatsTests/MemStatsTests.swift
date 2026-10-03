@@ -1,5 +1,7 @@
+import AppKit
 import Foundation
 import ServiceManagement
+import SwiftUI
 import Testing
 
 @testable import MemStats
@@ -1130,5 +1132,58 @@ struct MemStatsTests {
     let reenabled = try service.toggle()
     #expect(reenabled == true)
     #expect(registrant.didRegister == true)
+  }
+
+  @Test func latestReleaseURLPointsToGitHubReleases() {
+    #expect(
+      AppLinks.latestReleaseURL.absoluteString
+        == "https://github.com/chungxon/mem-stats/releases/latest")
+  }
+
+  @Test func bugReportURLPrefillsTitleLabelAndEnvironment() throws {
+    let url = AppLinks.bugReportURL(
+      appVersion: "1.2+beta",
+      appBuild: "7",
+      osVersion: "Version 15.1 (Build 24B83)",
+      model: "Mac15,6",
+      architecture: "arm64"
+    )
+    #expect(url.absoluteString.hasPrefix("https://github.com/chungxon/mem-stats/issues/new?"))
+
+    let items = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
+    let values = Dictionary(uniqueKeysWithValues: items.map { ($0.name, $0.value ?? "") })
+    #expect(values["title"] == "[Bug] ")
+    #expect(values["labels"] == "bug")
+    let body = try #require(values["body"])
+    #expect(body.contains("- MemStats: 1.2+beta (7)"))
+    #expect(url.absoluteString.contains("1.2%2Bbeta"))
+    #expect(body.contains("- macOS: Version 15.1 (Build 24B83)"))
+    #expect(body.contains("- Mac: Mac15,6 (arm64)"))
+  }
+
+  /// Hosts SettingsView the way AppDelegate does. Some Form rows (LabeledContent) made AppKit
+  /// loop on Update Constraints and crash the app as soon as the window was shown.
+  @MainActor @Test func settingsWindowLaysOutWithoutCrashing() async throws {
+    let suiteName = "settings-window-\(UUID())"
+    let defaults = try #require(UserDefaults(suiteName: suiteName))
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+    let appState = MemStatsAppState(startSampling: false, defaults: defaults)
+    let controller = NSHostingController(
+      rootView: SettingsView(
+        appState: appState,
+        loginItemService: LoginItemService(),
+        onToggleOpenAtLogin: {}
+      )
+    )
+    controller.sizingOptions = .preferredContentSize
+    let window = NSWindow(contentViewController: controller)
+    window.styleMask = [.titled, .closable]
+    window.isReleasedWhenClosed = false
+    window.orderFront(nil)
+    defer { window.close() }
+
+    try await Task.sleep(for: .milliseconds(500))
+    #expect(window.frame.width > 0)
+    #expect(window.frame.height > 0)
   }
 }
