@@ -42,13 +42,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     guard let button = item.button else { return }
 
-    button.title = "RAM 0%"
-    button.image = NSImage(systemSymbolName: "memorychip", accessibilityDescription: "RAM")
     button.imagePosition = .imageLeading
     button.target = self
     button.action = #selector(handleStatusItemClick)
     button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-    button.contentTintColor = .systemGreen
+    applyStatusAppearance(to: button, usagePercent: 0, pressure: .normal)
 
     statusItem = item
   }
@@ -77,11 +75,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
       stats.totalBytes > 0
       ? Int((Double(stats.usedBytes) / Double(stats.totalBytes) * 100).rounded())
       : 0
-    button.title = "RAM \(usagePercent)%"
-    button.contentTintColor = color(for: stats.pressureLevel)
+    applyStatusAppearance(to: button, usagePercent: usagePercent, pressure: stats.pressureLevel)
 
     lastDisplayedUsedBytes = stats.usedBytes
     lastDisplayedPressureLevel = stats.pressureLevel
+  }
+
+  /// The menu bar on the active display renders template content and `contentTintColor`
+  /// as monochrome, so the pressure color is baked into a non-template image and an
+  /// attributed title instead.
+  private func applyStatusAppearance(
+    to button: NSStatusBarButton,
+    usagePercent: Int,
+    pressure: MemoryPressureLevel
+  ) {
+    let tint = color(for: pressure)
+    let image = NSImage(systemSymbolName: "memorychip", accessibilityDescription: "RAM")?
+      .withSymbolConfiguration(NSImage.SymbolConfiguration(paletteColors: [tint]))
+    image?.isTemplate = false
+
+    button.contentTintColor = nil
+    button.image = image
+    button.attributedTitle = NSAttributedString(
+      string: "RAM \(usagePercent)%",
+      attributes: [
+        .foregroundColor: tint,
+        .font: NSFont.menuBarFont(ofSize: 0),
+      ]
+    )
   }
 
   private func shouldRefreshStatus(

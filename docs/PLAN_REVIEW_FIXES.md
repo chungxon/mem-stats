@@ -39,9 +39,9 @@ Files: `AppDelegate.swift`
 
 Bug: trên màn hình đang active, text menu bar luôn màu đen/trắng; màn hình không active mới hiện màu xanh/vàng/đỏ. Nguyên nhân: `contentTintColor` bị hệ thống bỏ qua khi status item được render với vibrancy trên menu bar active.
 
-- [ ] Dùng `attributedTitle` với `foregroundColor` tường minh thay cho `contentTintColor`.
-- [ ] Icon dùng symbol non-template với `SymbolConfiguration(paletteColors:)`.
-- [ ] Kiểm tra trên cả màn hình active và inactive, light và dark.
+- [x] Dùng `attributedTitle` với `foregroundColor` tường minh thay cho `contentTintColor`.
+- [x] Icon dùng symbol non-template với `SymbolConfiguration(paletteColors:)`.
+- [~] Kiểm tra trên cả màn hình active và inactive, light và dark (chờ anh kiểm tra thủ công, em không chụp được màn hình).
 
 Commit: `fix(menubar): render pressure color explicitly on all displays`
 
