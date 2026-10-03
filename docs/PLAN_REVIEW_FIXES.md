@@ -75,9 +75,9 @@ Commit: `fix(ui): show a single filter-aware title per section`
 
 Files: `PopoverRootView.swift`, `MemStatsTests.swift`
 
-- [ ] Thay `hashValue` bằng hash ổn định (FNV-1a trên UTF-8 của username), không dùng `abs` trên `Int`.
-- [ ] Others và Unattributed dùng màu khác nhau rõ ràng.
-- [ ] Test: cùng user luôn cho cùng index.
+- [x] Thay `hashValue` bằng hash ổn định (FNV-1a trên UTF-8 của username), không dùng `abs` trên `Int`.
+- [x] Others và Unattributed dùng màu khác nhau rõ ràng.
+- [x] Test: cùng user luôn cho cùng index.
 
 Commit: `fix(donut): use stable user colors and distinguish others/unattributed`
 

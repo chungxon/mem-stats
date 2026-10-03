@@ -438,6 +438,13 @@ struct MemStatsTests {
     #expect(stats.usedBytes + stats.freeBytes == stats.totalBytes)
   }
 
+  @Test func donutPaletteIndexIsStableAndInRange() {
+    // FNV-1a("alice") = 0x508b2abb65a03907, so the index never changes between launches.
+    #expect(DonutDataBuilder.paletteIndex(for: "alice", paletteCount: 8) == 7)
+    #expect(DonutDataBuilder.paletteIndex(for: "", paletteCount: 8) < 8)
+    #expect(DonutDataBuilder.paletteIndex(for: "root", paletteCount: 0) == 0)
+  }
+
   @Test func historySegmentsPairAdjacentSamplesAndUseEndPressure() {
     let start = Date(timeIntervalSince1970: 1_000)
     let samples = [

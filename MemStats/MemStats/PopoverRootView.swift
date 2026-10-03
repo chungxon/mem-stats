@@ -505,13 +505,13 @@ struct PopoverRootView: View {
     case .free:
       return Color.green
     case .others:
-      return Color.gray
+      return Color(nsColor: .systemGray)
     case .unattributed:
-      return Color.secondary
+      // Opaque lighter gray so it reads differently from the "Others" slice.
+      return Color(nsColor: .systemGray).mix(with: .white, by: 0.45)
     case .user(let user):
       let palette: [Color] = [.blue, .orange, .mint, .indigo, .teal, .cyan, .pink, .brown]
-      let index = abs(user.hashValue) % palette.count
-      return palette[index]
+      return palette[DonutDataBuilder.paletteIndex(for: user, paletteCount: palette.count)]
     }
   }
 
