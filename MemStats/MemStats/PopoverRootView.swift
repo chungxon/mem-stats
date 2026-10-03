@@ -35,6 +35,25 @@ struct PopoverRootView: View {
     return "\(mode) (\(memorySeconds)s, processes \(processSeconds)s)"
   }
 
+  private var historyAccessibilityValue: String {
+    guard let latest = memoryVM.history.last else { return "No samples" }
+    var parts = [
+      "Used \(MemoryFormat.size(latest.usedBytes))",
+      "pressure \(latest.pressureLevel.displayName)",
+      "swap \(MemoryFormat.size(latest.swapUsedBytes))",
+    ]
+    if let total = memoryVM.currentStats?.totalBytes {
+      parts[0] += " of \(MemoryFormat.size(total))"
+    }
+    if let selectedUser = processVM.selectedUser,
+      let selected = processVM.selectedUserHistory.last
+    {
+      parts.append("\(selectedUser) \(MemoryFormat.size(selected.displayBytes))")
+    }
+    parts.append("\(memoryVM.history.count) samples")
+    return parts.joined(separator: ", ")
+  }
+
   /// "Loading…" until the first process sample lands or fails (the error shows below).
   private func listPlaceholder(empty: String) -> String {
     appState.isWaitingForFirstProcessSample ? "Loading…" : empty
@@ -200,6 +219,10 @@ struct PopoverRootView: View {
             }
           }
           .frame(height: 130)
+          // Hundreds of marks are noise for VoiceOver, so read the chart as one summary.
+          .accessibilityElement(children: .ignore)
+          .accessibilityLabel("Memory history")
+          .accessibilityValue(historyAccessibilityValue)
 
           // Items wrap one by one, so adding "Selected" only moves that item to the next row.
           LegendFlowLayout(horizontalSpacing: 10, verticalSpacing: 4) {
@@ -249,6 +272,8 @@ struct PopoverRootView: View {
           }
           .font(.caption2.weight(.semibold))
           .foregroundStyle(.secondary)
+          .accessibilityElement(children: .combine)
+          .accessibilityAddTraits(.isHeader)
 
           ForEach(processVM.visibleApps) { app in
             HStack(spacing: 8) {
@@ -269,6 +294,11 @@ struct PopoverRootView: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 64, alignment: .trailing)
             }
+            // One VoiceOver element per row, with the column names spoken.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(
+              "\(app.name), \(app.processCount) \(app.processCount == 1 ? "process" : "processes"), \(MemoryFormat.size(app.bytes))"
+            )
           }
         }
       }
@@ -299,6 +329,8 @@ struct PopoverRootView: View {
           }
           .font(.caption2.weight(.semibold))
           .foregroundStyle(.secondary)
+          .accessibilityElement(children: .combine)
+          .accessibilityAddTraits(.isHeader)
 
           ForEach(processVM.visibleProcesses, id: \.pid) { process in
             HStack(spacing: 8) {
@@ -327,6 +359,10 @@ struct PopoverRootView: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 64, alignment: .trailing)
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(
+              "\(processVM.displayName(for: process)), user \(process.user), PID \(process.pid), \(MemoryFormat.size(process.rssBytes))"
+            )
           }
         }
 

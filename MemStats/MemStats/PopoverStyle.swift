@@ -32,14 +32,19 @@ enum PopoverStyle {
     "\(Int((fraction * 100).rounded()))%"
   }
 
-  /// Opaque lighter gray so it reads differently from the "Others" slice. Resolved per
-  /// appearance, since `Color.mix(with:by:)` needs macOS 15.
+  /// Opaque gray that reads differently from the "Others" slice and keeps at least 3:1 contrast
+  /// with the background: darker than system gray in light mode, lighter in dark mode. Resolved
+  /// per appearance, since `Color.mix(with:by:)` needs macOS 15. (`tertiaryLabelColor` is
+  /// translucent and too faint on a light background.)
   private static let unattributedColor = NSColor(name: nil) { appearance in
+    let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
     var color = NSColor.systemGray
     appearance.performAsCurrentDrawingAppearance {
+      let base = NSColor.systemGray.usingColorSpace(.sRGB)
       color =
-        NSColor.systemGray.usingColorSpace(.sRGB)?.blended(withFraction: 0.45, of: .white)
-        ?? .systemGray
+        (isDark
+          ? base?.blended(withFraction: 0.45, of: .white)
+          : base?.blended(withFraction: 0.35, of: .black)) ?? .systemGray
     }
     return color
   }

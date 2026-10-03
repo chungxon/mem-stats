@@ -245,10 +245,10 @@ Commit: `perf(ui): avoid full popover re-render on donut hover`
 
 Files: `PopoverRootView.swift`
 
-- [ ] Mỗi dòng Top Apps / Top Processes là 1 element VoiceOver (`.accessibilityElement(children: .combine)`).
-- [ ] Header của bảng có trait `.isHeader`.
-- [ ] History chart có `accessibilityLabel` và `accessibilityValue` (used hiện tại, pressure, swap).
-- [ ] Màu slice Unattributed đủ tương phản trên nền sáng (`tertiaryLabelColor`).
+- [x] Mỗi dòng Top Apps / Top Processes là 1 element VoiceOver (thực tế: `.accessibilityElement(children: .ignore)` kèm label đọc rõ tên cột, vì `.combine` chỉ đọc "Safari, 12, 1.20 GB").
+- [x] Header của bảng có trait `.isHeader`.
+- [x] History chart có `accessibilityLabel` và `accessibilityValue` (used hiện tại, pressure, swap).
+- [x] Màu slice Unattributed đủ tương phản trên nền sáng (thực tế: không dùng `tertiaryLabelColor` vì nó trong suốt và nhạt hơn; dùng xám đậm hơn ở light mode, sáng hơn ở dark mode).
 
 Commit: `feat(a11y): improve VoiceOver for tables and history chart`
 

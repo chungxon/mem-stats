@@ -203,6 +203,7 @@ Process timer (top):                        default every 5s, setting 3-60s
 * Memory not covered by sampled processes → "Unattributed Used"
 * Sort users by memory DESC
 * User colors are picked with a stable hash (FNV-1a) so a user keeps the same color across launches
+* "Others" is system gray; "Unattributed Used" is an opaque gray that is darker in light mode and lighter in dark mode, so it stays distinct from "Others" and keeps at least 3:1 contrast with the background
 
 ### Center label
 
@@ -245,6 +246,10 @@ Process timer (top):                        default every 5s, setting 3-60s
 * Auto reset: the filter clears itself when the selected user no longer has its own slice on the donut, either because it was merged into "Others" (< 2%) or because it has no processes left. This keeps the highlighted slice, center label and info row in sync with the filtered lists.
 
 * VoiceOver: the donut is one element with a value listing every slice, plus actions to filter or clear each user
+* VoiceOver elsewhere in the popover:
+  * the history chart is one element, "Memory history", whose value reads used RAM of total, pressure, swap, the selected user's memory (when filtered) and the sample count
+  * table column headers are one header element per table
+  * each Top Apps / Top Processes row is one element, e.g. `Safari, 12 processes, 1.20 GB` or `WindowServer, user _windowserver, PID 152, 512 MB`
 
 ---
 
