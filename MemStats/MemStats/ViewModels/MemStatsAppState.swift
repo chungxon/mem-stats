@@ -196,6 +196,7 @@ final class MemStatsAppState: ObservableObject {
         snapshots: processes,
         appIdentities: appIdentities,
         topLimit: 8,
+        targetUsedBytes: memoryVM.currentStats.map { $0.totalBytes - min($0.freeBytes, $0.totalBytes) },
         sampledAt: sampledAt
       )
       refreshGrowthHints()

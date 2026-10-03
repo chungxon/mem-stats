@@ -222,6 +222,24 @@ struct MemStatsTests {
     #expect(vm.selectedUserHistory[1].timestamp > vm.selectedUserHistory[0].timestamp)
   }
 
+  @MainActor @Test func processViewModelScalesUserHistoryToUsedRAMForDisplay() {
+    let vm = ProcessViewModel(maxSamples: 3)
+    // Summed RSS (400) is double the used RAM (200), so display bytes are halved.
+    vm.apply(
+      snapshots: [
+        ProcessSnapshot(user: "alice", pid: 1, rssBytes: 300, command: "/bin/a"),
+        ProcessSnapshot(user: "bob", pid: 2, rssBytes: 100, command: "/bin/b"),
+      ],
+      targetUsedBytes: 200,
+      sampledAt: Date(timeIntervalSince1970: 1)
+    )
+    vm.selectedUser = "alice"
+
+    #expect(vm.selectedUserHistory.last?.rssBytes == 300)
+    #expect(vm.selectedUserHistory.last?.displayBytes == 150)
+    #expect(vm.history(for: "bob").last?.displayBytes == 50)
+  }
+
   @MainActor @Test func processViewModelCapsTopProcessesToLimit() {
     let vm = ProcessViewModel()
     let snapshots = (1...30).map { index in

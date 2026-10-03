@@ -308,7 +308,7 @@ struct PopoverRootView: View {
               ForEach(orderedSelectedUserHistory, id: \.timestamp) { sample in
                 LineMark(
                   x: .value("Time", sample.timestamp),
-                  y: .value("Selected User", Double(sample.rssBytes)),
+                  y: .value("Selected User", Double(sample.displayBytes)),
                   series: .value("Segment", "selected-user")
                 )
                 .foregroundStyle(.teal)

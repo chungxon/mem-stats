@@ -6,7 +6,10 @@ final class ProcessViewModel: ObservableObject {
   struct UserMemoryHistorySample: Sendable, Equatable {
     let timestamp: Date
     let user: String
+    /// Raw summed RSS, used for growth detection.
     let rssBytes: UInt64
+    /// RSS scaled the same way as the donut, so it fits on the used RAM chart.
+    let displayBytes: UInt64
   }
 
   @Published private(set) var allProcesses: [ProcessSnapshot] = []
@@ -32,6 +35,7 @@ final class ProcessViewModel: ObservableObject {
     snapshots: [ProcessSnapshot],
     appIdentities: [Int32: AppIdentity] = [:],
     topLimit: Int = 8,
+    targetUsedBytes: UInt64? = nil,
     sampledAt: Date = Date()
   ) {
     self.topLimit = max(topLimit, 0)
@@ -55,10 +59,19 @@ final class ProcessViewModel: ObservableObject {
     // fresh series instead of bridging the gap (which would look like a sudden jump).
     userHistoryByUser = userHistoryByUser.filter { rssByUser[$0.key] != nil }
 
+    let displayByUser = targetUsedBytes.map {
+      DonutDataBuilder.normalizePerUserBytes(rssByUser, targetUsedBytes: $0)
+    }
+
     for (user, rssBytes) in rssByUser {
       var history = userHistoryByUser[user, default: []]
       history.append(
-        UserMemoryHistorySample(timestamp: adjustedTimestamp, user: user, rssBytes: rssBytes)
+        UserMemoryHistorySample(
+          timestamp: adjustedTimestamp,
+          user: user,
+          rssBytes: rssBytes,
+          displayBytes: displayByUser.map { $0[user] ?? 0 } ?? rssBytes
+        )
       )
       if history.count > maxSamples {
         history.removeFirst(history.count - maxSamples)

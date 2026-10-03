@@ -90,7 +90,9 @@ struct DonutDataBuilder {
     return stableUserSlices
   }
 
-  private static func normalizePerUserBytes(
+  /// Summed RSS double-counts shared pages, so when it exceeds used RAM every user is scaled
+  /// down by the same factor to fit. Shared with the per-user history chart.
+  static func normalizePerUserBytes(
     _ perUserBytes: [String: UInt64],
     targetUsedBytes: UInt64
   ) -> [String: UInt64] {

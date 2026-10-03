@@ -226,7 +226,7 @@ UI refresh: every 5s
 ### Metrics (In-memory)
 
 * Total used RAM (primary plotted series)
-* Selected user series (optional when a user is selected)
+* Selected user series (optional when a user is selected), scaled the same way as the donut so it matches the donut value and stays within the used RAM range
 * Swap used + memory pressure shown as latest status badges
 * Used RAM chart segment color follows memory pressure at that sample:
   * Green = normal
