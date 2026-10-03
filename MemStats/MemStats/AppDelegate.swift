@@ -100,7 +100,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
       string: "RAM \(usagePercent)%",
       attributes: [
         .foregroundColor: tint,
-        .font: NSFont.menuBarFont(ofSize: 0),
+        // Monospaced digits keep the status item width stable as the percentage changes.
+        .font: NSFont.monospacedDigitSystemFont(
+          ofSize: NSFont.menuBarFont(ofSize: 0).pointSize,
+          weight: .regular
+        ),
       ]
     )
   }

@@ -58,8 +58,8 @@ Commit: `fix(history): draw pressure-colored segments and match legend color`
 
 Files: `AppDelegate.swift`, `PopoverRootView.swift`
 
-- [ ] Status item title dùng monospaced digit font.
-- [ ] Cột Memory ở Top Apps và Top Processes thêm `.monospacedDigit()`.
+- [x] Status item title dùng monospaced digit font.
+- [x] Cột Memory ở Top Apps và Top Processes thêm `.monospacedDigit()`.
 
 Commit: `fix(ui): use monospaced digits for live memory values`
 

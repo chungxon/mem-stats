@@ -384,7 +384,7 @@ struct PopoverRootView: View {
                 .frame(width: 50, alignment: .trailing)
 
               Text(formatGigabytes(app.bytes))
-                .font(.footnote)
+                .font(.footnote.monospacedDigit())
                 .foregroundStyle(.secondary)
                 .frame(width: 56, alignment: .trailing)
             }
@@ -448,7 +448,7 @@ struct PopoverRootView: View {
                 .help(process.command)
 
               Text(formatGigabytes(process.rssBytes))
-                .font(.footnote)
+                .font(.footnote.monospacedDigit())
                 .foregroundStyle(.secondary)
                 .frame(width: 56, alignment: .trailing)
             }
