@@ -1068,6 +1068,51 @@ struct MemStatsTests {
     #expect(enabled == false)
     #expect(service.isEnabled == false)
     #expect(service.requiresApproval == true)
+    #expect(service.isRequested == true)
     #expect(defaults.bool(forKey: "openAtLogin") == false)
+  }
+
+  @Test func loginItemServiceCancelsPendingApprovalOnToggle() throws {
+    let suiteName = "MemStatsTests.LoginItem.CancelApproval"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+
+    // Registered earlier and still waiting for approval when the app starts.
+    let registrant = MockLoginItemRegistrant(status: .requiresApproval)
+    let service = LoginItemService(defaults: defaults, registrant: registrant)
+    service.syncWithSystem()
+    #expect(service.requiresApproval == true)
+    #expect(service.isEnabled == false)
+
+    // The next click cancels instead of registering again.
+    let enabled = try service.toggle()
+    #expect(enabled == false)
+    #expect(registrant.didUnregister == true)
+    #expect(registrant.didRegister == false)
+    #expect(service.requiresApproval == false)
+    #expect(service.isRequested == false)
+  }
+
+  @Test func loginItemServiceTogglesFromFreshSystemState() throws {
+    let suiteName = "MemStatsTests.LoginItem.Fresh"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+
+    let registrant = MockLoginItemRegistrant(status: .requiresApproval)
+    let service = LoginItemService(defaults: defaults, registrant: registrant)
+    service.syncWithSystem()
+
+    // Approved in System Settings while the app ran: the next click turns it off, as expected
+    // for an enabled item, without a stale "pending" state in between.
+    registrant.status = .enabled
+    let enabled = try service.toggle()
+    #expect(enabled == false)
+    #expect(registrant.didUnregister == true)
+
+    // Removed in System Settings (`.notFound`): the next click registers.
+    registrant.status = .notFound
+    let reenabled = try service.toggle()
+    #expect(reenabled == true)
+    #expect(registrant.didRegister == true)
   }
 }

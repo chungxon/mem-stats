@@ -258,9 +258,9 @@ Files: `Services/LoginItemService.swift`, `AppDelegate.swift`, `MemStatsTests.sw
 
 Bug: khi trạng thái là `.requiresApproval`, bấm "Open at Login" lần nữa lại gọi `register()` và alert hiện lại, không có cách huỷ.
 
-- [ ] Coi `.requiresApproval` là "đang bật" khi toggle, lần bấm tiếp theo gọi `unregister()`.
-- [ ] Checkmark hiện trạng thái mixed hoặc kèm text "(needs approval)".
-- [ ] Test với mock status `.requiresApproval`.
+- [x] Coi `.requiresApproval` là "đang bật" khi toggle, lần bấm tiếp theo gọi `unregister()`.
+- [x] Checkmark hiện trạng thái mixed hoặc kèm text "(needs approval)".
+- [x] Test với mock status `.requiresApproval`.
 
 Commit: `fix(login): allow cancelling a login item pending approval`
 

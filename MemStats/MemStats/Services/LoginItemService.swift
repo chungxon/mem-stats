@@ -28,7 +28,11 @@ final class LoginItemService: ObservableObject {
   private let defaults: UserDefaults
   private let registrant: LoginItemRegistrant
 
+  /// Registered and approved, so the app really opens at login.
   @Published private(set) var isEnabled: Bool
+  /// Registered but still waiting for approval in System Settings > Login Items. The toggle
+  /// treats this as "on", so the next click cancels it instead of registering again.
+  @Published private(set) var requiresApproval = false
 
   init(
     defaults: UserDefaults = .standard,
@@ -40,16 +44,21 @@ final class LoginItemService: ObservableObject {
   }
 
   func syncWithSystem() {
-    let enabled = registrant.status == .enabled
+    let status = registrant.status
+    let enabled = status == .enabled
+    let pending = status == .requiresApproval
     if isEnabled != enabled {
       isEnabled = enabled
+    }
+    if requiresApproval != pending {
+      requiresApproval = pending
     }
     defaults.set(enabled, forKey: openAtLoginKey)
   }
 
-  /// True when the login item is registered but still waits for user approval in System Settings.
-  var requiresApproval: Bool {
-    registrant.status == .requiresApproval
+  /// What the toggle shows as "on": enabled, or registered and waiting for approval.
+  var isRequested: Bool {
+    isEnabled || requiresApproval
   }
 
   func setEnabled(_ enabled: Bool) throws {
@@ -63,9 +72,18 @@ final class LoginItemService: ObservableObject {
     syncWithSystem()
   }
 
+  /// Registers when off, and unregisters when enabled or pending approval. Returns `isEnabled`.
   @discardableResult
   func toggle() throws -> Bool {
-    try setEnabled(!isEnabled)
+    // The user may have approved or removed the item in System Settings since the last sync.
+    syncWithSystem()
+    do {
+      try setEnabled(!isRequested)
+    } catch {
+      // Nothing changed, but a SwiftUI toggle already flipped; redraw it from the real state.
+      objectWillChange.send()
+      throw error
+    }
     return isEnabled
   }
 }

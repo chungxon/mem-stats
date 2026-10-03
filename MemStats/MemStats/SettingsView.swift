@@ -57,6 +57,14 @@ struct SettingsView: View {
         Toggle("Open at Login", isOn: openAtLoginBinding)
         Toggle("Show System Users", isOn: showSystemUsersBinding)
           .help("Include root and _* system accounts")
+      } footer: {
+        if loginItemService.requiresApproval {
+          Text(
+            "Open at Login needs approval in System Settings > General > Login Items. Turn it off to cancel."
+          )
+          .font(.footnote)
+          .foregroundStyle(.secondary)
+        }
       }
     }
     .formStyle(.grouped)
@@ -67,7 +75,7 @@ struct SettingsView: View {
 
   private var openAtLoginBinding: Binding<Bool> {
     Binding(
-      get: { loginItemService.isEnabled },
+      get: { loginItemService.isRequested },
       set: { _ in onToggleOpenAtLogin() }
     )
   }

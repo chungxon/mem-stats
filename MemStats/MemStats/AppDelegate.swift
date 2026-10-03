@@ -188,7 +188,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     openAtLogin.target = self
     // The user can change login items in System Settings while the app runs.
     loginItemService.syncWithSystem()
-    openAtLogin.state = loginItemService.isEnabled ? .on : .off
+    if loginItemService.requiresApproval {
+      // Mixed state: registered, but macOS has not approved it yet. Clicking cancels it.
+      openAtLogin.title = "Open at Login (needs approval)"
+      openAtLogin.state = .mixed
+      openAtLogin.toolTip = "Approve in System Settings > Login Items, or click to cancel"
+    } else {
+      openAtLogin.state = loginItemService.isEnabled ? .on : .off
+    }
 
     let showSystemUsers = NSMenuItem(
       title: "Show System Users",

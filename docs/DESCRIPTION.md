@@ -106,6 +106,7 @@ All inside **one popup window**.
   * `UserDefaults`
 * The checkmark always reflects `SMAppService.mainApp.status` (re-read after each change and each time the menu opens)
 * If macOS needs approval (`.requiresApproval`), show an alert that opens System Settings > Login Items
+* While approval is pending, the menu item reads `Open at Login (needs approval)` with a mixed checkmark, and the Settings toggle shows on with a note; clicking again unregisters, so a pending request can be cancelled
 * `Show System Users`: see §14.5
 * `Settings…`: opens the Settings window (§15)
 * Open at Login and Show System Users are also in Settings and stay in sync both ways
