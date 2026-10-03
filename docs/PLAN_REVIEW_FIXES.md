@@ -85,8 +85,8 @@ Commit: `fix(donut): use stable user colors and distinguish others/unattributed`
 
 Files: `ViewModels/*`, `PopoverRootView.swift`
 
-- [ ] Tính `donutSlices` 1 lần khi có snapshot mới, lưu thành `@Published`.
-- [ ] View và hover hit-test đọc giá trị đã cache.
+- [x] Tính `donutSlices` 1 lần khi có snapshot mới, lưu thành `@Published`.
+- [x] View và hover hit-test đọc giá trị đã cache.
 
 Commit: `perf(donut): cache slices and recompute only on new snapshots`
 

@@ -25,14 +25,7 @@ struct PopoverRootView: View {
   }
 
   private var donutSlices: [DonutSlice] {
-    guard let stats = memoryVM.currentStats else { return [] }
-
-    return DonutDataBuilder.buildSlices(
-      totalBytes: stats.totalBytes,
-      freeBytes: stats.freeBytes,
-      snapshots: processVM.allProcesses,
-      tinyThreshold: 0.02
-    )
+    appState.donutSlices
   }
 
   private var activeSelectedSlice: DonutSlice? {

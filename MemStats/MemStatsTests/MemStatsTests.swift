@@ -526,6 +526,33 @@ struct MemStatsTests {
     #expect(appState.samplingInterval(for: .idle) == 15)
   }
 
+  @MainActor @Test func appStateCachesDonutSlicesPerSample() {
+    let appState = MemStatsAppState(startSampling: false)
+    #expect(appState.donutSlices.isEmpty)
+
+    let stats = MemoryStats(
+      totalBytes: 1_000,
+      usedBytes: 600,
+      freeBytes: 400,
+      activeBytes: 0,
+      inactiveBytes: 0,
+      wiredBytes: 0,
+      compressedBytes: 0,
+      swapUsedBytes: 0,
+      pressureLevel: .normal
+    )
+    let processes = [
+      ProcessSnapshot(user: "alice", pid: 1, rssBytes: 500, command: "/a")
+    ]
+
+    appState.applySample(stats: stats, processes: processes)
+    #expect(appState.donutSlices.map(\.id) == ["user:alice", "unattributed", "free"])
+
+    // A failed process sample keeps the previous processes for the donut.
+    appState.applySample(stats: stats, processes: nil)
+    #expect(appState.donutSlices.map(\.id) == ["user:alice", "unattributed", "free"])
+  }
+
   @Test func loginItemServiceSyncsAndPersistsState() {
     let defaults = UserDefaults(suiteName: "MemStatsTests.LoginItem.Sync")!
     defaults.removePersistentDomain(forName: "MemStatsTests.LoginItem.Sync")
