@@ -255,7 +255,7 @@ struct PopoverRootView: View {
                 yStart: .value("Baseline", 0),
                 yEnd: .value("Used RAM", Double(sample.usedBytes))
               )
-              .foregroundStyle(Color.blue.opacity(0.2))
+              .foregroundStyle(pressureColor(for: sample.pressureLevel).opacity(0.18))
               .interpolationMethod(.linear)
             }
 
@@ -264,7 +264,7 @@ struct PopoverRootView: View {
                 x: .value("Time", sample.timestamp),
                 y: .value("Used RAM", Double(sample.usedBytes))
               )
-              .foregroundStyle(by: .value("Series", "Used"))
+              .foregroundStyle(pressureColor(for: sample.pressureLevel))
               .lineStyle(StrokeStyle(lineWidth: 2))
               .interpolationMethod(.linear)
             }
@@ -276,16 +276,12 @@ struct PopoverRootView: View {
                   x: .value("Time", sample.timestamp),
                   y: .value("Selected User", Double(sample.rssBytes))
                 )
-                .foregroundStyle(by: .value("Series", "Selected User"))
+                .foregroundStyle(.teal)
                 .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 3]))
                 .interpolationMethod(.linear)
               }
             }
           }
-          .chartForegroundStyleScale([
-            "Used": Color.blue,
-            "Selected User": Color.teal,
-          ])
           .chartLegend(.hidden)
           .chartYScale(domain: 0...historyScaleUpperBound)
           .chartXAxis(.hidden)

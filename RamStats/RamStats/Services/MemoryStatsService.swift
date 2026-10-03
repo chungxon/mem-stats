@@ -55,7 +55,7 @@ struct MemoryStatsService: MemoryStatsProviding {
     )
   }
 
-  private func hostPageSize() throws -> UInt64 {
+  nonisolated private func hostPageSize() throws -> UInt64 {
     var pageSize: vm_size_t = 0
     let result = host_page_size(mach_host_self(), &pageSize)
     guard result == KERN_SUCCESS else {
@@ -65,7 +65,7 @@ struct MemoryStatsService: MemoryStatsProviding {
     return UInt64(pageSize)
   }
 
-  private func vmStatistics() throws -> vm_statistics64 {
+  nonisolated private func vmStatistics() throws -> vm_statistics64 {
     var stats = vm_statistics64()
     var count = mach_msg_type_number_t(
       MemoryLayout<vm_statistics64_data_t>.stride / MemoryLayout<integer_t>.stride
@@ -84,7 +84,7 @@ struct MemoryStatsService: MemoryStatsProviding {
     return stats
   }
 
-  private func totalRAMBytes() throws -> UInt64 {
+  nonisolated private func totalRAMBytes() throws -> UInt64 {
     var total: UInt64 = 0
     var size = MemoryLayout<UInt64>.size
 
@@ -96,7 +96,7 @@ struct MemoryStatsService: MemoryStatsProviding {
     return total
   }
 
-  private func swapUsedBytes() throws -> UInt64 {
+  nonisolated private func swapUsedBytes() throws -> UInt64 {
     var usage = xsw_usage()
     var size = MemoryLayout<xsw_usage>.size
 
@@ -108,7 +108,13 @@ struct MemoryStatsService: MemoryStatsProviding {
     return usage.xsu_used
   }
 
-  private func derivePressureLevel(usedBytes: UInt64, totalBytes: UInt64) -> MemoryPressureLevel {
+  nonisolated private func derivePressureLevel(usedBytes: UInt64, totalBytes: UInt64)
+    -> MemoryPressureLevel
+  {
+    if let systemPressureLevel = readSystemPressureLevel() {
+      return systemPressureLevel
+    }
+
     guard totalBytes > 0 else { return .normal }
 
     let ratio = Double(usedBytes) / Double(totalBytes)
@@ -120,5 +126,68 @@ struct MemoryStatsService: MemoryStatsProviding {
     }
 
     return .normal
+  }
+
+  nonisolated private func readSystemPressureLevel() -> MemoryPressureLevel? {
+    let vmPressure = readInt32Sysctl(name: "vm.memory_pressure").map(Self.levelFromVMMemoryPressure)
+    let memorystatusPressure = readInt32Sysctl(name: "kern.memorystatus_vm_pressure_level").map(
+      Self.levelFromMemorystatusPressure
+    )
+
+    switch (vmPressure, memorystatusPressure) {
+    case (.some(let lhs), .some(let rhs)):
+      return Self.maxPressureLevel(lhs, rhs)
+    case (.some(let level), .none), (.none, .some(let level)):
+      return level
+    case (.none, .none):
+      return nil
+    }
+  }
+
+  nonisolated private func readInt32Sysctl(name: String) -> Int32? {
+    var value: Int32 = 0
+    var size = MemoryLayout<Int32>.size
+    let result = sysctlbyname(name, &value, &size, nil, 0)
+    guard result == 0, size == MemoryLayout<Int32>.size else { return nil }
+    return value
+  }
+
+  nonisolated static func levelFromVMMemoryPressure(_ value: Int32) -> MemoryPressureLevel {
+    if value >= 2 {
+      return .critical
+    }
+    if value >= 1 {
+      return .warning
+    }
+    return .normal
+  }
+
+  nonisolated static func levelFromMemorystatusPressure(_ value: Int32) -> MemoryPressureLevel {
+    if value >= 4 {
+      return .critical
+    }
+    if value >= 2 {
+      return .warning
+    }
+    return .normal
+  }
+
+  nonisolated static func maxPressureLevel(_ lhs: MemoryPressureLevel, _ rhs: MemoryPressureLevel)
+    -> MemoryPressureLevel
+  {
+    let lhsRank = pressureRank(lhs)
+    let rhsRank = pressureRank(rhs)
+    return lhsRank >= rhsRank ? lhs : rhs
+  }
+
+  nonisolated private static func pressureRank(_ level: MemoryPressureLevel) -> Int {
+    switch level {
+    case .normal:
+      return 0
+    case .warning:
+      return 1
+    case .critical:
+      return 2
+    }
   }
 }

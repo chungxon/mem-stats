@@ -24,6 +24,7 @@ All inside **one popup window**.
 
   * `host_statistics64` → memory stats
   * `sysctl` → total RAM
+  * `sysctl vm.memory_pressure` + `kern.memorystatus_vm_pressure_level` → memory pressure level
   * `top -l 1 -o mem -stats pid,user,mem,command` → processes
 * State:
 
@@ -60,7 +61,7 @@ All inside **one popup window**.
   * Icon + % usage
   * Color reflects **memory pressure**
 
-    * 🟢 / 🟡 / 🔴
+    * 🟢 / 🟡 / 🔴 (system pressure level)
 
 * Click:
   → show **popover (main UI)**
@@ -205,6 +206,10 @@ UI refresh: every 5s
 * Total used RAM (primary plotted series)
 * Selected user series (optional when a user is selected)
 * Swap used + memory pressure shown as latest status badges
+* Used RAM chart segment color follows memory pressure at that sample:
+  * Green = normal
+  * Yellow = warning
+  * Red = critical
 
 ### Time ranges
 
@@ -412,5 +417,6 @@ Don’t show ALL users in history chart to avoid noise.
 ### Note
 
 * Process memory comes from `top` (`mem`) snapshot and is best-effort relative to Activity Monitor
+* Memory pressure prefers system pressure signals from `sysctl` and only falls back to usage-ratio heuristic if unavailable
 * Shared memory may still be accounted differently than Activity Monitor internals
 * Values are indicative and optimized for lightweight monitoring

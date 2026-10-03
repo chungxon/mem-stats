@@ -365,6 +365,23 @@ struct RamStatsTests {
     #expect(stats.freeBytes <= stats.totalBytes)
   }
 
+  @Test func vmMemoryPressureMappingUsesExpectedBands() {
+    #expect(MemoryStatsService.levelFromVMMemoryPressure(0) == .normal)
+    #expect(MemoryStatsService.levelFromVMMemoryPressure(1) == .warning)
+    #expect(MemoryStatsService.levelFromVMMemoryPressure(2) == .critical)
+  }
+
+  @Test func memorystatusPressureMappingUsesExpectedBands() {
+    #expect(MemoryStatsService.levelFromMemorystatusPressure(1) == .normal)
+    #expect(MemoryStatsService.levelFromMemorystatusPressure(2) == .warning)
+    #expect(MemoryStatsService.levelFromMemorystatusPressure(4) == .critical)
+  }
+
+  @Test func maxPressureLevelReturnsMostSevereLevel() {
+    #expect(MemoryStatsService.maxPressureLevel(.normal, .warning) == .warning)
+    #expect(MemoryStatsService.maxPressureLevel(.critical, .warning) == .critical)
+  }
+
   @MainActor @Test func appStateUsesExpectedSamplingIntervals() {
     let appState = RamStatsAppState(startSampling: false)
 
