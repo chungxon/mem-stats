@@ -323,3 +323,18 @@ Review gate:
 - [x] Task 6 - History Chart and Pressure/Swap Tracking
 - [x] Task 7 - Context Menu, Login Item, and App Options
 - [x] Task 8 - Performance Hardening and Final QA
+
+## Next Feature Batch
+
+The implementation plan for the next four user-facing tasks is maintained in
+[docs/PLAN_FEATURES.md](PLAN_FEATURES.md). The order is intentional and has been reset after
+the previous appearance, language and Glass implementation was removed.
+
+- [x] Feature Task 1 - Support Us
+- [ ] Feature Task 2 - Theme
+- [ ] Feature Task 3 - Common languages
+- [ ] Feature Task 4 - Glass background
+
+Review gate: each feature task is a separate implementation and review step. Update both
+checklists after each task, run lint/build/tests for changed files, ask the reviewer subagent
+to inspect the result, commit only that task, then stop for review.

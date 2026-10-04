@@ -100,6 +100,20 @@ struct SettingsView: View {
         .font(.footnote)
         .foregroundStyle(.secondary)
       }
+
+      Section {
+        HStack {
+          Text("Support Us")
+          Spacer()
+          Button("Sponsor this project") {
+            openURL(AppLinks.sponsorURL)
+          }
+        }
+      } footer: {
+        Text("Support MemStats development on GitHub Sponsors.")
+          .font(.footnote)
+          .foregroundStyle(.secondary)
+      }
     }
     .formStyle(.grouped)
     .pickerStyle(.menu)

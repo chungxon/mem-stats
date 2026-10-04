@@ -1140,6 +1140,10 @@ struct MemStatsTests {
         == "https://github.com/chungxon/mem-stats/releases/latest")
   }
 
+  @Test func sponsorURLPointsToGitHubSponsors() {
+    #expect(AppLinks.sponsorURL.absoluteString == "https://github.com/chungxon/mem-stats/")
+  }
+
   @Test func bugReportURLPrefillsTitleLabelAndEnvironment() throws {
     let url = AppLinks.bugReportURL(
       appVersion: "1.2+beta",

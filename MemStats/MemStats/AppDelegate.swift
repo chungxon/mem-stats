@@ -220,13 +220,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     )
     settings.target = self
 
+    let supportUs = NSMenuItem(
+      title: "Support Us…",
+      action: #selector(openSupportUs),
+      keyEquivalent: ""
+    )
+    supportUs.target = self
+
     let about = NSMenuItem(title: "About", action: #selector(showAbout), keyEquivalent: "")
     about.target = self
 
     let quit = NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q")
     quit.target = self
 
-    menu.items = [openAtLogin, showSystemUsers, .separator(), settings, about, quit]
+    menu.items = [openAtLogin, showSystemUsers, .separator(), settings, supportUs, about, quit]
     statusItem?.menu = menu
     button.performClick(nil)
     statusItem?.menu = nil
@@ -294,6 +301,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   private func showAbout() {
     NSApp.orderFrontStandardAboutPanel(nil)
     NSApp.activate()
+  }
+
+  @objc
+  private func openSupportUs() {
+    NSWorkspace.shared.open(AppLinks.sponsorURL)
   }
 
   private func openActivityMonitor() {

@@ -9,6 +9,7 @@ nonisolated enum AppLinks {
   static let releasesURL = repositoryURL.appendingPathComponent("releases")
   /// GitHub redirects this to the newest published release.
   static let latestReleaseURL = releasesURL.appendingPathComponent("latest")
+  static let sponsorURL = repositoryURL.appendingPathComponent("")
 
   /// The app's own version, e.g. "1.0", and build number, e.g. "1".
   static var appVersion: String {
