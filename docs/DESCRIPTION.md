@@ -73,7 +73,7 @@ All inside **one popup window**.
     * 🟢 / 🟠 / 🔴 (system pressure level): green normal, orange warning, red critical
     * Orange instead of yellow, since yellow is hard to read on a light menu bar. The menu bar and the popover share one color source, and orange is used for nothing else (not swap, growth hints or user colors)
     * Color is baked into a non-template icon and an attributed title, because the active display's menu bar renders template content and `contentTintColor` as monochrome
-    * Title uses monospaced digits and pads the number to three digits with figure spaces, so the item width stays the same at 5%, 45% and 100%
+    * Title uses monospaced digits with no padding; the item has a variable length and fits the text, so its width only changes when the digit count changes (for example 9% to 10%)
     * Before the first sample the title reads `RAM ‒‒%` (figure dashes) in a neutral color, instead of a green `RAM 0%`
   * Tooltip and VoiceOver label: `Memory 45%, pressure Normal`
 

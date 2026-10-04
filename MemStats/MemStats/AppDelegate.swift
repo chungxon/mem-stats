@@ -92,7 +92,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     pressure: MemoryPressureLevel?
   ) {
     let tint = pressure?.color ?? .secondaryLabelColor
-    let percentText = Self.paddedPercentText(usagePercent)
+    let percentText = Self.percentText(usagePercent)
     let image = NSImage(systemSymbolName: "memorychip", accessibilityDescription: "RAM")?
       .withSymbolConfiguration(NSImage.SymbolConfiguration(paletteColors: [tint]))
     image?.isTemplate = false
@@ -103,7 +103,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
       string: "RAM \(percentText)",
       attributes: [
         .foregroundColor: tint,
-        // Monospaced digits keep the status item width stable as the percentage changes.
+        // Monospaced digits keep the width stable while the digit count stays the same.
         .font: NSFont.monospacedDigitSystemFont(
           ofSize: NSFont.menuBarFont(ofSize: 0).pointSize,
           weight: .regular
@@ -122,11 +122,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     button.setAccessibilityLabel(description)
   }
 
-  /// Pads to three digits with figure spaces (as wide as a digit), so the status item keeps
-  /// the same width at 5%, 45% and 100%. The placeholder uses figure dashes for the same reason.
-  nonisolated static func paddedPercentText(_ percent: Int?) -> String {
+  /// No padding: the status item has a variable length, so it fits the text tightly.
+  /// The placeholder uses figure dashes (as wide as a digit) to match a two-digit value.
+  nonisolated static func percentText(_ percent: Int?) -> String {
     let digits = percent.map { String(min(max($0, 0), 100)) } ?? "\u{2012}\u{2012}"
-    return String(repeating: "\u{2007}", count: max(0, 3 - digits.count)) + digits + "%"
+    return digits + "%"
   }
 
   private func shouldRefreshStatus(

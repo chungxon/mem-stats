@@ -897,12 +897,12 @@ struct MemStatsTests {
     #expect(vm.displayName(for: vm.visibleProcesses[0]) == "b")
   }
 
-  @Test func menuBarPercentKeepsThreeDigitWidth() {
-    let figureSpace = "\u{2007}"
-    #expect(AppDelegate.paddedPercentText(5) == figureSpace + figureSpace + "5%")
-    #expect(AppDelegate.paddedPercentText(45) == figureSpace + "45%")
-    #expect(AppDelegate.paddedPercentText(100) == "100%")
-    #expect(AppDelegate.paddedPercentText(nil) == figureSpace + "\u{2012}\u{2012}%")
+  @Test func menuBarPercentHasNoPadding() {
+    #expect(AppDelegate.percentText(5) == "5%")
+    #expect(AppDelegate.percentText(45) == "45%")
+    #expect(AppDelegate.percentText(100) == "100%")
+    #expect(AppDelegate.percentText(150) == "100%")
+    #expect(AppDelegate.percentText(nil) == "\u{2012}\u{2012}%")
   }
 
   @Test func growthHintIDsAreUniquePerUserAndKind() {
