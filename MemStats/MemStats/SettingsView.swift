@@ -23,6 +23,14 @@ struct SettingsView: View {
   var body: some View {
     Form {
       Section {
+        Picker("Theme", selection: $settings.theme) {
+          ForEach(AppTheme.allCases) { theme in
+            Text(theme.displayName).tag(theme)
+          }
+        }
+      }
+
+      Section {
         Picker("Update interval", selection: $settings.memoryInterval) {
           ForEach(SettingsStore.memoryIntervalOptions, id: \.self) { seconds in
             Text(intervalLabel(seconds)).tag(seconds)

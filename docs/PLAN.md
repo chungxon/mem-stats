@@ -331,7 +331,7 @@ The implementation plan for the next four user-facing tasks is maintained in
 the previous appearance, language and Glass implementation was removed.
 
 - [x] Feature Task 1 - Support Us
-- [ ] Feature Task 2 - Theme
+- [x] Feature Task 2 - Theme
 - [ ] Feature Task 3 - Common languages
 - [ ] Feature Task 4 - Glass background
 

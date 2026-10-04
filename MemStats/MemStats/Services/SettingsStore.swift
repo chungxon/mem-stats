@@ -12,11 +12,13 @@ final class SettingsStore: ObservableObject {
   static let defaultMemoryInterval = 5
   static let defaultProcessInterval = 5
   static let defaultRowCount = 8
+  static let defaultTheme: AppTheme = .system
 
   static let memoryIntervalKey = "memoryIntervalSeconds"
   static let processIntervalKey = "processIntervalSeconds"
   static let topAppsCountKey = "topAppsCount"
   static let topProcessesCountKey = "topProcessesCount"
+  static let themeKey = "theme"
 
   /// Seconds between memory samples (RAM, pressure, swap, menu bar, history).
   @Published var memoryInterval: Int {
@@ -52,6 +54,12 @@ final class SettingsStore: ObservableObject {
     }
   }
 
+  @Published var theme: AppTheme {
+    didSet {
+      defaults.set(theme.rawValue, forKey: Self.themeKey)
+    }
+  }
+
   private let defaults: UserDefaults
 
   init(defaults: UserDefaults = .standard) {
@@ -68,6 +76,16 @@ final class SettingsStore: ObservableObject {
     topProcessesCount = Self.read(
       Self.topProcessesCountKey, from: defaults, options: Self.rowCountOptions,
       fallback: Self.defaultRowCount)
+    theme = Self.readTheme(from: defaults)
+  }
+
+  private static func readTheme(from defaults: UserDefaults) -> AppTheme {
+    guard let rawValue = defaults.string(forKey: themeKey),
+      let theme = AppTheme(rawValue: rawValue)
+    else {
+      return defaultTheme
+    }
+    return theme
   }
 
   private static func read(

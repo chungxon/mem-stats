@@ -76,10 +76,10 @@ Implementation:
 
 TODO:
 
-- [ ] Add and validate the persisted theme setting.
-- [ ] Add the Settings picker.
-- [ ] Apply the theme to the popover and self-managed Settings window.
-- [ ] Add focused mapping and persistence tests.
+- [x] Add and validate the persisted theme setting.
+- [x] Add the Settings picker.
+- [x] Apply the theme to the popover and self-managed Settings window.
+- [x] Add focused mapping and persistence tests.
 - [ ] Verify readable controls, charts, menus and alerts in all three modes.
 
 Acceptance criteria:
@@ -186,6 +186,6 @@ Review gate: stop for final QA and documentation review.
 ## Feature task checklist
 
 - [x] Feature Task 1 - Support Us
-- [ ] Feature Task 2 - Theme
+- [x] Feature Task 2 - Theme
 - [ ] Feature Task 3 - Common languages
 - [ ] Feature Task 4 - Glass background

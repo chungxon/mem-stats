@@ -7,6 +7,7 @@ struct PopoverRootView: View {
   static let popoverSize = CGSize(width: 380, height: 540)
 
   @ObservedObject private var appState: MemStatsAppState
+  @ObservedObject private var settings: SettingsStore
   @ObservedObject private var memoryVM: MemoryViewModel
   @ObservedObject private var processVM: ProcessViewModel
 
@@ -19,6 +20,7 @@ struct PopoverRootView: View {
     onOpenOptionsMenu: @escaping () -> Void = {}
   ) {
     self._appState = ObservedObject(wrappedValue: appState)
+    self._settings = ObservedObject(wrappedValue: appState.settings)
     self._memoryVM = ObservedObject(wrappedValue: appState.memoryVM)
     self._processVM = ObservedObject(wrappedValue: appState.processVM)
     self.onOpenActivityMonitor = onOpenActivityMonitor
@@ -95,6 +97,7 @@ struct PopoverRootView: View {
     }
     .frame(width: Self.popoverSize.width, height: Self.popoverSize.height)
     .background(Color(nsColor: .windowBackgroundColor))
+    .preferredColorScheme(settings.theme.swiftUIColorScheme)
   }
 
   private var headerSection: some View {

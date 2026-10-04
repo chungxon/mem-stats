@@ -628,16 +628,19 @@ struct MemStatsTests {
     #expect(store.processInterval == 5)
     #expect(store.topAppsCount == 8)
     #expect(store.topProcessesCount == 8)
+    #expect(store.theme == .system)
 
     store.memoryInterval = 2
     store.processInterval = 30
     store.topAppsCount = 15
     store.topProcessesCount = 20
+    store.theme = .dark
     let restored = SettingsStore(defaults: defaults)
     #expect(restored.memoryInterval == 2)
     #expect(restored.processInterval == 30)
     #expect(restored.topAppsCount == 15)
     #expect(restored.topProcessesCount == 20)
+    #expect(restored.theme == .dark)
 
     // A value outside the options falls back to the default, both when set and when read.
     restored.processInterval = 1
@@ -647,10 +650,21 @@ struct MemStatsTests {
     defaults.set(7, forKey: SettingsStore.memoryIntervalKey)
     defaults.set("many", forKey: SettingsStore.topAppsCountKey)
     defaults.set(0, forKey: SettingsStore.topProcessesCountKey)
+    defaults.set("invalid", forKey: SettingsStore.themeKey)
     let invalid = SettingsStore(defaults: defaults)
     #expect(invalid.memoryInterval == 5)
     #expect(invalid.topAppsCount == 8)
     #expect(invalid.topProcessesCount == 8)
+    #expect(invalid.theme == .system)
+  }
+
+  @Test func appThemeMapsToExpectedAppearanceOverrides() {
+    #expect(AppTheme.system.nsAppearance == nil)
+    #expect(AppTheme.light.nsAppearance?.name == .aqua)
+    #expect(AppTheme.dark.nsAppearance?.name == .darkAqua)
+    #expect(AppTheme.system.swiftUIColorScheme == nil)
+    #expect(AppTheme.light.swiftUIColorScheme == .light)
+    #expect(AppTheme.dark.swiftUIColorScheme == .dark)
   }
 
   @MainActor @Test func processViewModelReportsFirstSample() {
@@ -1179,10 +1193,10 @@ struct MemStatsTests {
         onToggleOpenAtLogin: {}
       )
     )
-    controller.sizingOptions = .preferredContentSize
     let window = NSWindow(contentViewController: controller)
     window.styleMask = [.titled, .closable]
     window.isReleasedWhenClosed = false
+    window.setContentSize(NSSize(width: 440, height: 702))
     window.orderFront(nil)
     defer { window.close() }
 

@@ -17,6 +17,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     NSApp.setActivationPolicy(.accessory)
 
     loginItemService.syncWithSystem()
+    observeTheme()
+    applyTheme(appState.settings.theme)
     configurePopover()
     configureStatusItem()
     observeMemoryStats()
@@ -60,6 +62,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         self?.updateStatusItemIfNeeded(with: stats)
       }
       .store(in: &cancellables)
+  }
+
+  private func observeTheme() {
+    appState.settings.$theme
+      .removeDuplicates()
+      .sink { [weak self] theme in
+        self?.applyTheme(theme)
+      }
+      .store(in: &cancellables)
+  }
+
+  private func applyTheme(_ theme: AppTheme) {
+    NSApp.appearance = theme.nsAppearance
+    settingsWindow?.appearance = theme.nsAppearance
+    popover.contentViewController?.view.window?.appearance = theme.nsAppearance
   }
 
   private func updateStatusItemIfNeeded(with stats: MemoryStats) {
@@ -175,6 +192,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
       popover.performClose(nil)
     } else {
       popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+      popover.contentViewController?.view.window?.appearance = appState.settings.theme.nsAppearance
       popover.contentViewController?.view.window?.makeKey()
     }
   }
@@ -287,12 +305,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         }
       )
     )
-    controller.sizingOptions = .preferredContentSize
-
     let window = SettingsWindow(contentViewController: controller)
     window.title = "MemStats Settings"
     window.styleMask = [.titled, .closable]
+    window.appearance = appState.settings.theme.nsAppearance
     window.isReleasedWhenClosed = false
+    window.setContentSize(NSSize(width: 440, height: 702))
     window.center()
     return window
   }
