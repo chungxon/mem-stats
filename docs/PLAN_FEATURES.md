@@ -119,13 +119,13 @@ Implementation:
 
 TODO:
 
-- [ ] Add and validate the persisted language setting.
-- [ ] Add the picker with native language names.
-- [ ] Add the String Catalog and common-language translations.
-- [ ] Localize SwiftUI and AppKit visible copy, dynamic formats and accessibility text.
-- [ ] Re-render cached errors and status text when the language changes.
-- [ ] Add tests for persistence, locale selection and live updates.
-- [ ] Verify long translations and fallback behavior.
+- [x] Add and validate the persisted language setting.
+- [x] Add the picker with native language names.
+- [x] Add the String Catalog and common-language translations.
+- [x] Localize SwiftUI and AppKit visible copy, dynamic formats and accessibility text.
+- [x] Re-render cached errors and status text when the language changes.
+- [x] Add tests for persistence, locale selection and live updates.
+- [x] Verify long translations and fallback behavior.
 
 Acceptance criteria:
 
@@ -187,5 +187,5 @@ Review gate: stop for final QA and documentation review.
 
 - [x] Feature Task 1 - Support Us
 - [x] Feature Task 2 - Theme
-- [ ] Feature Task 3 - Common languages
+- [x] Feature Task 3 - Common languages
 - [ ] Feature Task 4 - Glass background

@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import Foundation
 import ServiceManagement
 import SwiftUI
@@ -629,18 +630,21 @@ struct MemStatsTests {
     #expect(store.topAppsCount == 8)
     #expect(store.topProcessesCount == 8)
     #expect(store.theme == .system)
+    #expect(store.language == .system)
 
     store.memoryInterval = 2
     store.processInterval = 30
     store.topAppsCount = 15
     store.topProcessesCount = 20
     store.theme = .dark
+    store.language = .vietnamese
     let restored = SettingsStore(defaults: defaults)
     #expect(restored.memoryInterval == 2)
     #expect(restored.processInterval == 30)
     #expect(restored.topAppsCount == 15)
     #expect(restored.topProcessesCount == 20)
     #expect(restored.theme == .dark)
+    #expect(restored.language == .vietnamese)
 
     // A value outside the options falls back to the default, both when set and when read.
     restored.processInterval = 1
@@ -651,11 +655,13 @@ struct MemStatsTests {
     defaults.set("many", forKey: SettingsStore.topAppsCountKey)
     defaults.set(0, forKey: SettingsStore.topProcessesCountKey)
     defaults.set("invalid", forKey: SettingsStore.themeKey)
+    defaults.set("invalid", forKey: SettingsStore.languageKey)
     let invalid = SettingsStore(defaults: defaults)
     #expect(invalid.memoryInterval == 5)
     #expect(invalid.topAppsCount == 8)
     #expect(invalid.topProcessesCount == 8)
     #expect(invalid.theme == .system)
+    #expect(invalid.language == .system)
   }
 
   @Test func appThemeMapsToExpectedAppearanceOverrides() {
@@ -665,6 +671,30 @@ struct MemStatsTests {
     #expect(AppTheme.system.swiftUIColorScheme == nil)
     #expect(AppTheme.light.swiftUIColorScheme == .light)
     #expect(AppTheme.dark.swiftUIColorScheme == .dark)
+  }
+
+  @Test func appLanguageUsesNativeNamesAndExpectedLocales() {
+    #expect(AppLanguage.system.displayName == "System")
+    #expect(AppLanguage.vietnamese.displayName == "Tiếng Việt")
+    #expect(AppLanguage.simplifiedChinese.locale.identifier == "zh-Hans")
+    #expect(AppLanguage.japanese.locale.identifier == "ja")
+    #expect(AppLanguage.german.locale.identifier == "de")
+    #expect(AppLanguage.allCases.count == 9)
+  }
+
+  @Test func languageChangesPublishImmediately() {
+    let suiteName = "MemStatsTests.SettingsStore.LanguagePublisher"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+    let store = SettingsStore(defaults: defaults)
+    var publishedLanguage: AppLanguage?
+    let cancellable = store.$language.dropFirst().sink { publishedLanguage = $0 }
+
+    store.language = .german
+
+    #expect(publishedLanguage == .german)
+    withExtendedLifetime(cancellable) {}
+    defaults.removePersistentDomain(forName: suiteName)
   }
 
   @MainActor @Test func processViewModelReportsFirstSample() {

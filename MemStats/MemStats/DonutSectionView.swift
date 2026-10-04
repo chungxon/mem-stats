@@ -7,6 +7,7 @@ struct DonutSectionView: View {
   let slices: [DonutSlice]
   let stats: MemoryStats?
   let selectedUser: String?
+  let language: AppLanguage
   let onSelectUser: (String?) -> Void
 
   @State private var hoveredSliceID: DonutSlice.ID?
@@ -37,14 +38,21 @@ struct DonutSectionView: View {
           .accessibilityActions {
             ForEach(userSlices) { slice in
               let isSelected = selectedUser == slice.label
-              Button(isSelected ? "Clear filter" : "Filter \(slice.label)") {
+              Button {
                 onSelectUser(isSelected ? nil : slice.label)
+              } label: {
+                Text(
+                  verbatim: isSelected
+                    ? AppLocalization.string("Clear filter", language: language)
+                    : AppLocalization.formatted(
+                      "Filter %@", language: language, slice.label
+                    ))
               }
             }
           }
 
           HStack {
-            Text(focusSlice?.label ?? "All Users")
+            Text(focusSlice?.label ?? AppLocalization.string("All Users", language: language))
               .font(.subheadline.weight(.semibold))
               .lineLimit(1)
             Spacer()
@@ -122,7 +130,7 @@ struct DonutSectionView: View {
 
   private var centerOverlay: some View {
     VStack(spacing: 2) {
-      Text(focusSlice?.label ?? "Used RAM")
+      Text(focusSlice?.label ?? AppLocalization.string("Used RAM", language: language))
         .font(.caption.weight(.semibold))
         .foregroundStyle(.secondary)
       Text(centerValue)
@@ -159,8 +167,15 @@ struct DonutSectionView: View {
   }
 
   private var memorySummary: String {
-    guard let stats else { return "Loading memory data…" }
-    return "Used \(MemoryFormat.size(stats.usedBytes)) / \(MemoryFormat.size(stats.totalBytes))"
+    guard let stats else {
+      return AppLocalization.string("Loading memory data…", language: language)
+    }
+    return AppLocalization.formatted(
+      "Used %@ / %@",
+      language: language,
+      MemoryFormat.size(stats.usedBytes),
+      MemoryFormat.size(stats.totalBytes)
+    )
   }
 
   private var selectionSubtitle: String {
@@ -168,9 +183,19 @@ struct DonutSectionView: View {
     guard let stats else { return MemoryFormat.size(slice.bytes) }
     // Free memory is not part of used RAM, so it is compared against total RAM instead.
     if case .free = slice.category {
-      return "\(MemoryFormat.size(slice.bytes)) / Total \(MemoryFormat.size(stats.totalBytes))"
+      return AppLocalization.formatted(
+        "%@ / Total %@",
+        language: language,
+        MemoryFormat.size(slice.bytes),
+        MemoryFormat.size(stats.totalBytes)
+      )
     }
-    return "\(MemoryFormat.size(slice.bytes)) / Used \(MemoryFormat.size(stats.usedBytes))"
+    return AppLocalization.formatted(
+      "%@ / Used %@",
+      language: language,
+      MemoryFormat.size(slice.bytes),
+      MemoryFormat.size(stats.usedBytes)
+    )
   }
 
   private var centerValue: String {
@@ -185,7 +210,13 @@ struct DonutSectionView: View {
   private var accessibilityValue: String {
     slices
       .map {
-        "\($0.label) \(MemoryFormat.size($0.bytes)), \(PopoverStyle.percentText($0.fractionOfTotal))"
+        AppLocalization.formatted(
+          "%@ %@, %@",
+          language: language,
+          $0.label,
+          MemoryFormat.size($0.bytes),
+          PopoverStyle.percentText($0.fractionOfTotal)
+        )
       }
       .joined(separator: "; ")
   }

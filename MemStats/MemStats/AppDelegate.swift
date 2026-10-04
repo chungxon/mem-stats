@@ -12,12 +12,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   private var cancellables: Set<AnyCancellable> = []
   private var lastDisplayedUsedBytes: UInt64?
   private var lastDisplayedPressureLevel: MemoryPressureLevel?
+  private var lastDisplayedUsagePercent: Int?
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     NSApp.setActivationPolicy(.accessory)
 
     loginItemService.syncWithSystem()
     observeTheme()
+    observeLanguage()
     applyTheme(appState.settings.theme)
     configurePopover()
     configureStatusItem()
@@ -73,6 +75,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
       .store(in: &cancellables)
   }
 
+  private func observeLanguage() {
+    appState.settings.$language
+      .removeDuplicates()
+      .sink { [weak self] _ in
+        self?.refreshLocalizedStatusItem()
+        self?.refreshLocalizedSettingsWindow()
+      }
+      .store(in: &cancellables)
+  }
+
+  private func refreshLocalizedStatusItem() {
+    guard let button = statusItem?.button else { return }
+    applyStatusAppearance(
+      to: button,
+      usagePercent: lastDisplayedUsagePercent,
+      pressure: lastDisplayedPressureLevel
+    )
+  }
+
+  private func refreshLocalizedSettingsWindow() {
+    settingsWindow?.title = AppLocalization.string(
+      "MemStats Settings", language: appState.settings.language
+    )
+  }
+
   private func applyTheme(_ theme: AppTheme) {
     NSApp.appearance = theme.nsAppearance
     settingsWindow?.appearance = theme.nsAppearance
@@ -98,6 +125,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     lastDisplayedUsedBytes = stats.usedBytes
     lastDisplayedPressureLevel = stats.pressureLevel
+    lastDisplayedUsagePercent = usagePercent
   }
 
   /// The menu bar on the active display renders template content and `contentTintColor`
@@ -109,6 +137,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     pressure: MemoryPressureLevel?
   ) {
     let tint = pressure?.color ?? .secondaryLabelColor
+    let language = appState.settings.language
     let percentText = Self.percentText(usagePercent)
     let image = NSImage(systemSymbolName: "memorychip", accessibilityDescription: "RAM")?
       .withSymbolConfiguration(NSImage.SymbolConfiguration(paletteColors: [tint]))
@@ -131,9 +160,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     // The color alone does not tell VoiceOver or a hover what the pressure is.
     let description: String
     if let usagePercent, let pressure {
-      description = "Memory \(usagePercent)%, pressure \(pressure.displayName)"
+      description = AppLocalization.formatted(
+        "Memory %lld%%, pressure %@",
+        language: language,
+        Int64(usagePercent),
+        AppLocalization.string(pressure.displayName, language: language)
+      )
     } else {
-      description = "Memory: waiting for the first sample"
+      description = AppLocalization.string(
+        "Memory: waiting for the first sample", language: language
+      )
     }
     button.toolTip = description
     button.setAccessibilityLabel(description)
@@ -204,9 +240,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
   private func showContextMenu(from button: NSStatusBarButton) {
     let menu = NSMenu()
+    let language = appState.settings.language
 
     let openAtLogin = NSMenuItem(
-      title: "Open at Login",
+      title: AppLocalization.string("Open at Login", language: language),
       action: #selector(toggleOpenAtLogin),
       keyEquivalent: ""
     )
@@ -215,40 +252,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     loginItemService.syncWithSystem()
     if loginItemService.requiresApproval {
       // Mixed state: registered, but macOS has not approved it yet. Clicking cancels it.
-      openAtLogin.title = "Open at Login (needs approval)"
+      openAtLogin.title = AppLocalization.string(
+        "Open at Login (needs approval)", language: language
+      )
       openAtLogin.state = .mixed
-      openAtLogin.toolTip = "Approve in System Settings > Login Items, or click to cancel"
+      openAtLogin.toolTip = AppLocalization.string(
+        "Approve in System Settings > Login Items, or click to cancel", language: language
+      )
     } else {
       openAtLogin.state = loginItemService.isEnabled ? .on : .off
     }
 
     let showSystemUsers = NSMenuItem(
-      title: "Show System Users",
+      title: AppLocalization.string("Show System Users", language: language),
       action: #selector(toggleShowSystemUsers),
       keyEquivalent: ""
     )
     showSystemUsers.target = self
     showSystemUsers.state = appState.showsSystemUsers ? .on : .off
-    showSystemUsers.toolTip = "Include root and _* system accounts"
+    showSystemUsers.toolTip = AppLocalization.string(
+      "Include root and _* system accounts", language: language
+    )
 
     let settings = NSMenuItem(
-      title: "Settings…",
+      title: AppLocalization.string("Settings…", language: language),
       action: #selector(showSettings),
       keyEquivalent: ","
     )
     settings.target = self
 
     let supportUs = NSMenuItem(
-      title: "Support Us…",
+      title: AppLocalization.string("Support Us…", language: language),
       action: #selector(openSupportUs),
       keyEquivalent: ""
     )
     supportUs.target = self
 
-    let about = NSMenuItem(title: "About", action: #selector(showAbout), keyEquivalent: "")
+    let about = NSMenuItem(
+      title: AppLocalization.string("About", language: language),
+      action: #selector(showAbout),
+      keyEquivalent: ""
+    )
     about.target = self
 
-    let quit = NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q")
+    let quit = NSMenuItem(
+      title: AppLocalization.string("Quit", language: language),
+      action: #selector(quitApp),
+      keyEquivalent: "q"
+    )
     quit.target = self
 
     menu.items = [openAtLogin, showSystemUsers, .separator(), settings, supportUs, about, quit]
@@ -306,7 +357,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
       )
     )
     let window = SettingsWindow(contentViewController: controller)
-    window.title = "MemStats Settings"
+    window.title = AppLocalization.string(
+      "MemStats Settings", language: appState.settings.language
+    )
     window.styleMask = [.titled, .closable]
     window.appearance = appState.settings.theme.nsAppearance
     window.isReleasedWhenClosed = false
@@ -348,23 +401,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   }
 
   private func presentLoginItemError(_ error: Error) {
+    let language = appState.settings.language
     let alert = NSAlert()
     alert.alertStyle = .warning
-    alert.messageText = "Could not update Open at Login"
+    alert.messageText = AppLocalization.string("Could not update Open at Login", language: language)
     alert.informativeText = error.localizedDescription
-    alert.addButton(withTitle: "OK")
+    alert.addButton(withTitle: AppLocalization.string("OK", language: language))
     NSApp.activate()
     alert.runModal()
   }
 
   private func presentLoginItemApprovalPrompt() {
+    let language = appState.settings.language
     let alert = NSAlert()
     alert.alertStyle = .informational
-    alert.messageText = "Allow MemStats to open at login"
-    alert.informativeText =
-      "macOS needs your approval. Turn on MemStats in System Settings > General > Login Items."
-    alert.addButton(withTitle: "Open System Settings")
-    alert.addButton(withTitle: "Cancel")
+    alert.messageText = AppLocalization.string(
+      "Allow MemStats to open at login", language: language
+    )
+    alert.informativeText = AppLocalization.string(
+      "macOS needs your approval. Turn on MemStats in System Settings > General > Login Items.",
+      language: language
+    )
+    alert.addButton(withTitle: AppLocalization.string("Open System Settings", language: language))
+    alert.addButton(withTitle: AppLocalization.string("Cancel", language: language))
 
     // Accessory apps are not active by default, so bring the alert to the front.
     NSApp.activate()

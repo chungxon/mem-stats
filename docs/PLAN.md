@@ -332,7 +332,7 @@ the previous appearance, language and Glass implementation was removed.
 
 - [x] Feature Task 1 - Support Us
 - [x] Feature Task 2 - Theme
-- [ ] Feature Task 3 - Common languages
+- [x] Feature Task 3 - Common languages
 - [ ] Feature Task 4 - Glass background
 
 Review gate: each feature task is a separate implementation and review step. Update both

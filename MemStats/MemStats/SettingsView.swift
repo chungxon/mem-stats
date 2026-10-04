@@ -25,7 +25,12 @@ struct SettingsView: View {
       Section {
         Picker("Theme", selection: $settings.theme) {
           ForEach(AppTheme.allCases) { theme in
-            Text(theme.displayName).tag(theme)
+            Text(LocalizedStringKey(theme.displayName)).tag(theme)
+          }
+        }
+        Picker("Language", selection: $settings.language) {
+          ForEach(AppLanguage.allCases) { language in
+            Text(language.displayName).tag(language)
           }
         }
       }
@@ -33,12 +38,12 @@ struct SettingsView: View {
       Section {
         Picker("Update interval", selection: $settings.memoryInterval) {
           ForEach(SettingsStore.memoryIntervalOptions, id: \.self) { seconds in
-            Text(intervalLabel(seconds)).tag(seconds)
+            Text(intervalLabel(seconds, language: settings.language)).tag(seconds)
           }
         }
         Picker("Update interval for top processes", selection: $settings.processInterval) {
           ForEach(SettingsStore.processIntervalOptions, id: \.self) { seconds in
-            Text(intervalLabel(seconds)).tag(seconds)
+            Text(intervalLabel(seconds, language: settings.language)).tag(seconds)
           }
         }
       } footer: {
@@ -125,6 +130,7 @@ struct SettingsView: View {
     }
     .formStyle(.grouped)
     .pickerStyle(.menu)
+    .environment(\.locale, settings.language.locale)
     .frame(width: 440)
     .fixedSize(horizontal: false, vertical: true)
   }
@@ -143,10 +149,15 @@ struct SettingsView: View {
     )
   }
 
-  private func intervalLabel(_ seconds: Int) -> String {
+  private func intervalLabel(_ seconds: Int, language: AppLanguage) -> String {
     if seconds == 60 {
-      return "1 minute"
+      return AppLocalization.string("1 minute", language: language)
     }
-    return seconds == 1 ? "1 second" : "\(seconds) seconds"
+    if seconds == 1 {
+      return AppLocalization.string("1 second", language: language)
+    }
+    return AppLocalization.formatted(
+      "%lld seconds", language: language, Int64(seconds)
+    )
   }
 }

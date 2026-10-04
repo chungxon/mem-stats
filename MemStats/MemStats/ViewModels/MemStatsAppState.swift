@@ -101,6 +101,13 @@ final class MemStatsAppState: ObservableObject {
     }
     .store(in: &cancellables)
 
+    settings.$language
+      .dropFirst()
+      .sink { [weak self] _ in
+        self?.publishSamplingError()
+      }
+      .store(in: &cancellables)
+
     if startSampling {
       restartTimers()
     }
@@ -202,7 +209,7 @@ final class MemStatsAppState: ObservableObject {
           self.memoryError = nil
           self.applySample(stats: stats, processes: nil, sampledAt: sampledAt)
         case .failure(let error):
-          self.memoryError = "Memory: \(error.localizedDescription)"
+          self.memoryError = error.localizedDescription
         }
         self.publishSamplingError()
       }
@@ -234,7 +241,7 @@ final class MemStatsAppState: ObservableObject {
             sampledAt: sampledAt
           )
         case .failure(let error):
-          self.processError = "Process: \(error.localizedDescription)"
+          self.processError = error.localizedDescription
         }
         self.publishSamplingError()
       }
@@ -242,7 +249,18 @@ final class MemStatsAppState: ObservableObject {
   }
 
   private func publishSamplingError() {
-    let messages = [memoryError, processError].compactMap { $0 }
+    let language = settings.language
+    var messages: [String] = []
+    if let memoryError {
+      messages.append(
+        AppLocalization.formatted("Memory: %@", language: language, memoryError)
+      )
+    }
+    if let processError {
+      messages.append(
+        AppLocalization.formatted("Process: %@", language: language, processError)
+      )
+    }
     let nextError = messages.isEmpty ? nil : messages.joined(separator: " | ")
     if nextError != lastSamplingError {
       lastSamplingError = nextError

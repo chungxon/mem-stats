@@ -28,37 +28,74 @@ struct PopoverRootView: View {
   }
 
   private var modeLabel: String {
-    let mode = appState.samplingMode == .active ? "Active" : "Idle"
+    let modeKey = appState.samplingMode == .active ? "Active" : "Idle"
+    let mode = AppLocalization.string(modeKey, language: settings.language)
     let memorySeconds = Int(appState.memorySamplingInterval)
     let processSeconds = Int(appState.processSamplingInterval)
     if memorySeconds == processSeconds {
-      return "\(mode) (\(memorySeconds)s)"
+      return AppLocalization.formatted(
+        "%@ (%llds)", language: settings.language, mode, Int64(memorySeconds)
+      )
     }
-    return "\(mode) (\(memorySeconds)s, processes \(processSeconds)s)"
+    return AppLocalization.formatted(
+      "%@ (%llds, %@ %llds)",
+      language: settings.language,
+      mode,
+      Int64(memorySeconds),
+      AppLocalization.string("processes", language: settings.language),
+      Int64(processSeconds)
+    )
   }
 
   private var historyAccessibilityValue: String {
-    guard let latest = memoryVM.history.last else { return "No samples" }
+    guard let latest = memoryVM.history.last else {
+      return AppLocalization.string("No samples", language: settings.language)
+    }
     var parts = [
-      "Used \(MemoryFormat.size(latest.usedBytes))",
-      "pressure \(latest.pressureLevel.displayName)",
-      "swap \(MemoryFormat.size(latest.swapUsedBytes))",
+      AppLocalization.formatted(
+        "Used %@", language: settings.language, MemoryFormat.size(latest.usedBytes)
+      ),
+      AppLocalization.formatted(
+        "pressure %@",
+        language: settings.language,
+        AppLocalization.string(latest.pressureLevel.displayName, language: settings.language)
+      ),
+      AppLocalization.formatted(
+        "swap %@", language: settings.language, MemoryFormat.size(latest.swapUsedBytes)
+      ),
     ]
     if let total = memoryVM.currentStats?.totalBytes {
-      parts[0] += " of \(MemoryFormat.size(total))"
+      parts[0] = AppLocalization.formatted(
+        "Used %@ of %@",
+        language: settings.language,
+        MemoryFormat.size(latest.usedBytes),
+        MemoryFormat.size(total)
+      )
     }
     if let selectedUser = processVM.selectedUser,
       let selected = processVM.selectedUserHistory.last
     {
-      parts.append("\(selectedUser) \(MemoryFormat.size(selected.displayBytes))")
+      parts.append(
+        AppLocalization.formatted(
+          "%@ %@",
+          language: settings.language,
+          selectedUser,
+          MemoryFormat.size(selected.displayBytes)
+        )
+      )
     }
-    parts.append("\(memoryVM.history.count) samples")
+    parts.append(
+      AppLocalization.formatted(
+        "%lld samples", language: settings.language, Int64(memoryVM.history.count)
+      )
+    )
     return parts.joined(separator: ", ")
   }
 
   /// "Loading…" until the first process sample lands or fails (the error shows below).
   private func listPlaceholder(empty: String) -> String {
-    appState.isWaitingForFirstProcessSample ? "Loading…" : empty
+    let key = appState.isWaitingForFirstProcessSample ? "Loading…" : empty
+    return AppLocalization.string(key, language: settings.language)
   }
 
   private var historyScaleUpperBound: Double {
@@ -85,6 +122,7 @@ struct PopoverRootView: View {
             slices: appState.donutSlices,
             stats: memoryVM.currentStats,
             selectedUser: processVM.selectedUser,
+            language: settings.language,
             onSelectUser: { processVM.selectedUser = $0 }
           )
           historySection
@@ -98,6 +136,7 @@ struct PopoverRootView: View {
     .frame(width: Self.popoverSize.width, height: Self.popoverSize.height)
     .background(Color(nsColor: .windowBackgroundColor))
     .preferredColorScheme(settings.theme.swiftUIColorScheme)
+    .environment(\.locale, settings.language.locale)
   }
 
   private var headerSection: some View {
@@ -301,7 +340,17 @@ struct PopoverRootView: View {
             // One VoiceOver element per row, with the column names spoken.
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(
-              "\(app.name), \(app.processCount) \(app.processCount == 1 ? "process" : "processes"), \(MemoryFormat.size(app.bytes))"
+              AppLocalization.formatted(
+                "%@, %lld %@, %@",
+                language: settings.language,
+                app.name,
+                Int64(app.processCount),
+                AppLocalization.string(
+                  app.processCount == 1 ? "process" : "processes",
+                  language: settings.language
+                ),
+                MemoryFormat.size(app.bytes)
+              )
             )
           }
         }
@@ -365,7 +414,14 @@ struct PopoverRootView: View {
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(
-              "\(processVM.displayName(for: process)), user \(process.user), PID \(process.pid), \(MemoryFormat.size(process.rssBytes))"
+              AppLocalization.formatted(
+                "%@, user %@, PID %lld, %@",
+                language: settings.language,
+                processVM.displayName(for: process),
+                process.user,
+                Int64(process.pid),
+                MemoryFormat.size(process.rssBytes)
+              )
             )
           }
         }
@@ -394,16 +450,27 @@ struct PopoverRootView: View {
     let growth = MemoryFormat.size(hint.growthBytes)
     switch hint.kind {
     case .suddenJump:
-      return "\(hint.user) jumped by \(growth) since the last sample"
+      return AppLocalization.formatted(
+        "%@ jumped by %@ since the last sample",
+        language: settings.language,
+        hint.user,
+        growth
+      )
     case .continuousGrowth(let samples):
-      return "\(hint.user) grew by \(growth) over the last \(samples) samples"
+      return AppLocalization.formatted(
+        "%@ grew by %@ over the last %lld samples",
+        language: settings.language,
+        hint.user,
+        growth,
+        Int64(samples)
+      )
     }
   }
 
   /// Single section title that also reflects the active user filter.
   private func sectionLabel(title: String, count: Int) -> some View {
     HStack(spacing: 4) {
-      Text(title)
+      Text(LocalizedStringKey(title))
         .font(.headline)
       if let selectedUser = processVM.selectedUser {
         Text("· \(selectedUser)")
@@ -423,17 +490,24 @@ struct PopoverRootView: View {
     if let latestSample = memoryVM.history.last {
       legendItem(
         color: PopoverStyle.pressureColor(latestSample.pressureLevel),
-        label: "Used \(MemoryFormat.size(latestSample.usedBytes))"
+        label: AppLocalization.formatted(
+          "Used %@", language: settings.language, MemoryFormat.size(latestSample.usedBytes)
+        )
       )
       legendItem(
         color: Color(nsColor: .systemGray),
-        label: "Swap \(MemoryFormat.size(latestSample.swapUsedBytes))"
+        label: AppLocalization.formatted(
+          "Swap %@", language: settings.language, MemoryFormat.size(latestSample.swapUsedBytes)
+        )
       )
       pressureBadge(level: latestSample.pressureLevel)
     }
     if let selectedUser = processVM.selectedUser {
       // Same color as the user's donut slice, so the dashed line is easy to match.
-      legendItem(color: PopoverStyle.userColor(selectedUser), label: "Selected")
+      legendItem(
+        color: PopoverStyle.userColor(selectedUser),
+        label: AppLocalization.string("Selected", language: settings.language)
+      )
     }
   }
 
@@ -455,10 +529,16 @@ struct PopoverRootView: View {
       RoundedRectangle(cornerRadius: 2)
         .fill(PopoverStyle.pressureColor(level))
         .frame(width: 10, height: 10)
-      Text("Pressure \(level.displayName)")
-        .foregroundStyle(.secondary)
-        .lineLimit(1)
-        .fixedSize()
+      Text(
+        AppLocalization.formatted(
+          "Pressure %@",
+          language: settings.language,
+          AppLocalization.string(level.displayName, language: settings.language)
+        )
+      )
+      .foregroundStyle(.secondary)
+      .lineLimit(1)
+      .fixedSize()
     }
   }
 }
