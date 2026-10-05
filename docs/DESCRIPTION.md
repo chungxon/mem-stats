@@ -500,7 +500,7 @@ System users can add noise, so they can be hidden with the `Show System Users` o
 Opened from `Settings…` (⌘,) in the context menu, or from the popover gear. The gear opens this
 same options menu at the gear position and keeps the popover open; it does not open a different
 Settings flow. Selecting `Settings…` is the exception: it opens the separate Settings window and
-closes the popover.
+closes the popover. When the popup is open, ⌘, opens Settings directly and closes the popup.
 
 | Setting | Options | Default |
 | --- | --- | --- |
@@ -513,14 +513,14 @@ closes the popover.
 
 * Stored in `UserDefaults`, applied right away. A stored value outside the options falls back to the default.
 * `top` takes about 1.4s per run, so the process interval starts at 3s. Short intervals cost more CPU, mostly for the process timer.
-* Window: a self-managed `NSWindow` + `NSHostingController` (the app is an `LSUIElement` accessory, and opening a SwiftUI `Settings` scene from an `NSMenu` is not reliable). Opening it activates the app and brings the window to the front; reopening reuses the same window. ⌘W closes it.
+* Window: a self-managed `NSWindow` + `NSHostingController` (the app is an `LSUIElement` accessory, and opening a SwiftUI `Settings` scene from an `NSMenu` is not reliable). Opening it activates the app and brings the window to the front; reopening reuses the same window. ⌘Q and ⌘W close Settings only, without terminating the app. The popup handles the same shortcuts locally. The app is terminated from the context menu's Quit item, including its ⌘Q equivalent while the menu is open.
 * Layout: `Form` with `.formStyle(.grouped)` and `.menu` pickers in four sections (intervals, row counts, Open at Login + Show System Users, About).
 * About section: the app version and build, plus two buttons that only open the browser (the app makes no network request):
   * Check for Updates… opens `github.com/chungxon/mem-stats/releases/latest`. There is no version check; the user compares it with the version shown above.
   * Report a Bug… opens `issues/new` with a `[Bug] ` title, the `bug` label and a body template (description, steps, expected behavior) whose Environment part is filled in: app version and build, macOS version, Mac model and architecture.
 * Links live in `Services/AppLinks.swift`.
 * Rows in the About section are plain `HStack`s, not `LabeledContent`: inside this grouped `Form` with `.preferredContentSize` sizing, `LabeledContent` makes AppKit loop on Update Constraints and crash when the window opens. A unit test hosts the window to catch this.
-* The app has no SwiftUI `Settings` scene (its scene is a `MenuBarExtra` that is never inserted), so ⌘, never opens an empty window.
+* The app has no SwiftUI `Settings` scene (its scene is a `MenuBarExtra` that is never inserted), so ⌘, is handled by the popup or context menu instead of opening an empty window.
 
 ---
 

@@ -1340,4 +1340,69 @@ struct MemStatsTests {
     #expect(window.frame.width > 0)
     #expect(window.frame.height > 0)
   }
+
+  @Test func commandQAndWAreWindowDismissShortcuts() throws {
+    let commandQ = try #require(
+      NSEvent.keyEvent(
+        with: .keyDown,
+        location: .zero,
+        modifierFlags: .command,
+        timestamp: 0,
+        windowNumber: 0,
+        context: nil,
+        characters: "q",
+        charactersIgnoringModifiers: "q",
+        isARepeat: false,
+        keyCode: 12
+      )
+    )
+    let commandW = try #require(
+      NSEvent.keyEvent(
+        with: .keyDown,
+        location: .zero,
+        modifierFlags: .command,
+        timestamp: 0,
+        windowNumber: 0,
+        context: nil,
+        characters: "w",
+        charactersIgnoringModifiers: "w",
+        isARepeat: false,
+        keyCode: 13
+      )
+    )
+    let commandComma = try #require(
+      NSEvent.keyEvent(
+        with: .keyDown,
+        location: .zero,
+        modifierFlags: .command,
+        timestamp: 0,
+        windowNumber: 0,
+        context: nil,
+        characters: ",",
+        charactersIgnoringModifiers: ",",
+        isARepeat: false,
+        keyCode: 43
+      )
+    )
+    let commandShiftQ = try #require(
+      NSEvent.keyEvent(
+        with: .keyDown,
+        location: .zero,
+        modifierFlags: [.command, .shift],
+        timestamp: 0,
+        windowNumber: 0,
+        context: nil,
+        characters: "Q",
+        charactersIgnoringModifiers: "q",
+        isARepeat: false,
+        keyCode: 12
+      )
+    )
+
+    #expect(WindowDismissShortcut.matches(commandQ))
+    #expect(WindowDismissShortcut.matches(commandW))
+    #expect(!WindowDismissShortcut.matches(commandQ, menuIsTracking: true))
+    #expect(WindowDismissShortcut.matchesSettings(commandComma))
+    #expect(!WindowDismissShortcut.matches(commandShiftQ))
+  }
 }

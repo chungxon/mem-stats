@@ -45,6 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
     window.appearance = appState.settings.theme.nsAppearance
     window.onDismiss = { [weak self] in self?.closePopup() }
+    window.onOpenSettings = { [weak self] in self?.showSettings() }
 
     let background = GlassBackgroundContainerView()
     background.material = .sidebar
@@ -342,6 +343,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // Keep the popover visible as the menu tracks, but prevent the outside-click monitor
     // from treating the menu's own window as a reason to dismiss its anchor.
     removeOutsideClickMonitors()
+    popupWindow?.isContextMenuTracking = true
+    defer {
+      popupWindow?.isContextMenuTracking = false
+      if popupWindow?.isVisible == true {
+        installOutsideClickMonitors()
+      }
+    }
     menu.popUp(
       positioning: nil,
       at: NSPoint(
@@ -350,9 +358,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       ),
       in: anchor
     )
-    if popupWindow?.isVisible == true {
-      installOutsideClickMonitors()
-    }
   }
 
   private func showContextMenu(from button: NSStatusBarButton) {
@@ -577,19 +582,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 private final class GlassPopoverWindow: NSPanel {
   var onDismiss: (() -> Void)?
+  var onOpenSettings: (() -> Void)?
+  var isContextMenuTracking = false
 
   override var canBecomeKey: Bool { true }
+
+  override func performKeyEquivalent(with event: NSEvent) -> Bool {
+    if WindowDismissShortcut.matchesSettings(event) {
+      onOpenSettings?()
+      return true
+    }
+    if WindowDismissShortcut.matches(event, menuIsTracking: isContextMenuTracking) {
+      onDismiss?()
+      return true
+    }
+    return super.performKeyEquivalent(with: event)
+  }
 
   override func cancelOperation(_ sender: Any?) {
     onDismiss?()
   }
 }
 
-/// The app has no main menu (it is a menu bar accessory), so handle Cmd+W here.
+/// Window-local handling keeps Cmd+Q/Cmd+W from reaching the application's Quit action.
+/// The context menu still owns Cmd+Q while it is being tracked.
+enum WindowDismissShortcut {
+  static func matchesSettings(_ event: NSEvent) -> Bool {
+    let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+    guard flags == .command else { return false }
+
+    return event.charactersIgnoringModifiers == ","
+  }
+
+  static func matches(_ event: NSEvent, menuIsTracking: Bool = false) -> Bool {
+    guard !menuIsTracking else { return false }
+
+    let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+    guard flags == .command else { return false }
+
+    let key = event.charactersIgnoringModifiers?.lowercased()
+    return key == "q" || key == "w"
+  }
+}
+
 private final class SettingsWindow: NSWindow {
   override func performKeyEquivalent(with event: NSEvent) -> Bool {
-    let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-    if flags == .command, event.charactersIgnoringModifiers == "w" {
+    if WindowDismissShortcut.matches(event) {
       performClose(nil)
       return true
     }
