@@ -152,6 +152,11 @@ final class GlassBackgroundContainerView: NSView {
     layer?.mask = mask
   }
 
+  override func viewDidChangeEffectiveAppearance() {
+    super.viewDidChangeEffectiveAppearance()
+    updateBackground()
+  }
+
   private func stopObservingAccessibilityChanges() {
     if let accessibilityObserver {
       NotificationCenter.default.removeObserver(accessibilityObserver)
@@ -169,11 +174,15 @@ final class GlassBackgroundContainerView: NSView {
     visualEffectView.isHidden = !useGlass
     visualEffectView.alphaValue = useGlass ? GlassSurfaceStyle.materialAlpha : 1
     tintView.isHidden = !useGlass
+    var backgroundColor = NSColor.windowBackgroundColor
+    effectiveAppearance.performAsCurrentDrawingAppearance {
+      backgroundColor =
+        NSColor.windowBackgroundColor.usingColorSpace(.deviceRGB)
+        ?? NSColor.windowBackgroundColor
+    }
     // The slider adjusts the tint, independently of the material blend.
     let opacity = GlassSurfaceStyle.effectiveOpacity(glassOpacity)
-    tintView.layer?.backgroundColor =
-      NSColor.windowBackgroundColor
-      .withAlphaComponent(opacity).cgColor
-    layer?.backgroundColor = (useGlass ? NSColor.clear : NSColor.windowBackgroundColor).cgColor
+    tintView.layer?.backgroundColor = backgroundColor.withAlphaComponent(opacity).cgColor
+    layer?.backgroundColor = (useGlass ? NSColor.clear : backgroundColor).cgColor
   }
 }

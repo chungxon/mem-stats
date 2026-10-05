@@ -155,6 +155,7 @@ struct SettingsView: View {
     .formStyle(.grouped)
     .pickerStyle(.menu)
     .scrollContentBackground(.hidden)
+    .preferredColorScheme(settings.theme.swiftUIColorScheme)
     .environment(\.locale, settings.language.locale)
     .frame(width: 440)
   }

@@ -728,12 +728,45 @@ struct MemStatsTests {
     #expect(background.glassOpacity == 0.7)
     #expect(background.layer?.backgroundColor != nil)
     if let solidColor = background.layer?.backgroundColor {
-      #expect(solidColor == NSColor.windowBackgroundColor.cgColor)
+      #expect(solidColor.alpha == 1)
     }
 
     settings.glassBackground = true
     #expect(background.preferenceEnabled)
     #expect(background.glassOpacity == 0.7)
+  }
+
+  @MainActor @Test func glassBackgroundFollowsWindowAppearance() {
+    let background = GlassBackgroundContainerView(frame: .zero)
+    background.preferenceEnabled = true
+    background.glassOpacity = 1
+    background.appearance = NSAppearance(named: .aqua)
+    let lightColor = background.subviews.last?.layer?.backgroundColor.flatMap(
+      NSColor.init(cgColor:))?
+      .usingColorSpace(.deviceRGB)
+
+    background.appearance = NSAppearance(named: .darkAqua)
+    let darkColor = background.subviews.last?.layer?.backgroundColor.flatMap(
+      NSColor.init(cgColor:))?
+      .usingColorSpace(.deviceRGB)
+
+    #expect(lightColor != nil)
+    #expect(darkColor != nil)
+    if let lightColor, let darkColor {
+      #expect(lightColor.brightnessComponent > darkColor.brightnessComponent + 0.3)
+    }
+
+    background.preferenceEnabled = false
+    let darkSolidColor = background.layer?.backgroundColor.flatMap(NSColor.init(cgColor:))?
+      .usingColorSpace(.deviceRGB)
+    background.appearance = NSAppearance(named: .aqua)
+    let lightSolidColor = background.layer?.backgroundColor.flatMap(NSColor.init(cgColor:))?
+      .usingColorSpace(.deviceRGB)
+    #expect(lightSolidColor?.alphaComponent == 1)
+    #expect(darkSolidColor?.alphaComponent == 1)
+    if let lightSolidColor, let darkSolidColor {
+      #expect(lightSolidColor.brightnessComponent > darkSolidColor.brightnessComponent + 0.3)
+    }
   }
 
   @Test func glassTintIsLighterAtAnExistingSliderValue() {

@@ -177,6 +177,7 @@ TODO:
 - [x] Blend a small amount of the unblurred backdrop through the native material in both windows.
 - [x] Add Reduce Transparency fallback and tests for the resolver.
 - [x] Keep popup cards and chart overlays on solid surfaces when Reduce Transparency is enabled.
+- [x] Resolve Glass tint and solid fallback in the window's selected Light or Dark appearance.
 - [ ] Verify the desktop is visibly seen through both windows and readability is preserved on-device.
 
 Acceptance criteria:
