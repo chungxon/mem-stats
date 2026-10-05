@@ -8,6 +8,8 @@ struct DonutSectionView: View {
   let stats: MemoryStats?
   let selectedUser: String?
   let language: AppLanguage
+  let glassBackgroundEnabled: Bool
+  let glassOpacity: Double
   let onSelectUser: (String?) -> Void
 
   @State private var hoveredSliceID: DonutSlice.ID?
@@ -81,7 +83,12 @@ struct DonutSectionView: View {
           }
         }
     }
-    .background(Color(nsColor: .controlBackgroundColor))
+    .background(
+      GlassSurfaceStyle.sectionColor(
+        glassEnabled: glassBackgroundEnabled,
+        opacity: glassOpacity
+      )
+    )
     .onChange(of: slices.map(\.id)) { _, _ in
       validateSelection()
       hoveredSliceID = nil
@@ -139,7 +146,12 @@ struct DonutSectionView: View {
     }
     .padding(.horizontal, 8)
     .padding(.vertical, 6)
-    .background(Color(nsColor: .windowBackgroundColor).opacity(0.85))
+    .background(
+      GlassSurfaceStyle.centerOverlayColor(
+        glassEnabled: glassBackgroundEnabled,
+        opacity: glassOpacity
+      )
+    )
     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     .allowsHitTesting(false)
   }

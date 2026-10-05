@@ -36,6 +36,30 @@ struct SettingsView: View {
       }
 
       Section {
+        Toggle("Glass background", isOn: $settings.glassBackground)
+        if settings.glassBackground {
+          HStack {
+            Text("Glass opacity")
+            Spacer()
+            Text(verbatim: "\(Int((settings.glassOpacity * 100).rounded()))%")
+              .foregroundStyle(.secondary)
+          }
+          Slider(
+            value: $settings.glassOpacity,
+            in: SettingsStore.minimumGlassOpacity...SettingsStore.maximumGlassOpacity,
+            step: 0.01
+          )
+          .labelsHidden()
+        }
+      } footer: {
+        Text(
+          "Uses a translucent native material that reveals the desktop behind the window. Reduce Transparency in Accessibility keeps the solid background for readability."
+        )
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+      }
+
+      Section {
         Picker("Update interval", selection: $settings.memoryInterval) {
           ForEach(SettingsStore.memoryIntervalOptions, id: \.self) { seconds in
             Text(intervalLabel(seconds, language: settings.language)).tag(seconds)
@@ -130,9 +154,9 @@ struct SettingsView: View {
     }
     .formStyle(.grouped)
     .pickerStyle(.menu)
+    .scrollContentBackground(.hidden)
     .environment(\.locale, settings.language.locale)
     .frame(width: 440)
-    .fixedSize(horizontal: false, vertical: true)
   }
 
   private var openAtLoginBinding: Binding<Bool> {

@@ -3,13 +3,14 @@ import Foundation
 import SwiftUI
 
 struct PopoverRootView: View {
-  /// Matches `NSPopover.contentSize` in `AppDelegate`.
+  /// Content area below the popup window's arrow.
   static let popoverSize = CGSize(width: 380, height: 540)
 
   @ObservedObject private var appState: MemStatsAppState
   @ObservedObject private var settings: SettingsStore
   @ObservedObject private var memoryVM: MemoryViewModel
   @ObservedObject private var processVM: ProcessViewModel
+  @StateObject private var accessibilityDisplaySettings: AccessibilityDisplaySettings
 
   private let onOpenActivityMonitor: () -> Void
   private let onOpenOptionsMenu: () -> Void
@@ -23,8 +24,18 @@ struct PopoverRootView: View {
     self._settings = ObservedObject(wrappedValue: appState.settings)
     self._memoryVM = ObservedObject(wrappedValue: appState.memoryVM)
     self._processVM = ObservedObject(wrappedValue: appState.processVM)
+    self._accessibilityDisplaySettings = StateObject(
+      wrappedValue: AccessibilityDisplaySettings()
+    )
     self.onOpenActivityMonitor = onOpenActivityMonitor
     self.onOpenOptionsMenu = onOpenOptionsMenu
+  }
+
+  private var useGlassBackground: Bool {
+    GlassBackgroundResolver.shouldUseGlass(
+      preferenceEnabled: settings.glassBackground,
+      reduceTransparency: accessibilityDisplaySettings.shouldReduceTransparency
+    )
   }
 
   private var modeLabel: String {
@@ -123,6 +134,8 @@ struct PopoverRootView: View {
             stats: memoryVM.currentStats,
             selectedUser: processVM.selectedUser,
             language: settings.language,
+            glassBackgroundEnabled: useGlassBackground,
+            glassOpacity: settings.glassOpacity,
             onSelectUser: { processVM.selectedUser = $0 }
           )
           historySection
@@ -134,7 +147,6 @@ struct PopoverRootView: View {
       }
     }
     .frame(width: Self.popoverSize.width, height: Self.popoverSize.height)
-    .background(Color(nsColor: .windowBackgroundColor))
     .preferredColorScheme(settings.theme.swiftUIColorScheme)
     .environment(\.locale, settings.language.locale)
   }
@@ -294,7 +306,12 @@ struct PopoverRootView: View {
       Text("History")
         .font(.headline)
     }
-    .background(Color(nsColor: .controlBackgroundColor))
+    .background(
+      GlassSurfaceStyle.sectionColor(
+        glassEnabled: useGlassBackground,
+        opacity: settings.glassOpacity
+      )
+    )
   }
 
   private var appSection: some View {
@@ -359,7 +376,12 @@ struct PopoverRootView: View {
     } label: {
       sectionLabel(title: "Top Apps", count: processVM.visibleApps.count)
     }
-    .background(Color(nsColor: .controlBackgroundColor))
+    .background(
+      GlassSurfaceStyle.sectionColor(
+        glassEnabled: useGlassBackground,
+        opacity: settings.glassOpacity
+      )
+    )
   }
 
   private var processSection: some View {
@@ -443,7 +465,12 @@ struct PopoverRootView: View {
     } label: {
       sectionLabel(title: "Top Processes", count: processVM.visibleProcesses.count)
     }
-    .background(Color(nsColor: .controlBackgroundColor))
+    .background(
+      GlassSurfaceStyle.sectionColor(
+        glassEnabled: useGlassBackground,
+        opacity: settings.glassOpacity
+      )
+    )
   }
 
   private func growthHintText(_ hint: MemoryGrowthHint) -> String {

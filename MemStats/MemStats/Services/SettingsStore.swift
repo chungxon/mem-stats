@@ -14,6 +14,10 @@ final class SettingsStore: ObservableObject {
   static let defaultRowCount = 8
   static let defaultTheme: AppTheme = .system
   static let defaultLanguage: AppLanguage = .system
+  static let defaultGlassBackground = false
+  static let defaultGlassOpacity = 0.52
+  static let minimumGlassOpacity = 0.0
+  static let maximumGlassOpacity = 1.0
 
   static let memoryIntervalKey = "memoryIntervalSeconds"
   static let processIntervalKey = "processIntervalSeconds"
@@ -21,6 +25,8 @@ final class SettingsStore: ObservableObject {
   static let topProcessesCountKey = "topProcessesCount"
   static let themeKey = "theme"
   static let languageKey = "language"
+  static let glassBackgroundKey = "glassBackground"
+  static let glassOpacityKey = "glassOpacity"
 
   /// Seconds between memory samples (RAM, pressure, swap, menu bar, history).
   @Published var memoryInterval: Int {
@@ -68,6 +74,26 @@ final class SettingsStore: ObservableObject {
     }
   }
 
+  @Published var glassBackground: Bool {
+    didSet {
+      defaults.set(glassBackground, forKey: Self.glassBackgroundKey)
+    }
+  }
+
+  @Published var glassOpacity: Double {
+    didSet {
+      let clamped =
+        glassOpacity.isFinite
+        ? min(max(glassOpacity, Self.minimumGlassOpacity), Self.maximumGlassOpacity)
+        : Self.defaultGlassOpacity
+      guard glassOpacity == clamped else {
+        glassOpacity = clamped
+        return
+      }
+      defaults.set(clamped, forKey: Self.glassOpacityKey)
+    }
+  }
+
   private let defaults: UserDefaults
 
   init(defaults: UserDefaults = .standard) {
@@ -86,6 +112,8 @@ final class SettingsStore: ObservableObject {
       fallback: Self.defaultRowCount)
     theme = Self.readTheme(from: defaults)
     language = Self.readLanguage(from: defaults)
+    glassBackground = Self.readGlassBackground(from: defaults)
+    glassOpacity = Self.readGlassOpacity(from: defaults)
   }
 
   private static func readTheme(from defaults: UserDefaults) -> AppTheme {
@@ -104,6 +132,21 @@ final class SettingsStore: ObservableObject {
       return defaultLanguage
     }
     return language
+  }
+
+  private static func readGlassBackground(from defaults: UserDefaults) -> Bool {
+    (defaults.object(forKey: glassBackgroundKey) as? Bool) ?? defaultGlassBackground
+  }
+
+  private static func readGlassOpacity(from defaults: UserDefaults) -> Double {
+    guard let number = defaults.object(forKey: glassOpacityKey) as? NSNumber else {
+      return defaultGlassOpacity
+    }
+    let value = number.doubleValue
+    guard value.isFinite, (minimumGlassOpacity...maximumGlassOpacity).contains(value) else {
+      return defaultGlassOpacity
+    }
+    return value
   }
 
   private static func read(

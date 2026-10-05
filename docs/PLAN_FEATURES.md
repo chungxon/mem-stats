@@ -163,12 +163,21 @@ Implementation requirements:
 
 TODO:
 
-- [ ] Add and validate the persisted Glass setting.
-- [ ] Add the Settings toggle and explanatory copy.
-- [ ] Implement a reusable AppKit/SwiftUI translucent background wrapper.
-- [ ] Make the popover and Settings window backgrounds actually transparent for the Glass path.
-- [ ] Add Reduce Transparency fallback and tests for the resolver.
-- [ ] Verify the desktop is visibly seen through the background and readability is preserved.
+- [x] Add and validate the persisted Glass setting.
+- [x] Add the Settings toggle and explanatory copy.
+- [x] Implement a reusable AppKit/SwiftUI translucent background wrapper.
+- [x] Make the popover and Settings window backgrounds actually transparent for the Glass path.
+- [x] Reduce popup card opacity when Glass is enabled so the material remains visible.
+- [x] Add a persisted Glass opacity control that applies immediately to both surfaces.
+- [x] Apply the latest published Glass and opacity values on every toggle, including Off → On.
+- [x] Use a frosted popover material instead of the more transparent under-window material.
+- [x] Replace the nested NSPopover backgrounds with one window-level native blur surface.
+- [x] Keep Settings readable with native blur and adjustable tint instead of using opacity alone.
+- [x] Lighten the tint and popup card surfaces further at the same saved slider value.
+- [x] Blend a small amount of the unblurred backdrop through the native material in both windows.
+- [x] Add Reduce Transparency fallback and tests for the resolver.
+- [x] Keep popup cards and chart overlays on solid surfaces when Reduce Transparency is enabled.
+- [ ] Verify the desktop is visibly seen through both windows and readability is preserved on-device.
 
 Acceptance criteria:
 

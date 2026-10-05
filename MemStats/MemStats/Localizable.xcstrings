@@ -5003,6 +5003,144 @@
           }
         }
       }
+    },
+    "Glass opacity" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deckkraft des Glases"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opacidad del cristal"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opacité du verre"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ガラスの不透明度"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "글래스 불투명도"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Độ đục nền kính"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "玻璃不透明度"
+          }
+        }
+      }
+    },
+    "Glass background" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Glashintergrund"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fondo de cristal"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrière-plan en verre"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ガラス背景"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "글래스 배경"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nền kính"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "玻璃背景"
+          }
+        }
+      }
+    },
+    "Uses a translucent native material that reveals the desktop behind the window. Reduce Transparency in Accessibility keeps the solid background for readability." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwendet ein durchscheinendes natives Material, das den Desktop hinter dem Fenster sichtbar macht. „Transparenz reduzieren“ in den Bedienungshilfen verwendet aus Gründen der Lesbarkeit einen soliden Hintergrund."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa un material nativo translúcido que muestra el escritorio detrás de la ventana. Reducir transparencia en Accesibilidad mantiene un fondo sólido para facilitar la lectura."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilise un matériau natif translucide qui révèle le bureau derrière la fenêtre. Réduire la transparence dans Accessibilité conserve un arrière-plan opaque pour une meilleure lisibilité."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ウインドウの背後のデスクトップが見えるネイティブの半透明マテリアルを使用します。アクセシビリティの「透明度を下げる」が有効な場合は、読みやすさのため不透明な背景を使用します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "윈도우 뒤의 데스크탑이 보이는 네이티브 반투명 재질을 사용합니다. 손쉬운 사용에서 투명도 감소를 켜면 가독성을 위해 불투명한 배경을 사용합니다."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sử dụng chất liệu bán trong suốt của macOS để nhìn thấy màn hình phía sau cửa sổ. Tùy chọn Giảm độ trong suốt trong Trợ năng sẽ giữ nền đặc để dễ đọc."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用可显示窗口后桌面的原生半透明材质。启用辅助功能中的“降低透明度”后，会使用不透明背景以提高可读性。"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

@@ -631,6 +631,8 @@ struct MemStatsTests {
     #expect(store.topProcessesCount == 8)
     #expect(store.theme == .system)
     #expect(store.language == .system)
+    #expect(store.glassBackground == false)
+    #expect(store.glassOpacity == SettingsStore.defaultGlassOpacity)
 
     store.memoryInterval = 2
     store.processInterval = 30
@@ -638,6 +640,8 @@ struct MemStatsTests {
     store.topProcessesCount = 20
     store.theme = .dark
     store.language = .vietnamese
+    store.glassBackground = true
+    store.glassOpacity = 0.7
     let restored = SettingsStore(defaults: defaults)
     #expect(restored.memoryInterval == 2)
     #expect(restored.processInterval == 30)
@@ -645,6 +649,13 @@ struct MemStatsTests {
     #expect(restored.topProcessesCount == 20)
     #expect(restored.theme == .dark)
     #expect(restored.language == .vietnamese)
+    #expect(restored.glassBackground == true)
+    #expect(restored.glassOpacity == 0.7)
+
+    restored.glassOpacity = 0.1
+    #expect(restored.glassOpacity == 0.1)
+    restored.glassOpacity = 0.9
+    #expect(restored.glassOpacity == 0.9)
 
     // A value outside the options falls back to the default, both when set and when read.
     restored.processInterval = 1
@@ -656,12 +667,16 @@ struct MemStatsTests {
     defaults.set(0, forKey: SettingsStore.topProcessesCountKey)
     defaults.set("invalid", forKey: SettingsStore.themeKey)
     defaults.set("invalid", forKey: SettingsStore.languageKey)
+    defaults.set("invalid", forKey: SettingsStore.glassBackgroundKey)
+    defaults.set("invalid", forKey: SettingsStore.glassOpacityKey)
     let invalid = SettingsStore(defaults: defaults)
     #expect(invalid.memoryInterval == 5)
     #expect(invalid.topAppsCount == 8)
     #expect(invalid.topProcessesCount == 8)
     #expect(invalid.theme == .system)
     #expect(invalid.language == .system)
+    #expect(invalid.glassBackground == false)
+    #expect(invalid.glassOpacity == SettingsStore.defaultGlassOpacity)
   }
 
   @Test func appThemeMapsToExpectedAppearanceOverrides() {
@@ -671,6 +686,64 @@ struct MemStatsTests {
     #expect(AppTheme.system.swiftUIColorScheme == nil)
     #expect(AppTheme.light.swiftUIColorScheme == .light)
     #expect(AppTheme.dark.swiftUIColorScheme == .dark)
+  }
+
+  @Test func glassBackgroundHonorsReduceTransparency() {
+    #expect(
+      GlassBackgroundResolver.shouldUseGlass(
+        preferenceEnabled: false, reduceTransparency: false
+      ) == false
+    )
+    #expect(
+      GlassBackgroundResolver.shouldUseGlass(
+        preferenceEnabled: true, reduceTransparency: false
+      ) == true
+    )
+    #expect(
+      GlassBackgroundResolver.shouldUseGlass(
+        preferenceEnabled: true, reduceTransparency: true
+      ) == false
+    )
+  }
+
+  @MainActor @Test func glassToggleUsesLatestValuesAndPreservesOpacity() {
+    let suiteName = "MemStatsTests.GlassToggle.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+    let settings = SettingsStore(defaults: defaults)
+    let background = GlassBackgroundContainerView(frame: .zero)
+    let observation = GlassSettingsObservation.observe(settings) { isEnabled, opacity in
+      background.preferenceEnabled = isEnabled
+      background.glassOpacity = opacity
+    }
+    defer { observation.cancel() }
+
+    settings.glassBackground = true
+    #expect(background.preferenceEnabled)
+    settings.glassOpacity = 0.7
+    #expect(background.glassOpacity == 0.7)
+
+    settings.glassBackground = false
+    #expect(!background.preferenceEnabled)
+    #expect(background.glassOpacity == 0.7)
+    #expect(background.layer?.backgroundColor != nil)
+    if let solidColor = background.layer?.backgroundColor {
+      #expect(solidColor == NSColor.windowBackgroundColor.cgColor)
+    }
+
+    settings.glassBackground = true
+    #expect(background.preferenceEnabled)
+    #expect(background.glassOpacity == 0.7)
+  }
+
+  @Test func glassTintIsLighterAtAnExistingSliderValue() {
+    #expect(abs(GlassSurfaceStyle.effectiveOpacity(0.52) - 0.416) < 0.000_001)
+    #expect(GlassSurfaceStyle.effectiveOpacity(0) == 0)
+    #expect(GlassSurfaceStyle.effectiveOpacity(2) == 0.8)
+  }
+
+  @Test func glassMaterialRetainsMostOfTheNativeBlur() {
+    #expect(GlassSurfaceStyle.materialAlpha == 1.0)
   }
 
   @Test func appLanguageUsesNativeNamesAndExpectedLocales() {

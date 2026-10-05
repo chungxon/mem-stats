@@ -3,8 +3,10 @@ import Combine
 import ServiceManagement
 import SwiftUI
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
-  private let popover = NSPopover()
+final class AppDelegate: NSObject, NSApplicationDelegate {
+  private var popupWindow: GlassPopoverWindow?
+  private var outsideClickMonitor: Any?
+  private var localClickMonitor: Any?
   private var statusItem: NSStatusItem?
   private let appState = MemStatsAppState()
   private let loginItemService = LoginItemService()
@@ -20,27 +22,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     loginItemService.syncWithSystem()
     observeTheme()
     observeLanguage()
+    observeGlassBackground()
     applyTheme(appState.settings.theme)
-    configurePopover()
     configureStatusItem()
     observeMemoryStats()
   }
 
-  private func configurePopover() {
-    popover.behavior = .transient
-    popover.delegate = self
-    popover.contentSize = PopoverRootView.popoverSize
-    popover.contentViewController = NSHostingController(
+  private func makePopupWindow() -> GlassPopoverWindow {
+    let size = PopoverRootView.popoverSize
+    let arrowHeight: CGFloat = 10
+    let window = GlassPopoverWindow(
+      contentRect: NSRect(x: 0, y: 0, width: size.width, height: size.height + arrowHeight),
+      styleMask: [.borderless, .nonactivatingPanel],
+      backing: .buffered,
+      defer: false
+    )
+    window.isOpaque = false
+    window.backgroundColor = .clear
+    window.hasShadow = true
+    window.level = .popUpMenu
+    window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+    window.appearance = appState.settings.theme.nsAppearance
+    window.onDismiss = { [weak self] in self?.closePopup() }
+
+    let background = GlassBackgroundContainerView()
+    background.material = .sidebar
+    background.popoverArrowHeight = arrowHeight
+    background.preferenceEnabled = appState.settings.glassBackground
+    background.glassOpacity = appState.settings.glassOpacity
+    window.contentView = background
+
+    let content = NSHostingView(
       rootView: PopoverRootView(
         appState: appState,
-        onOpenActivityMonitor: { [weak self] in
-          self?.openActivityMonitor()
-        },
-        onOpenOptionsMenu: { [weak self] in
-          self?.showContextMenuFromPopover()
-        }
+        onOpenActivityMonitor: { [weak self] in self?.openActivityMonitor() },
+        onOpenOptionsMenu: { [weak self] in self?.showContextMenuFromPopover() }
       )
     )
+    content.translatesAutoresizingMaskIntoConstraints = false
+    background.addSubview(content)
+    NSLayoutConstraint.activate([
+      content.leadingAnchor.constraint(equalTo: background.leadingAnchor),
+      content.trailingAnchor.constraint(equalTo: background.trailingAnchor),
+      content.bottomAnchor.constraint(equalTo: background.bottomAnchor),
+      content.topAnchor.constraint(equalTo: background.topAnchor, constant: arrowHeight),
+    ])
+    return window
   }
 
   private func configureStatusItem() {
@@ -85,6 +112,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
       .store(in: &cancellables)
   }
 
+  private func observeGlassBackground() {
+    GlassSettingsObservation.observe(appState.settings) { [weak self] isEnabled, opacity in
+      self?.refreshGlassWindowConfiguration(isEnabled: isEnabled, opacity: opacity)
+    }
+    .store(in: &cancellables)
+  }
+
   private func refreshLocalizedStatusItem() {
     guard let button = statusItem?.button else { return }
     applyStatusAppearance(
@@ -102,8 +136,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
   private func applyTheme(_ theme: AppTheme) {
     NSApp.appearance = theme.nsAppearance
+    popupWindow?.appearance = theme.nsAppearance
     settingsWindow?.appearance = theme.nsAppearance
-    popover.contentViewController?.view.window?.appearance = theme.nsAppearance
+  }
+
+  private func refreshGlassWindowConfiguration(isEnabled: Bool, opacity: Double) {
+    for window in [popupWindow, settingsWindow] {
+      guard let background = window?.contentView as? GlassBackgroundContainerView else { continue }
+      background.preferenceEnabled = isEnabled
+      background.glassOpacity = opacity
+    }
   }
 
   private func updateStatusItemIfNeeded(with stats: MemoryStats) {
@@ -224,12 +266,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
       return
     }
 
-    if popover.isShown {
-      popover.performClose(nil)
+    if popupWindow?.isVisible == true {
+      closePopup()
     } else {
-      popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-      popover.contentViewController?.view.window?.appearance = appState.settings.theme.nsAppearance
-      popover.contentViewController?.view.window?.makeKey()
+      showPopup(anchoredTo: button)
+    }
+  }
+
+  private func showPopup(anchoredTo button: NSStatusBarButton) {
+    let window = popupWindow ?? makePopupWindow()
+    popupWindow = window
+    refreshGlassWindowConfiguration(
+      isEnabled: appState.settings.glassBackground,
+      opacity: appState.settings.glassOpacity
+    )
+
+    guard let buttonWindow = button.window else { return }
+    let buttonFrame = buttonWindow.convertToScreen(button.convert(button.bounds, to: nil))
+    let visibleFrame = buttonWindow.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
+    let x = min(
+      max(buttonFrame.midX - window.frame.width / 2, visibleFrame.minX),
+      visibleFrame.maxX - window.frame.width
+    )
+    let y = max(buttonFrame.minY + 2 - window.frame.height, visibleFrame.minY)
+    window.setFrameOrigin(NSPoint(x: x, y: y))
+    window.makeKeyAndOrderFront(nil)
+    appState.setPopoverPresented(true)
+    installOutsideClickMonitors()
+  }
+
+  private func closePopup() {
+    guard popupWindow?.isVisible == true else { return }
+    popupWindow?.orderOut(nil)
+    if let outsideClickMonitor { NSEvent.removeMonitor(outsideClickMonitor) }
+    if let localClickMonitor { NSEvent.removeMonitor(localClickMonitor) }
+    outsideClickMonitor = nil
+    localClickMonitor = nil
+    appState.setPopoverPresented(false)
+  }
+
+  private func installOutsideClickMonitors() {
+    outsideClickMonitor = NSEvent.addGlobalMonitorForEvents(
+      matching: [.leftMouseDown, .rightMouseDown]
+    ) { [weak self] _ in self?.closePopup() }
+    localClickMonitor = NSEvent.addLocalMonitorForEvents(
+      matching: [.leftMouseDown, .rightMouseDown]
+    ) { [weak self] event in
+      guard let self else { return event }
+      if event.window !== self.popupWindow && event.window !== self.statusItem?.button?.window {
+        self.closePopup()
+      }
+      return event
     }
   }
 
@@ -239,6 +326,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   }
 
   private func showContextMenu(from button: NSStatusBarButton) {
+    closePopup()
     let menu = NSMenu()
     let language = appState.settings.language
 
@@ -338,7 +426,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   @objc
   private func showSettings() {
     loginItemService.syncWithSystem()
-    popover.performClose(nil)
+    closePopup()
 
     let window = settingsWindow ?? makeSettingsWindow()
     settingsWindow = window
@@ -347,7 +435,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
   }
 
   private func makeSettingsWindow() -> NSWindow {
-    let controller = NSHostingController(
+    let content = NSHostingView(
       rootView: SettingsView(
         appState: appState,
         loginItemService: loginItemService,
@@ -356,13 +444,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         }
       )
     )
-    let window = SettingsWindow(contentViewController: controller)
+    let window = SettingsWindow(
+      contentRect: NSRect(x: 0, y: 0, width: 440, height: 702),
+      styleMask: [.titled, .closable],
+      backing: .buffered,
+      defer: false
+    )
     window.title = AppLocalization.string(
       "MemStats Settings", language: appState.settings.language
     )
-    window.styleMask = [.titled, .closable]
     window.appearance = appState.settings.theme.nsAppearance
     window.isReleasedWhenClosed = false
+    window.isOpaque = false
+    window.backgroundColor = .clear
+    let background = GlassBackgroundContainerView()
+    background.material = .sidebar
+    background.preferenceEnabled = appState.settings.glassBackground
+    background.glassOpacity = appState.settings.glassOpacity
+    window.contentView = background
+    content.translatesAutoresizingMaskIntoConstraints = false
+    background.addSubview(content)
+    NSLayoutConstraint.activate([
+      content.leadingAnchor.constraint(equalTo: background.leadingAnchor),
+      content.trailingAnchor.constraint(equalTo: background.trailingAnchor),
+      content.topAnchor.constraint(equalTo: background.topAnchor),
+      content.bottomAnchor.constraint(equalTo: background.bottomAnchor),
+    ])
     window.setContentSize(NSSize(width: 440, height: 702))
     window.center()
     return window
@@ -431,13 +538,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
       SMAppService.openSystemSettingsLoginItems()
     }
   }
+}
 
-  func popoverWillShow(_ notification: Notification) {
-    appState.setPopoverPresented(true)
-  }
+private final class GlassPopoverWindow: NSPanel {
+  var onDismiss: (() -> Void)?
 
-  func popoverDidClose(_ notification: Notification) {
-    appState.setPopoverPresented(false)
+  override var canBecomeKey: Bool { true }
+
+  override func cancelOperation(_ sender: Any?) {
+    onDismiss?()
   }
 }
 
