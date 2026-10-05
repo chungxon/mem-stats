@@ -32,6 +32,8 @@ Acceptance Criteria:
 
 ## Task 2 - Align Top Processes With Spec
 
+Note (2026-10-03): hint text và tooltip % ở task này đã được thay bởi Task 15 trong `PLAN_REVIEW_FIXES.md` (info row + center label, không còn floating tooltip).
+
 Objective:
 
 - Đưa phần Top Processes về đúng kỳ vọng trong `docs/DESCRIPTION.md`.
@@ -49,6 +51,8 @@ Acceptance Criteria:
 - Không còn mismatch count 8 nhưng chỉ render 5 dòng.
 
 ## Task 3 - Improve Donut Interaction UX
+
+Note (2026-10-03): hint text và tooltip % ở task này đã được thay bởi Task 15 trong `PLAN_REVIEW_FIXES.md` (info row + center label, không còn floating tooltip).
 
 Objective:
 
@@ -120,6 +124,8 @@ Acceptance Criteria:
 
 ## Task 7 - History Chart Readability Stabilization
 
+Status (2026-10-03): đường `Swap` nét đứt và dải overlay `Pressure` đã được **thay bằng badge** (latest-value status badges dưới chart). Xem Current Note bên dưới.
+
 Objective:
 
 - Làm chart lịch sử dễ đọc hơn và tránh cảm giác "line bị chéo lạ" khi hiển thị đồng thời Used/Swap/Pressure.
@@ -168,6 +174,8 @@ Latest Verification Notes (2026-05-19):
 
 ## Task 9 - Process Memory Metric Alignment With Activity Monitor
 
+Status (2026-10-03): **dropped**. Theo Decision Note của Task 14, process sampling chỉ dùng `top` (single source), code `phys_footprint` đã bị gỡ. Chuyển sang `proc_pid_rusage` (`ri_phys_footprint`) được lên kế hoạch lại sau release ở `PLAN_RELEASE.md` Task 14.
+
 Objective:
 
 - Giảm độ lệch giữa Top Processes trong app và cột Memory của Activity Monitor.
@@ -185,6 +193,8 @@ Acceptance Criteria:
 - Không làm hỏng parser/filter hiện có.
 
 ## Task 10 - Improve Memory Metric Fallback Coverage
+
+Status (2026-10-03): **dropped**. Theo Decision Note của Task 14, process sampling chỉ dùng `top` (single source), code fallback `proc_pidinfo` đã bị gỡ. Chuyển sang `proc_pid_rusage` (`ri_phys_footprint`) được lên kế hoạch lại sau release ở `PLAN_RELEASE.md` Task 14.
 
 Objective:
 
@@ -223,6 +233,8 @@ Acceptance Criteria:
 
 ## Task 12 - Prevent System Process Under-Reporting
 
+Status (2026-10-03): **dropped**. Theo Decision Note của Task 14, process sampling chỉ dùng `top` (single source), code chọn `max(...)` giữa các metric đã bị gỡ. Chuyển sang `proc_pid_rusage` (`ri_phys_footprint`) được lên kế hoạch lại sau release ở `PLAN_RELEASE.md` Task 14.
+
 Objective:
 
 - Tránh việc một số system process (như `WindowServer`) bị tụt top do metric fallback trả về thấp bất thường.
@@ -240,6 +252,8 @@ Acceptance Criteria:
 - Top list ổn định hơn khi dữ liệu từ API quyền thấp không nhất quán.
 
 ## Task 13 - Add `top` Memory Merge For Protected Processes
+
+Status (2026-10-03): **dropped**. Theo Decision Note của Task 14, process sampling chỉ dùng `top` (single source), code merge `top mem` theo PID đã bị gỡ. Chuyển sang `proc_pid_rusage` (`ri_phys_footprint`) được lên kế hoạch lại sau release ở `PLAN_RELEASE.md` Task 14.
 
 Objective:
 
@@ -340,26 +354,34 @@ Acceptance Criteria:
 - Không còn tên `RamStats` hiển thị với người dùng.
 - Build/test pass sau khi rename.
 
-## Task 18 - View RAM By App
+## Task 18 - Top Apps And Top Users Naming
 
 Objective:
 
 - Thêm chế độ xem RAM theo app (gộp các process thuộc cùng một app) bên cạnh view theo user/process.
+- Đổi tên section donut "RAM by User" thành "Top Users".
 
 TODO:
 
-- [ ] Xác định cách gộp process theo app (bundle/executable path, helper process).
-- [ ] Bổ sung model + aggregation theo app trong pipeline sampling.
-- [ ] Thêm UI view RAM theo app trong popover.
-- [ ] Bổ sung test cho logic aggregation.
-- [ ] Cập nhật `docs/DESCRIPTION.md`.
-- [ ] Run lint cho file Swift thay đổi.
-- [ ] Run build + test verification.
+- [x] Xác định cách gộp process theo app: `proc_pidpath(pid)` → outermost `.app` bundle; ngoài bundle thì gộp theo executable path; fallback theo command name của `top`.
+- [x] Bổ sung model (`AppIdentity`, `AppMemoryUsage`) + resolver/aggregator, resolve path trong sampling queue.
+- [x] Thêm section "Top Apps" trong popover (App / Procs / Mem, tooltip path, lọc theo selected user).
+- [x] Đổi tên section donut "RAM by User" → "Top Users".
+- [x] Bổ sung test cho logic aggregation.
+- [x] Cập nhật `docs/DESCRIPTION.md`.
+- [x] Run lint cho file Swift thay đổi.
+- [x] Run build + test verification.
 
 Acceptance Criteria:
 
 - Hiển thị được RAM theo từng app, các helper process được gộp vào đúng app.
 - Build/test pass.
+
+Notes:
+
+- `top` chỉ trả command name bị cắt 16 ký tự (vd `Microsoft Edge H`) nên không dùng được để gộp app; cần path thật từ `proc_pidpath`.
+- Process XPC dùng chung của hệ thống (vd `com.apple.WebKit.WebContent`) không gắn được về app gọi nó nếu không dùng private API, nên hiển thị như một mục riêng.
+- PID không đọc được path (process đã thoát giữa `top` và `proc_pidpath`, hoặc bị giới hạn quyền) sẽ fallback theo command name bị cắt của `top`; tổng RAM theo app chỉ tính trên tập process `top -n 500`.
 
 ## Execution Order
 
@@ -380,7 +402,7 @@ Acceptance Criteria:
 15. Task 15 (docs and parser alignment cleanup)
 16. Task 16 (Swift 6 warning cleanup)
 17. Task 17 (rename RamStats -> MemStats)
-18. Task 18 (view RAM by app)
+18. Task 18 (top apps + top users naming)
 
 ## Review Gates
 

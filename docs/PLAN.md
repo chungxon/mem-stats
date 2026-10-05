@@ -225,11 +225,15 @@ Task 6 TODO:
 
 - [x] Replace history placeholder with native `Charts` line chart
 - [x] Plot total used RAM series from bounded memory history
-- [x] Plot swap-used series from bounded memory history
-- [x] Plot memory-pressure series with consistent scaling for readability
+- [x] Plot swap-used series from bounded memory history (later replaced by a latest-value badge below the chart)
+- [x] Plot memory-pressure series with consistent scaling for readability (later replaced by a pressure badge and pressure-colored Used segments)
 - [x] Add optional selected-user history overlay when a user is selected
 - [x] Keep chart updates driven by sampling ticks only (history append path)
 - [x] Add tests for selected-user history tracking with bounded samples
+
+Update (2026-10-03):
+
+- Swap and pressure are no longer plotted as series. They show as latest-value badges below the chart, and the Used line is colored by pressure per segment. See `docs/DESCRIPTION.md` §7.
 
 Review gate:
 
@@ -319,3 +323,18 @@ Review gate:
 - [x] Task 6 - History Chart and Pressure/Swap Tracking
 - [x] Task 7 - Context Menu, Login Item, and App Options
 - [x] Task 8 - Performance Hardening and Final QA
+
+## Next Feature Batch
+
+The implementation plan for the next four user-facing tasks is maintained in
+[docs/PLAN_FEATURES.md](PLAN_FEATURES.md). The order is intentional and has been reset after
+the previous appearance, language and Glass implementation was removed.
+
+- [x] Feature Task 1 - Support Us
+- [x] Feature Task 2 - Theme
+- [x] Feature Task 3 - Common languages
+- [ ] Feature Task 4 - Glass background
+
+Review gate: each feature task is a separate implementation and review step. Update both
+checklists after each task, run lint/build/tests for changed files, ask the reviewer subagent
+to inspect the result, commit only that task, then stop for review.

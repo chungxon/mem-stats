@@ -90,7 +90,9 @@ struct DonutDataBuilder {
     return stableUserSlices
   }
 
-  private static func normalizePerUserBytes(
+  /// Summed RSS double-counts shared pages, so when it exceeds used RAM every user is scaled
+  /// down by the same factor to fit. Shared with the per-user history chart.
+  static func normalizePerUserBytes(
     _ perUserBytes: [String: UInt64],
     targetUsedBytes: UInt64
   ) -> [String: UInt64] {
@@ -134,6 +136,19 @@ struct DonutDataBuilder {
     }
 
     return normalized.filter { $0.value > 0 }
+  }
+
+  /// Stable palette index for a user. `String.hashValue` is seeded per launch, so it would
+  /// give a user a different color every time the app starts; FNV-1a is deterministic.
+  static func paletteIndex(for user: String, paletteCount: Int) -> Int {
+    guard paletteCount > 0 else { return 0 }
+
+    var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+    for byte in user.utf8 {
+      hash ^= UInt64(byte)
+      hash = hash &* 0x0000_0100_0000_01b3
+    }
+    return Int(hash % UInt64(paletteCount))
   }
 
   static func sliceForSelection(angleValue: Double?, in slices: [DonutSlice]) -> DonutSlice? {

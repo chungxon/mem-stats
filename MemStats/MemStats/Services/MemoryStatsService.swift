@@ -33,12 +33,20 @@ struct MemoryStatsService: MemoryStatsProviding {
     let pageSize = try hostPageSize()
     let vmStats = try vmStatistics()
 
-    let freeBytes = UInt64(vmStats.free_count) * pageSize
     let activeBytes = UInt64(vmStats.active_count) * pageSize
     let inactiveBytes = UInt64(vmStats.inactive_count) * pageSize
     let wiredBytes = UInt64(vmStats.wire_count) * pageSize
     let compressedBytes = UInt64(vmStats.compressor_page_count) * pageSize
-    let usedBytes = min(totalBytes, totalBytes &- freeBytes)
+    let usedBytes = Self.usedMemoryBytes(
+      internalPages: UInt64(vmStats.internal_page_count),
+      purgeablePages: UInt64(vmStats.purgeable_count),
+      wiredPages: UInt64(vmStats.wire_count),
+      compressedPages: UInt64(vmStats.compressor_page_count),
+      pageSize: pageSize,
+      totalBytes: totalBytes
+    )
+    // Cached and reclaimable pages count as available, matching Activity Monitor.
+    let freeBytes = totalBytes - usedBytes
     let swapUsedBytes = (try? swapUsedBytes()) ?? 0
     let pressureLevel = derivePressureLevel(usedBytes: usedBytes, totalBytes: totalBytes)
 
@@ -53,6 +61,23 @@ struct MemoryStatsService: MemoryStatsProviding {
       swapUsedBytes: swapUsedBytes,
       pressureLevel: pressureLevel
     )
+  }
+
+  /// Activity Monitor style "Memory Used": App Memory (anonymous pages minus purgeable)
+  /// + Wired + Compressed. File cache and free pages are treated as available.
+  nonisolated static func usedMemoryBytes(
+    internalPages: UInt64,
+    purgeablePages: UInt64,
+    wiredPages: UInt64,
+    compressedPages: UInt64,
+    pageSize: UInt64,
+    totalBytes: UInt64
+  ) -> UInt64 {
+    let appPages = internalPages > purgeablePages ? internalPages - purgeablePages : 0
+    let usedPages = appPages + wiredPages + compressedPages
+    let (usedBytes, overflow) = usedPages.multipliedReportingOverflow(by: pageSize)
+    guard !overflow else { return totalBytes }
+    return min(usedBytes, totalBytes)
   }
 
   nonisolated private func hostPageSize() throws -> UInt64 {
@@ -128,20 +153,13 @@ struct MemoryStatsService: MemoryStatsProviding {
     return .normal
   }
 
+  /// Reads the kernel pressure level, the same source Activity Monitor colors its graph by.
+  /// `vm.memory_pressure` is deliberately ignored: it is a reclaim/pageout activity counter
+  /// (often in the hundreds while the system is still normal), not a pressure level.
   nonisolated private func readSystemPressureLevel() -> MemoryPressureLevel? {
-    let vmPressure = readInt32Sysctl(name: "vm.memory_pressure").map(Self.levelFromVMMemoryPressure)
-    let memorystatusPressure = readInt32Sysctl(name: "kern.memorystatus_vm_pressure_level").map(
+    readInt32Sysctl(name: "kern.memorystatus_vm_pressure_level").map(
       Self.levelFromMemorystatusPressure
     )
-
-    switch (vmPressure, memorystatusPressure) {
-    case (.some(let lhs), .some(let rhs)):
-      return Self.maxPressureLevel(lhs, rhs)
-    case (.some(let level), .none), (.none, .some(let level)):
-      return level
-    case (.none, .none):
-      return nil
-    }
   }
 
   nonisolated private func readInt32Sysctl(name: String) -> Int32? {
@@ -152,16 +170,7 @@ struct MemoryStatsService: MemoryStatsProviding {
     return value
   }
 
-  nonisolated static func levelFromVMMemoryPressure(_ value: Int32) -> MemoryPressureLevel {
-    if value >= 2 {
-      return .critical
-    }
-    if value >= 1 {
-      return .warning
-    }
-    return .normal
-  }
-
+  /// Maps the dispatch-style kernel level: 1 = normal, 2 = warning, 4 = critical.
   nonisolated static func levelFromMemorystatusPressure(_ value: Int32) -> MemoryPressureLevel {
     if value >= 4 {
       return .critical
@@ -170,24 +179,5 @@ struct MemoryStatsService: MemoryStatsProviding {
       return .warning
     }
     return .normal
-  }
-
-  nonisolated static func maxPressureLevel(_ lhs: MemoryPressureLevel, _ rhs: MemoryPressureLevel)
-    -> MemoryPressureLevel
-  {
-    let lhsRank = pressureRank(lhs)
-    let rhsRank = pressureRank(rhs)
-    return lhsRank >= rhsRank ? lhs : rhs
-  }
-
-  nonisolated private static func pressureRank(_ level: MemoryPressureLevel) -> Int {
-    switch level {
-    case .normal:
-      return 0
-    case .warning:
-      return 1
-    case .critical:
-      return 2
-    }
   }
 }
