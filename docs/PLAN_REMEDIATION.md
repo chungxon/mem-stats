@@ -174,7 +174,7 @@ Latest Verification Notes (2026-05-19):
 
 ## Task 9 - Process Memory Metric Alignment With Activity Monitor
 
-Status (2026-10-03): **dropped**. Theo Decision Note của Task 14, process sampling chỉ dùng `top` (single source), code `phys_footprint` đã bị gỡ. Chuyển sang `proc_pid_rusage` (`ri_phys_footprint`) được lên kế hoạch lại sau release ở `PLAN_RELEASE.md` Task 14.
+Status (2026-10-03): **dropped**. Theo Decision Note của Task 14, process sampling chỉ dùng `top` (single source), code `phys_footprint` đã bị gỡ. Không chuyển sang `proc_pid_rusage` nữa (2026-10-06): không đọc được process của user khác khi không có quyền đặc biệt, xem lý do ở `PLAN_RELEASE.md` Task 14.
 
 Objective:
 
@@ -194,7 +194,7 @@ Acceptance Criteria:
 
 ## Task 10 - Improve Memory Metric Fallback Coverage
 
-Status (2026-10-03): **dropped**. Theo Decision Note của Task 14, process sampling chỉ dùng `top` (single source), code fallback `proc_pidinfo` đã bị gỡ. Chuyển sang `proc_pid_rusage` (`ri_phys_footprint`) được lên kế hoạch lại sau release ở `PLAN_RELEASE.md` Task 14.
+Status (2026-10-03): **dropped**. Theo Decision Note của Task 14, process sampling chỉ dùng `top` (single source), code fallback `proc_pidinfo` đã bị gỡ. Không chuyển sang `proc_pid_rusage` nữa (2026-10-06): không đọc được process của user khác khi không có quyền đặc biệt, xem lý do ở `PLAN_RELEASE.md` Task 14.
 
 Objective:
 
@@ -233,7 +233,7 @@ Acceptance Criteria:
 
 ## Task 12 - Prevent System Process Under-Reporting
 
-Status (2026-10-03): **dropped**. Theo Decision Note của Task 14, process sampling chỉ dùng `top` (single source), code chọn `max(...)` giữa các metric đã bị gỡ. Chuyển sang `proc_pid_rusage` (`ri_phys_footprint`) được lên kế hoạch lại sau release ở `PLAN_RELEASE.md` Task 14.
+Status (2026-10-03): **dropped**. Theo Decision Note của Task 14, process sampling chỉ dùng `top` (single source), code chọn `max(...)` giữa các metric đã bị gỡ. Không chuyển sang `proc_pid_rusage` nữa (2026-10-06): không đọc được process của user khác khi không có quyền đặc biệt, xem lý do ở `PLAN_RELEASE.md` Task 14.
 
 Objective:
 
@@ -253,7 +253,7 @@ Acceptance Criteria:
 
 ## Task 13 - Add `top` Memory Merge For Protected Processes
 
-Status (2026-10-03): **dropped**. Theo Decision Note của Task 14, process sampling chỉ dùng `top` (single source), code merge `top mem` theo PID đã bị gỡ. Chuyển sang `proc_pid_rusage` (`ri_phys_footprint`) được lên kế hoạch lại sau release ở `PLAN_RELEASE.md` Task 14.
+Status (2026-10-03): **dropped**. Theo Decision Note của Task 14, process sampling chỉ dùng `top` (single source), code merge `top mem` theo PID đã bị gỡ. Không chuyển sang `proc_pid_rusage` nữa (2026-10-06): không đọc được process của user khác khi không có quyền đặc biệt, xem lý do ở `PLAN_RELEASE.md` Task 14.
 
 Objective:
 

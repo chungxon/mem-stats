@@ -63,7 +63,7 @@ Objective:
 - Implement data collectors:
   - `host_statistics64` for memory stats
   - `sysctl` for total RAM
-  - `top -l 1 -o mem -stats pid,user,mem,command` for process snapshots
+  - `top -l 1 -F -o mem -stats pid,user,mem,command` for process snapshots
 
 Deliverables:
 
@@ -81,7 +81,7 @@ Task 2 TODO:
 
 - [x] Add memory model and process model for service outputs
 - [x] Implement `MemoryStatsService` using `host_statistics64`, `sysctl hw.memsize`, and `vm.swapusage`
-- [x] Implement `ProcessSnapshotService` using `top -l 1 -o mem -stats pid,user,mem,command`
+- [x] Implement `ProcessSnapshotService` using `top -l 1 -F -o mem -stats pid,user,mem,command`
 - [x] Ensure process snapshots are sorted by memory descending
 - [x] Keep runtime snapshot broad and cap displayed top processes to 8 in view-model/UI layer
 - [x] Add parser/service tests for core acceptance behavior

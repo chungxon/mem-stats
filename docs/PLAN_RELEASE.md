@@ -13,12 +13,12 @@ Thứ tự ưu tiên:
 ## Hiện trạng
 
 - Unit test pass, Release build không có warning của app.
-- Spec khớp ở các phần chính: sampling 5s/15s và rule 2s, công thức Used RAM, pressure sysctl + fallback, `top` top-500, gom app theo `.app` ngoài cùng, màu FNV-1a, growth detector, ẩn system users, login item.
+- Spec khớp ở các phần chính: sampling 5s/15s (process idle 60s từ Task 14) và rule 2s, công thức Used RAM, pressure sysctl + fallback, `top` top-500, gom app theo `.app` ngoài cùng, màu FNV-1a, growth detector, ẩn system users, login item.
 - Đã xử lý trong `909a1b1`: info row/center label theo docs mới, Clear Filter dạng overlay, legend flow layout.
 
 ## Decisions (cần anh chốt)
 
-- Giữ `top` cho bản 1.0. Chuyển sang `proc_pid_rusage` (`ri_phys_footprint`) để giảm CPU và khớp Activity Monitor hơn: để sau release (Task 14).
+- Giữ `top` làm nguồn process duy nhất, cả sau release (đổi ý 2026-10-06). App phục vụ máy nhiều user dùng chung, mà khi không có quyền đặc biệt, `proc_pid_rusage` chỉ đọc được process của user đang chạy app, nên không thay được `top`. Task 14 đổi sang giảm chi phí của `top`.
 - Phân phối ngoài Mac App Store, chỉ qua GitHub Releases. Không lên Store vì sandbox phải tắt để chạy `top` và đọc process của user khác.
 - Bỏ Homebrew khỏi bản 1.0 (2026-10-04): app chưa ký Developer ID/notarize nên khó lên `homebrew/cask` chính thức. Khi ký được app thì thêm lại (tap riêng hoặc `homebrew/cask`).
 - Chưa có Apple Developer Program: bản 1.0 không notarize. README hướng dẫn mở app lần đầu ("Open Anyway" hoặc bỏ quarantine).
@@ -60,6 +60,10 @@ Bug: `top -l 1 -n 500` đo được 1.4s trên máy dev, timeout chỉ 2s. Khi m
 - [x] Parser cột mem: bỏ hậu tố `+`/`-`, clamp giá trị trước khi đổi sang `UInt64`.
 - [x] Test: parse `12G+`, `512K-`; coalesce nhiều lần refresh liên tiếp.
 - [x] Cập nhật §5.1 trong docs (rule khi đóng popover, coalesce Refresh Now).
+
+Current resilience note (2026-10-05): nếu snapshot 500 process timeout sau 6s, service tự dừng và
+thử lại snapshot 150 process trong tối đa 4s. Chỉ timeout ở lần chính mới kích hoạt fallback; nếu
+fallback thất bại thì lỗi của fallback được hiển thị, còn lỗi launch/read được hiển thị trực tiếp.
 
 Commit: `fix(sampling): raise top timeout and coalesce overlapping samples`
 
@@ -147,7 +151,7 @@ Sampling:
 - [x] Tách thành 2 timer trên `samplingQueue`: (thực tế: timer chạy trên 1 queue, còn công việc sample chạy trên 2 serial queue riêng để `top` chậm không chặn memory sample; logic timer + coalesce gom vào `PeriodicSampler`)
   - Memory timer: `host_statistics64` + `sysctl`, cập nhật menu bar, history, donut (dùng process snapshot gần nhất).
   - Process timer: `top`, cập nhật Top Apps, Top Processes, donut, growth hints.
-- [x] Giữ idle mode: khi popover mở dùng interval đã chọn, khi đóng dùng `max(interval đã chọn, 15s)` cho từng timer.
+- [x] Giữ idle mode: khi popover mở dùng interval đã chọn, khi đóng dùng `max(interval đã chọn, 15s)` cho từng timer (process đổi thành 60s, xem Task 14).
 - [x] Giữ rule 2s khi mở/đóng popover và coalesce sample (Task 2) cho cả 2 timer.
 - [x] Refresh Now chạy ngay cả 2 loại sample.
 - [x] History giữ cửa sổ khoảng 10 phút: `maxSamples = ceil(600 / memory interval)`, giới hạn trên 600 điểm.
@@ -293,12 +297,29 @@ Files: `AppDelegate.swift`, `PopoverRootView.swift`, `MemStatsTests.swift`
 
 Commit: `chore(ui): polish copy, spacing and digit alignment`
 
-## Task 14 - (Sau release) Replace top With libproc
+## Task 14 - (Sau release) Reduce top Cost
 
-Files: `Services/ProcessSnapshotService.swift`, `docs/DESCRIPTION.md`
+Files: `ViewModels/MemStatsAppState.swift`, `PopoverRootView.swift`, `SettingsView.swift`, `Localizable.xcstrings`, `MemStatsTests.swift`, `README.md`, `docs/DESCRIPTION.md`
 
-- [ ] Dùng `proc_listpids` + `proc_pid_rusage` (`ri_phys_footprint`) thay cho `top`, giảm CPU (hiện khoảng 20% một core mỗi 5s khi mở popover) và khớp Activity Monitor hơn.
-- [ ] Đo so sánh CPU/thời gian sample trước và sau.
-- [ ] Cập nhật §1 và Note trong docs.
+Vì sao không thay `top` bằng libproc (đo trên macOS 26.6 ngày 2026-10-06, chạy với quyền user thường):
 
-Commit: `perf(process): sample processes with libproc instead of top`
+- `proc_pid_rusage` và `task_name_for_pid` lỗi với mọi process không thuộc user đang chạy app (181/902 process, khoảng 6% RAM, gồm WindowServer khoảng 1.5 GB). Trên máy nhiều user, process của các user người thật khác cũng bị chặn như vậy.
+- `sysctl(KERN_PROC_PID)` đọc được pid, uid, tên của mọi process nhưng không có RAM.
+- `top` và `ps` đọc được vì là binary setuid root có entitlement `com.apple.system-task-ports.read`, app bên thứ ba không xin được.
+- `ps -axo pid,user,rss,comm` nhanh (khoảng 0.06s) nhưng chỉ có RSS, không tính phần bị nén, swap và bộ nhớ GPU (WindowServer: RSS 95 MB, footprint 1.5 GB), nên không dùng làm nguồn chính.
+- Privileged helper (`SMAppService.daemon`) đọc đủ nhưng cần quyền admin, không đáng cho app menu bar.
+- `-n` của `top` không làm nhanh hơn: `top` luôn quét mọi process, thời gian 1.6-8s tuỳ tải máy với cả `-n 50`, `150`, `500`. Top 500 phủ khoảng 94% RAM của process (top 150: 81%, top 50: 61%), nên giữ 500.
+
+Hiện trạng: khi popover đóng, `top` vẫn chạy mỗi `max(setting, 15s)` để nuôi history theo user (cửa sổ khoảng 10 phút) và growth hint (cần 12 sample liên tiếp, khoảng 3 phút ở 15s). Menu bar chỉ dùng số tổng từ `host_statistics64`, không cần `top`.
+
+- [x] Chốt interval của process timer khi popover đóng (anh chốt 2026-10-06: tối thiểu 60s, chỉ riêng process timer, memory timer giữ 15s). Đổi lại history theo user thưa hơn khi đóng popover và growth hint "12 sample liên tiếp" kéo dài thành khoảng 12 phút. Sau khi mở lại popover, history theo user lẫn sample 60s và sample theo setting, nên 12 sample không còn ứng với một khoảng thời gian cố định (copy "over the last N samples" vẫn đúng).
+- [x] Tách `idleMinimumInterval` thành 2 giá trị cho memory và process (`SamplingKind.idleMinimumInterval`).
+- [ ] Đo CPU/thời gian sample trước và sau (popover mở và đóng). Ước tính từ thời gian `top` đo được (khoảng 1.9s CPU mỗi lần, `user + sys`): khi đóng popover giảm từ khoảng 13% xuống khoảng 3% một core. Cần đo thật trên máy nhiều user.
+- [x] `effectiveInterval` nhận thêm loại timer (memory hoặc process).
+- [x] Dòng Sampling trong History hiện đúng khi 2 timer khác nhau lúc idle, ví dụ `Idle (15s, processes 60s)`.
+- [x] Settings: sửa câu "both update at most every 15 seconds" và chuỗi dịch tương ứng trong `Localizable.xcstrings`.
+- [x] Test `effectiveInterval` khi idle cho từng loại timer, và interval ban đầu của app state (15s/60s). Text dòng Sampling dùng code có sẵn (`%@ (%llds, %@ %llds)`), chưa có test riêng.
+- [x] Cập nhật docs §5.1, §7 (dòng Sampling, khoảng thời gian history), §14.1, §14.3 (sửa luôn câu "12 phút ở 60s": capacity ở setting 60s chỉ còn 10 sample nên hint không bao giờ hiện), Note (lý do giữ `top`) và README (câu "both intervals are at least 15s").
+- [x] Thêm "xem Task 14" vào phần Hiện trạng và Task 15 chỗ ghi rule `5s/15s`, `max(interval, 15s)`.
+
+Commit: `perf(sampling): sample processes less often while the popover is closed`

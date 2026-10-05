@@ -39,7 +39,7 @@ Settings (⌘, in the menu bar item's menu) lets you change:
 * Number of top apps and top processes shown (5 to 20, default 8)
 * Open at Login and Show System Users
 
-Short intervals use more CPU, mostly the top processes interval, since each update runs `top` (about 1.4s of work). While the popover is closed, both intervals are at least 15s.
+Short intervals use more CPU, mostly the top processes interval, since each update runs `top` (about 1.4s of work). While the popover is closed, RAM updates at most every 15s and top processes at most every 60s.
 
 ## Update
 

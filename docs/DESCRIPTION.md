@@ -30,7 +30,7 @@ All inside **one popup window**.
   * `sysctl kern.memorystatus_vm_pressure_level` → memory pressure level (1 normal, 2 warning, 4 critical), same source as Activity Monitor
     * `vm.memory_pressure` is not used: it is a reclaim activity counter, not a level
     * Fallback when the sysctl is unavailable: used/total ratio (≥ 75% warning, ≥ 90% critical)
-  * `top -l 1 -o mem -stats pid,user,mem,command` → processes
+  * `top -l 1 -F -o mem -stats pid,user,mem,command` → processes
   * `proc_pidpath(pid)` → executable path, used to group processes by app
 * State:
 
@@ -151,14 +151,19 @@ Process timer (top):                        default every 5s, setting 3-60s
 * Memory timer: updates the menu bar, history and donut (using the latest process snapshot).
 * Process timer: updates Top Apps, Top Processes, the donut and the growth hints.
 * Each timer samples on its own serial queue, so a slow `top` run never delays a memory sample.
-* While the popover is open each timer uses its setting; while it is closed it uses `max(setting, 15s)` (§14.1).
+* While the popover is open each timer uses its setting; while it is closed the memory timer uses `max(setting, 15s)` and the process timer `max(setting, 60s)` (§14.1).
 * The rules below apply to each timer separately:
   * Opening the popover switches to the active interval and samples right away, unless a sample started less than 2s ago; then the next one waits for the new interval.
   * Closing the popover only switches to the idle interval. It never samples right away: the next sample runs one interval after the last one.
   * Changing an interval in Settings works the same way: the new interval counts from the last sample.
   * Only one sample of a kind runs at a time. An immediate request while one is running marks one follow-up sample instead of queueing another run, so repeated `Refresh Now` clicks run `top` at most once more. A timer tick that lands during a running sample is skipped.
 * `Refresh Now` samples memory and processes immediately and pushes each timer's next tick a full interval out.
-* `top` gets 6s before it is stopped (it takes about 1.4s on an idle machine). Its output is only read after both pipe readers finish.
+* `top` gets 6s for the normal 500-process snapshot (it takes about 1.4s on an idle machine). If
+  that run times out, it is stopped and retried with 150 processes for up to 4s, so the process
+  section can still update during a busy system. Only a primary timeout triggers this fallback;
+  if the fallback fails, its error is surfaced. Other launch/read errors are surfaced directly.
+  Including the one-second stop grace period, the worst-case retry path is about 12s. Output is
+  only read after both pipe readers finish.
 * The `top` mem column can end with `+` or `-` (changed since the last sample); the marker is ignored, and values are clamped before converting to bytes.
 
 ---
@@ -258,7 +263,7 @@ Process timer (top):                        default every 5s, setting 3-60s
 
 ### Status rows
 
-* `Sampling`: current mode and the intervals the timers run at, for example `Active (5s)` while the popover is open and `Idle (15s)` while it is closed. When the two timers differ: `Active (2s, processes 10s)`
+* `Sampling`: current mode and the intervals the timers run at, for example `Active (5s)` while the popover is open and `Idle (15s, processes 60s)` while it is closed. When the two timers differ the process interval is listed too: `Active (2s, processes 10s)`
 * `History Samples`: number of samples currently kept
 
 ### Metrics (In-memory)
@@ -278,13 +283,13 @@ Process timer (top):                        default every 5s, setting 3-60s
 
 ### Time ranges
 
-* Keep about 10 minutes of samples at the configured interval. While the popover is closed and samples come every 15s, the same buffer covers a longer stretch:
+* Keep about 10 minutes of samples at the configured interval. While the popover is closed and samples come less often (every 15s for memory, 60s for processes), the same buffer covers a longer stretch:
 
 ```swift
 maxSamples = min(600, ceil(600 / memoryInterval)) // 120 at the default 5s
 ```
 
-* The selected user series uses the same rule with the process interval
+* The selected user series uses the same rule with the process interval setting. While the popover is closed it gets one point per 60s, so that stretch of the line is coarser
 * Changing the interval trims the oldest samples that no longer fit
 
 ### Behavior
@@ -459,12 +464,15 @@ DispatchQueue.global(qos: .utility)
 
 * When popup closed:
 
-  * reduce sampling, each timer to `max(setting, 15s)`:
+  * reduce sampling per timer:
 
     ```text
     Memory stats: every 15s (or the setting if it is longer)
-    Process list: every 15s (or the setting if it is longer)
+    Process list: every 60s (or the setting if it is longer)
     ```
+
+  * memory keeps 15s because it drives the menu bar and the main history chart; processes run `top`, the expensive part, and only feed the popover lists, the per-user history and growth hints
+  * opening the popover samples processes right away (§5.1), so the lists are fresh when shown
 
 ### 14.2 Smart highlighting (dropped)
 
@@ -474,7 +482,7 @@ DispatchQueue.global(qos: .utility)
 
 * Detect per user (only users in the current snapshot):
 
-  * continuous growth: memory rises on each of the last 12 process samples, with at least 100 MB total growth. The time this covers follows the process interval (1 minute at 5s, 12 minutes at 60s)
+  * continuous growth: memory rises on each of the last 12 process samples, with at least 100 MB total growth. The time this covers follows the process interval: 1 minute at the default 5s, about 12 minutes while the popover is closed (processes every 60s). History keeps `ceil(600 / process interval setting)` samples, so with the 60s process setting it holds only 10 and this hint cannot fire
   * sudden jump: growth between the last two samples > max(500 MB, 5% of total RAM)
 * A user missing from a snapshot loses its history, so coming back is not counted as a jump
 * Up to 2 hints show as secondary caption lines in the History section, each with a swatch in the user's stable palette color, the same one its donut slice uses when it has its own slice (orange is reserved for the warning pressure level)
@@ -545,6 +553,7 @@ closes the popover. When the popup is open, ⌘, opens Settings directly and clo
 ### Note
 
 * Process memory comes from `top` (`mem`) snapshot and is best-effort relative to Activity Monitor
+* `top` stays the process source because it can read every user's processes: without special privileges `proc_pid_rusage` only reads the processes of the user running the app, and the app targets Macs shared by several users
 * Memory pressure prefers system pressure signals from `sysctl` and only falls back to usage-ratio heuristic if unavailable
 * Shared memory may still be accounted differently than Activity Monitor internals
 * Values are indicative and optimized for lightweight monitoring

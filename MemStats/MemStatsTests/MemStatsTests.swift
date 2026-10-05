@@ -84,6 +84,28 @@ struct MemStatsTests {
     }
   }
 
+  private final class TopCommandRunnerSpy: @unchecked Sendable {
+    private let lock = NSLock()
+    private let resultForCall: (Int) throws -> String
+    private var recordedLimits: [Int] = []
+
+    init(resultForCall: @escaping (Int) throws -> String) {
+      self.resultForCall = resultForCall
+    }
+
+    var limits: [Int] {
+      lock.withLock { recordedLimits }
+    }
+
+    nonisolated func run(processLimit: Int, timeout _: DispatchTimeInterval) throws -> String {
+      let call = lock.withLock {
+        recordedLimits.append(processLimit)
+        return recordedLimits.count
+      }
+      return try resultForCall(call)
+    }
+  }
+
   private final class MockLoginItemRegistrant: LoginItemRegistrant {
     var status: SMAppService.Status
     var statusAfterRegister: SMAppService.Status
@@ -603,12 +625,30 @@ struct MemStatsTests {
     #expect(MemoryStatsService.levelFromMemorystatusPressure(4) == .critical)
   }
 
-  @Test func effectiveIntervalUsesSettingWhenActiveAndAtLeast15sWhenIdle() {
-    #expect(MemStatsAppState.effectiveInterval(setting: 5, mode: .active) == 5)
-    #expect(MemStatsAppState.effectiveInterval(setting: 1, mode: .active) == 1)
-    #expect(MemStatsAppState.effectiveInterval(setting: 5, mode: .idle) == 15)
-    #expect(MemStatsAppState.effectiveInterval(setting: 15, mode: .idle) == 15)
-    #expect(MemStatsAppState.effectiveInterval(setting: 30, mode: .idle) == 30)
+  @Test func effectiveIntervalUsesSettingWhenActiveAndAtLeast15sForMemoryWhenIdle() {
+    #expect(MemStatsAppState.effectiveInterval(setting: 5, mode: .active, kind: .memory) == 5)
+    #expect(MemStatsAppState.effectiveInterval(setting: 1, mode: .active, kind: .memory) == 1)
+    #expect(MemStatsAppState.effectiveInterval(setting: 5, mode: .idle, kind: .memory) == 15)
+    #expect(MemStatsAppState.effectiveInterval(setting: 15, mode: .idle, kind: .memory) == 15)
+    #expect(MemStatsAppState.effectiveInterval(setting: 30, mode: .idle, kind: .memory) == 30)
+  }
+
+  @Test func effectiveIntervalUsesSettingWhenActiveAndAtLeast60sForProcessesWhenIdle() {
+    #expect(MemStatsAppState.effectiveInterval(setting: 3, mode: .active, kind: .process) == 3)
+    #expect(MemStatsAppState.effectiveInterval(setting: 5, mode: .idle, kind: .process) == 60)
+    #expect(MemStatsAppState.effectiveInterval(setting: 30, mode: .idle, kind: .process) == 60)
+    #expect(MemStatsAppState.effectiveInterval(setting: 60, mode: .idle, kind: .process) == 60)
+  }
+
+  @MainActor @Test func appStateStartsIdleWithSlowerProcessInterval() {
+    let suiteName = "MemStatsTests.IdleIntervals"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+
+    let appState = MemStatsAppState(startSampling: false, defaults: defaults)
+    #expect(appState.samplingMode == .idle)
+    #expect(appState.memorySamplingInterval == 15)
+    #expect(appState.processSamplingInterval == 60)
   }
 
   @Test func historyCapacityKeepsAboutTenMinutes() {
@@ -1079,6 +1119,65 @@ struct MemStatsTests {
       limit: nil
     )
     #expect(snapshots.map(\.pid) == [10, 11])
+  }
+
+  @Test func topCommandUsesFastMemorySnapshotAndPositiveLimit() {
+    let arguments = ProcessSnapshotService.topCommandArguments(processLimit: 0)
+
+    #expect(
+      arguments == [
+        "-l", "1",
+        "-F",
+        "-o", "mem",
+        "-stats", "pid,user,mem,command",
+        "-n", "1",
+      ])
+    #expect(ProcessSnapshotService.primaryTopProcessLimit == 500)
+    #expect(
+      ProcessSnapshotService.fallbackTopProcessLimit < ProcessSnapshotService.primaryTopProcessLimit
+    )
+  }
+
+  @Test func processSnapshotUsesPrimaryCommandWhenItSucceeds() throws {
+    let runner = TopCommandRunnerSpy { _ in
+      "100 son 1M /usr/bin/test"
+    }
+    let service = ProcessSnapshotService(topCommandRunner: runner.run)
+
+    let snapshots = try service.fetchProcesses()
+
+    #expect(snapshots.count == 1)
+    #expect(runner.limits == [500])
+  }
+
+  @Test func processSnapshotRetriesWithSmallerLimitAfterTimeout() throws {
+    let runner = TopCommandRunnerSpy { call in
+      if call == 1 {
+        throw ProcessSnapshotServiceError.commandTimedOut
+      }
+      return "100 son 1M /usr/bin/test"
+    }
+    let service = ProcessSnapshotService(topCommandRunner: runner.run)
+
+    let snapshots = try service.fetchProcesses()
+
+    #expect(snapshots.count == 1)
+    #expect(runner.limits == [500, 150])
+  }
+
+  @Test func processSnapshotReportsFallbackFailure() {
+    let runner = TopCommandRunnerSpy { call in
+      if call == 1 {
+        throw ProcessSnapshotServiceError.commandTimedOut
+      }
+      throw ProcessSnapshotServiceError.commandFailed(1, "busy")
+    }
+    let service = ProcessSnapshotService(topCommandRunner: runner.run)
+
+    #expect(throws: ProcessSnapshotServiceError.commandFailed(1, "busy")) {
+      try service.fetchProcesses()
+    }
+    #expect(runner.limits == [500, 150])
   }
 
   @MainActor @Test func appStateCoalescesRefreshesWhileSampling() async {

@@ -8,8 +8,23 @@ final class MemStatsAppState: ObservableObject {
     case idle
   }
 
-  /// While the popover is closed, neither timer runs faster than this.
-  nonisolated static let idleMinimumInterval = 15
+  enum SamplingKind: Equatable {
+    case memory
+    case process
+
+    /// While the popover is closed, the timer runs no faster than this. Processes run `top`,
+    /// the expensive part, and only feed the popover, per-user history and growth hints, so
+    /// they slow down further than memory, which also drives the menu bar.
+    nonisolated var idleMinimumInterval: Int {
+      switch self {
+      case .memory:
+        return 15
+      case .process:
+        return 60
+      }
+    }
+  }
+
   /// History keeps about this many seconds of samples, whatever the interval.
   nonisolated static let historyWindowSeconds = 600
   nonisolated static let maxHistorySamples = 600
@@ -78,9 +93,10 @@ final class MemStatsAppState: ObservableObject {
     self.defaults = defaults
     // Shown by default to match Activity Monitor's all-users view.
     showsSystemUsers = defaults.object(forKey: Self.showsSystemUsersKey) as? Bool ?? true
-    memorySamplingInterval = Self.effectiveInterval(setting: settings.memoryInterval, mode: .idle)
+    memorySamplingInterval = Self.effectiveInterval(
+      setting: settings.memoryInterval, mode: .idle, kind: .memory)
     processSamplingInterval = Self.effectiveInterval(
-      setting: settings.processInterval, mode: .idle)
+      setting: settings.processInterval, mode: .idle, kind: .process)
 
     // `@Published` emits before the property changes, so use the emitted values.
     Publishers.CombineLatest4(
@@ -145,15 +161,19 @@ final class MemStatsAppState: ObservableObject {
     processSampler.sampleNow()
   }
 
-  /// Interval for a timer: the setting while the popover is open, at least
+  /// Interval for a timer: the setting while the popover is open, at least the kind's
   /// `idleMinimumInterval` while it is closed. Never below 1s, since `SettingsStore` briefly
   /// publishes an invalid value before falling back to the default.
-  nonisolated static func effectiveInterval(setting: Int, mode: SamplingMode) -> TimeInterval {
+  nonisolated static func effectiveInterval(
+    setting: Int,
+    mode: SamplingMode,
+    kind: SamplingKind
+  ) -> TimeInterval {
     switch mode {
     case .active:
       return TimeInterval(max(setting, 1))
     case .idle:
-      return TimeInterval(max(setting, idleMinimumInterval))
+      return TimeInterval(max(setting, kind.idleMinimumInterval))
     }
   }
 
@@ -166,9 +186,9 @@ final class MemStatsAppState: ObservableObject {
 
   private func restartTimers(waitsFullInterval: Bool = false) {
     memorySamplingInterval = Self.effectiveInterval(
-      setting: settings.memoryInterval, mode: samplingMode)
+      setting: settings.memoryInterval, mode: samplingMode, kind: .memory)
     processSamplingInterval = Self.effectiveInterval(
-      setting: settings.processInterval, mode: samplingMode)
+      setting: settings.processInterval, mode: samplingMode, kind: .process)
     memorySampler.start(interval: memorySamplingInterval, waitsFullInterval: waitsFullInterval)
     processSampler.start(interval: processSamplingInterval, waitsFullInterval: waitsFullInterval)
   }
@@ -184,12 +204,14 @@ final class MemStatsAppState: ObservableObject {
     processVM.setLimits(topApps: topApps, topProcesses: topProcesses)
 
     // A new interval takes effect from the last sample, so a change never forces a sample.
-    let nextMemoryInterval = Self.effectiveInterval(setting: memoryInterval, mode: samplingMode)
+    let nextMemoryInterval = Self.effectiveInterval(
+      setting: memoryInterval, mode: samplingMode, kind: .memory)
     if memorySampler.isScheduled, nextMemoryInterval != memorySamplingInterval {
       memorySamplingInterval = nextMemoryInterval
       memorySampler.start(interval: nextMemoryInterval, waitsFullInterval: true)
     }
-    let nextProcessInterval = Self.effectiveInterval(setting: processInterval, mode: samplingMode)
+    let nextProcessInterval = Self.effectiveInterval(
+      setting: processInterval, mode: samplingMode, kind: .process)
     if processSampler.isScheduled, nextProcessInterval != processSamplingInterval {
       processSamplingInterval = nextProcessInterval
       processSampler.start(interval: nextProcessInterval, waitsFullInterval: true)

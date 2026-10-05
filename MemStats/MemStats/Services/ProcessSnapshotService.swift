@@ -8,7 +8,7 @@ protocol ProcessSnapshotProviding: Sendable {
     throws -> [ProcessSnapshot]
 }
 
-enum ProcessSnapshotServiceError: Error {
+enum ProcessSnapshotServiceError: Error, Equatable {
   case commandLaunchFailed(String)
   case commandTimedOut
   case outputReadTimedOut
@@ -37,15 +37,34 @@ extension ProcessSnapshotServiceError: LocalizedError {
 }
 
 struct ProcessSnapshotService: ProcessSnapshotProviding {
-  private let topProcessLimit = 500
-  /// `top -l 1 -n 500` takes about 1.4s on an idle machine, so leave room for a busy one.
-  private let topTimeout: DispatchTimeInterval = .seconds(6)
+  typealias TopCommandRunner =
+    @Sendable (
+      _ processLimit: Int,
+      _ timeout: DispatchTimeInterval
+    ) throws -> String
+
+  /// Keep the broad snapshot for normal runs so user totals and the donut retain coverage.
+  nonisolated static let primaryTopProcessLimit = 500
+  /// A smaller snapshot keeps the UI useful when `top` is slow under system load.
+  nonisolated static let fallbackTopProcessLimit = 150
+  /// `top -l 1 -n 500` is usually quick, but can be much slower when the system is busy.
+  nonisolated static let topCommandTimeout: DispatchTimeInterval = .seconds(6)
+  nonisolated static let fallbackTopCommandTimeout: DispatchTimeInterval = .seconds(4)
+
+  private let topCommandRunner: TopCommandRunner
+
+  init(topCommandRunner: TopCommandRunner? = nil) {
+    self.topCommandRunner =
+      topCommandRunner ?? { processLimit, timeout in
+        try Self.runTopCommand(processLimit: processLimit, timeout: timeout)
+      }
+  }
 
   nonisolated func fetchProcesses(
     includeRootUser: Bool = true,
     includeSystemUsers: Bool = true
   ) throws -> [ProcessSnapshot] {
-    let output = try runTopCommand(processLimit: topProcessLimit)
+    let output = try runTopCommandWithFallback()
     return TopProcessSnapshotParser.parse(
       topOutput: output,
       limit: nil,
@@ -59,7 +78,7 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
     includeRootUser: Bool = true,
     includeSystemUsers: Bool = true
   ) throws -> [ProcessSnapshot] {
-    let output = try runTopCommand(processLimit: topProcessLimit)
+    let output = try runTopCommandWithFallback()
     return TopProcessSnapshotParser.parse(
       topOutput: output,
       limit: limit,
@@ -68,15 +87,29 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
     )
   }
 
-  private nonisolated func runTopCommand(processLimit: Int) throws -> String {
+  private nonisolated func runTopCommandWithFallback() throws -> String {
+    do {
+      return try topCommandRunner(
+        Self.primaryTopProcessLimit,
+        Self.topCommandTimeout
+      )
+    } catch ProcessSnapshotServiceError.commandTimedOut {
+      // A slow primary sample should not make the process section unusable. Retry with enough
+      // rows for the visible lists while avoiding another expensive 500-process collection.
+      return try topCommandRunner(
+        Self.fallbackTopProcessLimit,
+        Self.fallbackTopCommandTimeout
+      )
+    }
+  }
+
+  private nonisolated static func runTopCommand(
+    processLimit: Int,
+    timeout: DispatchTimeInterval
+  ) throws -> String {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/top")
-    process.arguments = [
-      "-l", "1",
-      "-o", "mem",
-      "-stats", "pid,user,mem,command",
-      "-n", String(max(processLimit, 1)),
-    ]
+    process.arguments = Self.topCommandArguments(processLimit: processLimit)
 
     let outputPipe = Pipe()
     process.standardOutput = outputPipe
@@ -113,7 +146,7 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
       throw ProcessSnapshotServiceError.commandLaunchFailed(error.localizedDescription)
     }
 
-    if finished.wait(timeout: .now() + topTimeout) != .success {
+    if finished.wait(timeout: .now() + timeout) != .success {
       process.terminate()
       // Sampling waits on this call, so never block forever on a `top` that ignores SIGTERM.
       if finished.wait(timeout: .now() + .seconds(1)) != .success {
@@ -140,6 +173,17 @@ struct ProcessSnapshotService: ProcessSnapshotProviding {
     }
 
     return output
+  }
+
+  nonisolated static func topCommandArguments(processLimit: Int) -> [String] {
+    [
+      "-l", "1",
+      // Framework memory accounting is not used by the parser and can make top needlessly slow.
+      "-F",
+      "-o", "mem",
+      "-stats", "pid,user,mem,command",
+      "-n", String(max(processLimit, 1)),
+    ]
   }
 }
 

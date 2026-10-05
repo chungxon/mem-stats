@@ -72,7 +72,7 @@ struct SettingsView: View {
         }
       } footer: {
         Text(
-          "While the popover is closed, both update at most every \(MemStatsAppState.idleMinimumInterval) seconds. Short intervals use more CPU, mostly for top processes."
+          "While the popover is closed, RAM updates at most every \(MemStatsAppState.SamplingKind.memory.idleMinimumInterval) seconds and top processes at most every \(MemStatsAppState.SamplingKind.process.idleMinimumInterval) seconds. Short intervals use more CPU, mostly for top processes."
         )
         .font(.footnote)
         .foregroundStyle(.secondary)
