@@ -1,3 +1,4 @@
+import AppKit
 import Charts
 import Foundation
 import SwiftUI
@@ -14,11 +15,13 @@ struct PopoverRootView: View {
 
   private let onOpenActivityMonitor: () -> Void
   private let onOpenOptionsMenu: () -> Void
+  private let onOptionsMenuAnchorAvailable: (NSView) -> Void
 
   init(
     appState: MemStatsAppState,
     onOpenActivityMonitor: @escaping () -> Void = {},
-    onOpenOptionsMenu: @escaping () -> Void = {}
+    onOpenOptionsMenu: @escaping () -> Void = {},
+    onOptionsMenuAnchorAvailable: @escaping (NSView) -> Void = { _ in }
   ) {
     self._appState = ObservedObject(wrappedValue: appState)
     self._settings = ObservedObject(wrappedValue: appState.settings)
@@ -29,6 +32,7 @@ struct PopoverRootView: View {
     )
     self.onOpenActivityMonitor = onOpenActivityMonitor
     self.onOpenOptionsMenu = onOpenOptionsMenu
+    self.onOptionsMenuAnchorAvailable = onOptionsMenuAnchorAvailable
   }
 
   private var useGlassBackground: Bool {
@@ -183,6 +187,10 @@ struct PopoverRootView: View {
       .buttonStyle(.plain)
       .help("Open Options")
       .accessibilityLabel("Open Options")
+      .background(
+        MenuAnchorView(onResolve: onOptionsMenuAnchorAvailable)
+          .allowsHitTesting(false)
+      )
     }
   }
 
@@ -567,6 +575,23 @@ struct PopoverRootView: View {
       .lineLimit(1)
       .fixedSize()
     }
+  }
+}
+
+private struct MenuAnchorView: NSViewRepresentable {
+  let onResolve: (NSView) -> Void
+
+  func makeNSView(context: Context) -> NSView {
+    let view = NSView()
+    view.alphaValue = 0
+    DispatchQueue.main.async {
+      onResolve(view)
+    }
+    return view
+  }
+
+  func updateNSView(_ nsView: NSView, context: Context) {
+    onResolve(nsView)
   }
 }
 

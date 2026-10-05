@@ -28,7 +28,7 @@ MemStats is signed ad hoc and not notarized yet, so macOS blocks it the first ti
   xattr -dr com.apple.quarantine /Applications/MemStats.app
   ```
 
-After that, MemStats opens normally. It lives in the menu bar only (no Dock icon). Right-click (or Option-click) the menu bar item for Open at Login, Show System Users, Settings, About and Quit.
+After that, MemStats opens normally. It lives in the menu bar only (no Dock icon). Right-click (or Option-click) the menu bar item for Open at Login, Show System Users, Settings, About and Quit. The gear in the popover opens the same options menu next to the gear without closing the popover.
 
 ## Settings
 

@@ -162,7 +162,7 @@ Settings window:
   - Section 1: Update interval, Update interval for top processes.
   - Section 2: Number of top apps, Number of top processes.
   - Section 3: Open at Login, Show System Users (dùng chung logic với context menu, đồng bộ 2 chiều).
-- [x] Context menu thêm "Settings…" (Cmd+,) phía trên About. Nút gear trong popover mở context menu nên cũng vào được Settings.
+- [x] Context menu thêm "Settings…" (Cmd+,) phía trên About. Nút gear trong popover mở cùng context menu tại vị trí nút gear.
 - [x] Bỏ `Settings { EmptyView() }` trong `MemStatsApp.swift` (thay bằng scene rỗng phù hợp) để Cmd+, không mở cửa sổ trống.
 
 Tests và docs:

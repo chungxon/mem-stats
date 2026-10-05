@@ -165,3 +165,15 @@ Files: `PopoverRootView.swift`, `docs/DESCRIPTION.md`
 - [x] Cập nhật §6 (center label, info row, Clear Filter) và §7 (legend) trong docs.
 
 Commit: `feat(popover): refine Top Users info row and history legend layout`
+
+## Task 16 - Anchor Options Menu To Popover Gear
+
+Files: `AppDelegate.swift`, `PopoverRootView.swift`, `docs/DESCRIPTION.md`, `docs/PLAN_RELEASE.md`, `README.md`
+
+- [x] Keep the gear behavior as the existing options menu instead of opening Settings directly.
+- [x] Anchor the options menu to the gear inside the popover.
+- [x] Keep the popover open when the gear menu is opened or dismissed.
+- [x] Keep the menu bar context menu on right-click or Option-click of the menu bar item.
+- [x] Update product documentation and release checklist.
+
+Commit: `fix(popover): anchor options menu to gear button`

@@ -125,7 +125,7 @@ All inside **one popup window**.
 
   * launched by bundle id `com.apple.ActivityMonitor` through `NSWorkspace.urlForApplication(withBundleIdentifier:)` + `openApplication(at:configuration:)`, so it works regardless of the app name or language
 
-* Right: **Open Context Menu** (same menu as right-clicking the menu bar item)
+* Right: **Open Options** (the same menu as right-clicking the menu bar item, anchored to this gear)
 * The header stays fixed above the scrolling content, with a divider; both buttons have a 24x24pt click area
 * The popover is 380x540pt; the content below the header scrolls with a visible scroll indicator
 
@@ -497,7 +497,10 @@ System users can add noise, so they can be hidden with the `Show System Users` o
 
 ## 15. Settings
 
-Opened from `Settings…` (⌘,) in the context menu, which the popover gear also opens.
+Opened from `Settings…` (⌘,) in the context menu, or from the popover gear. The gear opens this
+same options menu at the gear position and keeps the popover open; it does not open a different
+Settings flow. Selecting `Settings…` is the exception: it opens the separate Settings window and
+closes the popover.
 
 | Setting | Options | Default |
 | --- | --- | --- |

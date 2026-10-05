@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private var outsideClickMonitor: Any?
   private var localClickMonitor: Any?
   private var statusItem: NSStatusItem?
+  private weak var popoverOptionsMenuAnchor: NSView?
   private let appState = MemStatsAppState()
   private let loginItemService = LoginItemService()
   private var settingsWindow: NSWindow?
@@ -56,7 +57,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       rootView: PopoverRootView(
         appState: appState,
         onOpenActivityMonitor: { [weak self] in self?.openActivityMonitor() },
-        onOpenOptionsMenu: { [weak self] in self?.showContextMenuFromPopover() }
+        onOpenOptionsMenu: { [weak self] in self?.showContextMenuFromPopover() },
+        onOptionsMenuAnchorAvailable: { [weak self] anchor in
+          self?.popoverOptionsMenuAnchor = anchor
+        }
       )
     )
     content.translatesAutoresizingMaskIntoConstraints = false
@@ -298,11 +302,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private func closePopup() {
     guard popupWindow?.isVisible == true else { return }
     popupWindow?.orderOut(nil)
+    removeOutsideClickMonitors()
+    appState.setPopoverPresented(false)
+  }
+
+  private func removeOutsideClickMonitors() {
     if let outsideClickMonitor { NSEvent.removeMonitor(outsideClickMonitor) }
     if let localClickMonitor { NSEvent.removeMonitor(localClickMonitor) }
     outsideClickMonitor = nil
     localClickMonitor = nil
-    appState.setPopoverPresented(false)
   }
 
   private func installOutsideClickMonitors() {
@@ -321,12 +329,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   private func showContextMenuFromPopover() {
-    guard let button = statusItem?.button else { return }
-    showContextMenu(from: button)
+    guard
+      let anchor = popoverOptionsMenuAnchor,
+      anchor.window === popupWindow,
+      popupWindow?.isVisible == true
+    else {
+      return
+    }
+
+    let menu = makeContextMenu()
+    menu.update()
+    // Keep the popover visible as the menu tracks, but prevent the outside-click monitor
+    // from treating the menu's own window as a reason to dismiss its anchor.
+    removeOutsideClickMonitors()
+    menu.popUp(
+      positioning: nil,
+      at: NSPoint(
+        x: anchor.bounds.maxX,
+        y: anchor.bounds.minY
+      ),
+      in: anchor
+    )
+    if popupWindow?.isVisible == true {
+      installOutsideClickMonitors()
+    }
   }
 
   private func showContextMenu(from button: NSStatusBarButton) {
     closePopup()
+    let menu = makeContextMenu()
+    statusItem?.menu = menu
+    button.performClick(nil)
+    statusItem?.menu = nil
+  }
+
+  private func makeContextMenu() -> NSMenu {
     let menu = NSMenu()
     let language = appState.settings.language
 
@@ -391,9 +428,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     quit.target = self
 
     menu.items = [openAtLogin, showSystemUsers, .separator(), settings, supportUs, about, quit]
-    statusItem?.menu = menu
-    button.performClick(nil)
-    statusItem?.menu = nil
+    return menu
   }
 
   /// Shared by the context menu and the Settings window. The menu re-reads the state each
