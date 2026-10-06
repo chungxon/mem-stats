@@ -2,7 +2,7 @@
 
 All notable changes to MemStats are documented here.
 
-## [1.0.0] - Unreleased
+## [1.0.0] - 06/10/2026
 
 Prepared initial public release of the macOS menu bar memory monitor.
 
