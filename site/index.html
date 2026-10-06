@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MemStats - Memory monitor for macOS</title>
+<meta name="description" content="MemStats is a lightweight macOS menu bar app that shows who is using your RAM. Top users, top apps, memory pressure, swap and a short history in one popover.">
+<meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="MemStats - Memory monitor for macOS">
+<meta property="og:description" content="See which user and which app is eating your RAM, right from the menu bar.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="assets/poster.png">
+<link rel="icon" href="assets/icon.png">
+<style>
+:root {
+  --bg: #f6f5f1;
+  --surface: #ffffff;
+  --text: #1b1b1a;
+  --muted: #62625e;
+  --line: #e0dfd8;
+  --accent: #1a7f4b;
+  --accent-text: #ffffff;
+  --warn: #c2620a;
+  --crit: #c0352b;
+  --ok-bg: #e4f2ea;
+  --radius: 14px;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121212; --surface: #1c1c1b; --text: #f1f0ec; --muted: #a3a29c;
+    --line: #2d2d2b; --accent: #3fb579; --accent-text: #08150e;
+    --warn: #e8913a; --crit: #ef6a5f; --ok-bg: #16281f;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121212; --surface: #1c1c1b; --text: #f1f0ec; --muted: #a3a29c;
+  --line: #2d2d2b; --accent: #3fb579; --accent-text: #08150e;
+  --warn: #e8913a; --crit: #ef6a5f; --ok-bg: #16281f;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: var(--font); font-size: 17px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 640px) { .wrap { padding: 0 24px; } }
+
+/* Nav */
+nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; text-decoration: none; }
+.brand img { width: 28px; height: 28px; border-radius: 7px; }
+.links { display: flex; gap: 20px; font-size: 15px; color: var(--muted); }
+.links a { text-decoration: none; }
+.links a:hover { color: var(--text); }
+@media (max-width: 560px) { .links .opt { display: none; } }
+
+/* Hero */
+.hero { display: grid; gap: 40px; padding: 40px 0 72px; align-items: center; }
+@media (min-width: 880px) { .hero { grid-template-columns: 1.15fr 1fr; padding: 72px 0 96px; gap: 64px; } }
+.hero > *, .grid > *, .steps > * { min-width: 0; }
+.hero .icon { width: 84px; height: 84px; border-radius: 20px; margin-bottom: 24px; }
+h1 { font-size: clamp(34px, 6vw, 54px); line-height: 1.08; letter-spacing: -0.025em; margin: 0 0 18px; font-weight: 700; }
+.lead { font-size: 20px; color: var(--muted); margin: 0 0 8px; max-width: 30em; }
+.tags { font-weight: 600; margin: 0 0 28px; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.btn {
+  display: inline-block; padding: 12px 22px; border-radius: 10px; font-weight: 600;
+  text-decoration: none; font-size: 16px; border: 1px solid var(--line); background: var(--surface);
+}
+@media (min-width: 880px) { .hero .btn { padding: 12px 16px; } .hero .cta { gap: 10px; } }
+.btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.btn:hover { filter: brightness(0.96); }
+.btn:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.note { font-size: 14px; color: var(--muted); margin: 0; }
+.shot { justify-self: center; width: 100%; max-width: 380px; }
+.shot img {
+  display: block; width: 100%; height: auto; border-radius: var(--radius);
+  border: 1px solid var(--line); background: var(--surface);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.14);
+}
+
+/* Facts strip */
+.facts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+@media (min-width: 720px) { .facts { grid-template-columns: repeat(4, 1fr); } }
+.fact { background: var(--surface); padding: 22px 18px; text-align: center; }
+.fact b { display: block; font-size: 28px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.fact span { font-size: 14px; color: var(--muted); }
+.fine { font-size: 13px; color: var(--muted); margin: 10px 2px 0; }
+
+/* Sections */
+section { padding: 72px 0 0; }
+h2 { font-size: clamp(26px, 4vw, 34px); letter-spacing: -0.02em; margin: 0 0 12px; line-height: 1.15; }
+.sub { color: var(--muted); margin: 0 0 32px; max-width: 38em; }
+.grid { display: grid; gap: 14px; }
+@media (min-width: 720px) { .grid.three { grid-template-columns: repeat(3, 1fr); } .grid.two { grid-template-columns: repeat(2, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
+.card h3 { margin: 0 0 6px; font-size: 18px; }
+.card p { margin: 0; color: var(--muted); font-size: 15.5px; }
+.num { font-family: var(--mono); font-size: 13px; color: var(--accent); margin-bottom: 10px; display: block; }
+
+/* Pressure legend */
+.dots { display: inline-flex; gap: 6px; vertical-align: middle; margin-right: 6px; }
+.dots i { width: 10px; height: 10px; border-radius: 50%; display: block; }
+
+/* Compare */
+.table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 15px; }
+th, td { padding: 13px 16px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+thead th { font-size: 14px; color: var(--muted); font-weight: 600; background: var(--bg); }
+th.me, td.me { background: var(--ok-bg); }
+td.yes { color: var(--accent); font-weight: 600; }
+td.no { color: var(--muted); }
+.pick { display: grid; gap: 14px; margin-top: 24px; }
+@media (min-width: 720px) { .pick { grid-template-columns: 1fr 1fr; } }
+
+/* Steps */
+.steps { counter-reset: s; display: grid; gap: 14px; padding: 0; margin: 0; list-style: none; }
+@media (min-width: 720px) {
+  .steps { grid-template-columns: repeat(2, 1fr); }
+  .steps li:nth-child(3) { grid-column: 2; grid-row: 1 / span 2; }
+}
+.steps li { counter-increment: s; }
+.steps li::before { content: counter(s); display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--accent-text); font-weight: 700; font-size: 14px; margin-bottom: 12px; }
+code { font-family: var(--mono); font-size: 0.88em; background: var(--bg); border: 1px solid var(--line); padding: 1px 6px; border-radius: 6px; overflow-wrap: anywhere; }
+pre { margin: 12px 0 0; padding: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; font-family: var(--mono); font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: all; }
+.copy { margin-top: 8px; padding: 6px 12px; font: inherit; font-size: 14px; font-weight: 600; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.copy:hover { filter: brightness(0.96); }
+.copy:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* FAQ */
+details { border-bottom: 1px solid var(--line); padding: 16px 0; }
+details:first-of-type { border-top: 1px solid var(--line); }
+summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "+"; color: var(--muted); font-weight: 400; font-size: 22px; line-height: 1; }
+details[open] summary::after { content: "\2212"; }
+details p { margin: 10px 0 0; color: var(--muted); max-width: 44em; }
+
+/* Closing */
+.closing { text-align: center; padding: 96px 0 72px; }
+.closing .cta { justify-content: center; }
+footer { border-top: 1px solid var(--line); padding: 28px 0 40px; font-size: 14px; color: var(--muted); }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; }
+footer a { text-decoration: none; }
+footer a:hover { color: var(--text); }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav aria-label="Main">
+    <a class="brand" href="#top"><img src="assets/icon.png" alt="" width="28" height="28">MemStats</a>
+    <div class="links">
+      <a class="opt" href="#why">Why</a>
+      <a class="opt" href="#compare">Compare</a>
+      <a class="opt" href="#faq">FAQ</a>
+      <a href="https://github.com/chungxon/mem-stats">GitHub</a>
+      <a href="https://github.com/chungxon/mem-stats" rel="noopener">Support us</a>
+    </div>
+  </nav>
+
+  <header class="hero" id="top">
+    <div>
+      <img class="icon" src="assets/icon.png" alt="MemStats app icon" width="84" height="84">
+      <h1>Know who is using your RAM.</h1>
+      <p class="lead">A memory monitor for macOS that lives in the menu bar. Built for Macs shared by more than one user, and useful on every other Mac too.</p>
+      <p class="tags">Lightweight. Memory only. Per user.</p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/chungxon/mem-stats/releases/latest">Download for macOS</a>
+        <a class="btn" href="https://github.com/chungxon/mem-stats">View on GitHub</a>
+      </div>
+      <p class="note">Version 1.0.0. Requires macOS 14 Sonoma or later. Apple Silicon and Intel.</p>
+    </div>
+    <div class="shot">
+      <img src="assets/demo.gif" alt="MemStats popover showing a donut of memory by user, a history chart, top apps and top processes" width="480" height="693">
+    </div>
+  </header>
+
+  <div class="facts" role="list">
+    <div class="fact" role="listitem"><b>~5 MB</b><span>private memory*</span></div>
+    <div class="fact" role="listitem"><b>0.2%</b><span>CPU*</span></div>
+    <div class="fact" role="listitem"><b>8</b><span>languages</span></div>
+    <div class="fact" role="listitem"><b>0</b><span>network requests</span></div>
+  </div>
+  <p class="fine">* Debug build under Xcode, read in Activity Monitor on 2026-10-03. A Release build is expected to be lighter. Details are in the README.</p>
+
+  <section id="why">
+    <h2>Why MemStats?</h2>
+    <p class="sub">Most system monitors try to show everything. MemStats answers one question well: where did my memory go?</p>
+    <div class="grid three">
+      <div class="card"><span class="num">01</span><h3>Per user, not just per app</h3><p>A donut chart splits RAM by user account, so you can see at a glance who is using the memory on a shared Mac. Click a slice to filter every list below.</p></div>
+      <div class="card"><span class="num">02</span><h3>Helpers grouped into apps</h3><p>Chrome, VS Code and Slack spawn dozens of helper processes. MemStats rolls them up under the parent app, so Top Apps shows what you actually launched.</p></div>
+      <div class="card"><span class="num">03</span><h3>Pressure you can read</h3><p><span class="dots" aria-hidden="true"><i style="background:var(--accent)"></i><i style="background:var(--warn)"></i><i style="background:var(--crit)"></i></span>The menu bar title turns green, orange or red from the same signal Activity Monitor uses. Swap sits next to it.</p></div>
+      <div class="card"><span class="num">04</span><h3>Short, scrollable history</h3><p>See the last two minutes at a glance and scroll back through about ten. It is bounded on purpose, so the app stays light and nothing is written to disk.</p></div>
+      <div class="card"><span class="num">05</span><h3>Growth hints</h3><p>If a user's memory climbs on every sample, or jumps suddenly, MemStats says so in plain words. A cheap way to spot a leak early.</p></div>
+      <div class="card"><span class="num">06</span><h3>Native and quiet</h3><p>SwiftUI and AppKit, system colors, light and dark mode, VoiceOver labels. It samples less often while the popover is closed, and it never phones home.</p></div>
+    </div>
+  </section>
+
+  <section id="how">
+    <h2>One popover, four answers</h2>
+    <p class="sub">Click the menu bar item. Everything fits in a single 380 by 540 point window.</p>
+    <div class="grid two">
+      <div class="card"><h3>Top Users</h3><p>Donut of used RAM by user, with free memory and an "Unattributed Used" slice so the numbers add up to the system total.</p></div>
+      <div class="card"><h3>History</h3><p>Used RAM colored by pressure at each sample, plus a dashed line for the user you selected, swap and growth hints.</p></div>
+      <div class="card"><h3>Top Apps</h3><p>Apps ranked by memory with their process count. Hover for the bundle path.</p></div>
+      <div class="card"><h3>Top Processes</h3><p>User, PID, process name and memory, for everyone or only the selected user. One click opens Activity Monitor.</p></div>
+    </div>
+  </section>
+
+  <section id="compare">
+    <h2>How it compares</h2>
+    <p class="sub">MemStats does not replace a full system monitor. It does one job, and does it in more depth than the all-in-one apps.</p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th><span style="position:absolute;left:-9999px">Feature</span></th><th class="me">MemStats</th><th>Stats</th><th>iStat Menus</th><th>Menu Stats</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Price</th><td class="me">Free</td><td>Free</td><td>Paid, 14-day trial</td><td>Free</td></tr>
+          <tr><th scope="row">Source code</th><td class="me yes">On GitHub</td><td>Open source</td><td class="no">Closed</td><td class="no">Closed</td></tr>
+          <tr><th scope="row">Focus</th><td class="me">Memory only</td><td>CPU, GPU, RAM, disk, network, sensors</td><td>Everything, plus weather</td><td>CPU, GPU, RAM, disk, network</td></tr>
+          <tr><th scope="row">Memory split by user</th><td class="me yes">Yes</td><td class="no">No</td><td class="no">No</td><td class="no">No</td></tr>
+          <tr><th scope="row">Helpers grouped into apps</th><td class="me yes">Yes</td><td class="no">Process list</td><td>Yes</td><td class="no">Not stated</td></tr>
+          <tr><th scope="row">Leak and jump hints</th><td class="me yes">Yes</td><td class="no">No</td><td class="no">Rules and alerts</td><td class="no">No</td></tr>
+          <tr><th scope="row">CPU, disk, network, sensors, fans</th><td class="me no">No</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Most</td></tr>
+          <tr><th scope="row">Mac App Store</th><td class="me no">No</td><td class="no">No</td><td class="no">No</td><td class="yes">Yes</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="fine">Based on each app's public page as of October 2026. Check the vendors for current details.</p>
+    <div class="pick">
+      <div class="card"><h3>Pick MemStats if</h3><p>You share a Mac with other accounts, run a lab or build machine, or you only care about RAM and want a monitor that stays out of the way.</p></div>
+      <div class="card"><h3>Pick another app if</h3><p>You need CPU, temperature, fan control, network graphs or weather. Stats and iStat Menus cover that well, and you can run MemStats next to them.</p></div>
+    </div>
+  </section>
+
+  <section id="install">
+    <h2>Install in a minute</h2>
+    <p class="sub">MemStats is distributed outside the Mac App Store, because it needs the App Sandbox off to run <code>top</code> and read processes of other users.</p>
+    <ol class="steps">
+      <li class="card"><h3>Download</h3><p>Get <code>MemStats-1.0.0.zip</code> from <a href="https://github.com/chungxon/mem-stats/releases/latest">GitHub Releases</a>.</p></li>
+      <li class="card"><h3>Move to Applications</h3><p>Unzip and drag <code>MemStats.app</code> into <code>/Applications</code>.</p></li>
+      <li class="card"><h3>Open it once</h3><p>The build is ad hoc signed and not notarized yet. Use Open Anyway in System Settings, or run:</p><pre id="cmd">xattr -dr com.apple.quarantine /Applications/MemStats.app</pre><button class="copy" type="button" data-copy="cmd">Copy command</button></li>
+    </ol>
+  </section>
+
+  <section id="faq">
+    <h2>Questions</h2>
+    <details><summary>Why does macOS block the first launch?</summary><p>The app is not notarized yet, so Gatekeeper asks for confirmation. Go to System Settings, Privacy and Security, and click Open Anyway. After that it opens normally.</p></details>
+    <details><summary>Why do the numbers differ from Activity Monitor?</summary><p>MemStats uses the same formula for Memory Used and the same pressure signal, but process memory comes from <code>top</code>, which reports in a different unit and accounts shared memory differently. Values are indicative. The gaps are documented in the repository.</p></details>
+    <details><summary>Does it collect data or use the network?</summary><p>No. Sampling is local, and history is kept in memory only. "Check for Updates" and "Report a Bug" just open your browser.</p></details>
+    <details><summary>How much CPU does it use?</summary><p>Memory sampling is cheap. Each process update runs <code>top</code>, about 1.4 seconds of work, so the process interval is the setting that matters. While the popover is closed, RAM updates at most every 15 seconds and processes every 60.</p></details>
+    <details><summary>Which languages are supported?</summary><p>English, German, Spanish, French, Japanese, Korean, Simplified Chinese and Vietnamese.</p></details>
+    <details><summary>How do I update?</summary><p>There is no automatic update. Open Settings, click Check for Updates, then download the latest release and replace the app.</p></details>
+  </section>
+
+  <div class="closing">
+    <h2>See where your memory goes.</h2>
+    <p class="sub" style="margin-inline:auto">Free, small and quiet. If MemStats saves you time, a star on GitHub helps keep it going.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/chungxon/mem-stats/releases/latest">Download for macOS</a>
+      <a class="btn" href="https://github.com/chungxon/mem-stats" rel="noopener">Support us</a>
+      <a class="btn" href="https://github.com/chungxon/mem-stats/issues/new">Report a bug on GitHub</a>
+    </div>
+  </div>
+</div>
+<footer>
+  <div class="wrap">
+    <span>MemStats 1.0.0. Made for macOS.</span>
+    <span><a href="https://github.com/chungxon/mem-stats">GitHub</a> &nbsp; <a href="https://github.com/chungxon/mem-stats/releases">Releases</a> &nbsp; <a href="https://github.com/chungxon/mem-stats/blob/main/CHANGELOG.md">Changelog</a></span>
+  </div>
+</footer>
+<script>
+document.querySelectorAll('.copy').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var el = document.getElementById(btn.dataset.copy);
+    var done = function (ok) {
+      btn.textContent = ok ? 'Copied' : 'Press Cmd+C';
+      setTimeout(function () { btn.textContent = 'Copy command'; }, 1800);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(el.textContent).then(function () { done(true); }, function () { done(false); });
+    } else {
+      var r = document.createRange(); r.selectNodeContents(el);
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); done(false);
+    }
+  });
+});
+</script>
+</body>
+</html>
