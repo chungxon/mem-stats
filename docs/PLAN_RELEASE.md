@@ -20,8 +20,8 @@ Thứ tự ưu tiên:
 
 - Giữ `top` làm nguồn process duy nhất, cả sau release (đổi ý 2026-10-06). App phục vụ máy nhiều user dùng chung, mà khi không có quyền đặc biệt, `proc_pid_rusage` chỉ đọc được process của user đang chạy app, nên không thay được `top`. Task 14 đổi sang giảm chi phí của `top`.
 - Phân phối ngoài Mac App Store, chỉ qua GitHub Releases. Không lên Store vì sandbox phải tắt để chạy `top` và đọc process của user khác.
-- Bỏ Homebrew khỏi bản 1.0 (2026-10-04): app chưa ký Developer ID/notarize nên khó lên `homebrew/cask` chính thức. Khi ký được app thì thêm lại (tap riêng hoặc `homebrew/cask`).
-- Chưa có Apple Developer Program: bản 1.0 không notarize. README hướng dẫn mở app lần đầu ("Open Anyway" hoặc bỏ quarantine).
+- Bỏ Homebrew khỏi bản 1.0.0 (2026-10-04): app chưa ký Developer ID/notarize nên khó lên `homebrew/cask` chính thức. Khi ký được app thì thêm lại (tap riêng hoặc `homebrew/cask`).
+- Chưa có Apple Developer Program: bản 1.0.0 không notarize. README hướng dẫn mở app lần đầu ("Open Anyway" hoặc bỏ quarantine).
 - Không làm tự động cập nhật (Sparkle) hay tự check update nền. Settings có nút "Check for Updates" (mở thẳng trang release mới nhất trên GitHub, không so version, app không gọi mạng) và nút "Report a Bug" mở trang tạo issue trên GitHub (Task 16).
 - Hạ deployment target từ macOS 15.7 xuống 14.0 để hỗ trợ rộng hơn (API dùng tối đa macOS 14). Không giới hạn max, build bằng SDK mới nhất (Xcode 27).
 - Context menu giữ `About` / `Quit` như hiện tại (menu ngắn, icon đã thể hiện app).
@@ -101,7 +101,7 @@ Files: `MemStats.xcodeproj/project.pbxproj`, scheme, `README.md`
 - [x] `MACOSX_DEPLOYMENT_TARGET` = 14.0 cho tất cả target. Build lại, sửa mọi lỗi/warning về API chỉ có từ macOS 15 (thêm `if #available` nếu cần).
   - Đã build thử với target 14.0: chỉ lỗi 1 chỗ, `Color.mix(with:by:)` (macOS 15+) cho màu slice Unattributed ở `PopoverRootView.swift:530`. Thay bằng `NSColor(name:dynamicProvider:)` blend `systemGray` với trắng theo appearance, để màu vẫn đúng ở cả light/dark mode.
 - [x] Bỏ target `MemStatsUITests` khỏi Test action của scheme (đang là template, test launch performance chậm và dễ fail), hoặc xoá hẳn target.
-- [x] Kiểm tra version `1.0` (build `1`).
+- [x] Kiểm tra version `1.0.0` (build `1`).
 - [x] Release build ký ad-hoc (`CODE_SIGN_IDENTITY = "-"`, Sign to Run Locally) thay cho cert Apple Development của team cá nhân, để app chạy được trên máy khác mà không gắn với Apple ID dev.
 - [x] README thêm các mục:
   - Requirements: macOS 14.0 trở lên.
@@ -196,18 +196,22 @@ Repo: `https://github.com/chungxon/mem-stats`.
 
 Commit: `feat(settings): add check for updates and bug report links`
 
-## Task 7 - Publish Release On GitHub (thủ công)
+## Task 7 - Publish Release On GitHub
+
+Release automation is available at [`scripts/release.sh`](../scripts/release.sh). The script reads
+`MARKETING_VERSION` from the Xcode project, creates the archive and zip, verifies the app signature,
+writes a SHA-256 checksum, and can create a local annotated tag with `--tag`.
 
 Build và đóng gói:
 
-- [ ] `xcodebuild -project MemStats/MemStats.xcodeproj -scheme MemStats -configuration Release -derivedDataPath build archive -archivePath build/MemStats.xcarchive`.
-- [ ] Lấy `MemStats.app` trong archive, nén bằng `ditto -c -k --keepParent MemStats.app MemStats-1.0.zip` (giữ đúng symlink và chữ ký, không dùng Finder Compress hay `zip`).
-- [ ] `codesign --verify --deep --strict MemStats.app` để chắc chữ ký ad-hoc hợp lệ.
-- [ ] `shasum -a 256 MemStats-1.0.zip` để lấy checksum ghi vào release notes.
+- [x] Thêm script archive, zip, signature verification và checksum.
+- [x] Chạy `./scripts/release.sh` để tạo artifact trong `dist/`.
+- [ ] Chạy `./scripts/release.sh --tag` sau khi đã commit mọi thay đổi release để tạo tag local.
 
 GitHub Release:
 
-- [ ] Tạo tag `v1.0` và release trên `chungxon/mem-stats`, đính kèm `MemStats-1.0.zip` và ghi checksum.
+- [ ] Push branch và tag `v1.0.0` lên `chungxon/mem-stats`, tạo release, đính kèm `dist/MemStats-1.0.0.zip` và ghi checksum.
+- [ ] Làm theo quy trình đầy đủ trong [`docs/RELEASING.md`](RELEASING.md).
 - [ ] Release notes: tính năng chính, yêu cầu macOS, hướng dẫn mở lần đầu (giống README).
 - [x] Đưa demo GIF vào `assets/output.gif` và nhúng vào README cho public release.
 

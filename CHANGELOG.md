@@ -1,0 +1,23 @@
+# Changelog
+
+All notable changes to MemStats are documented here.
+
+## [1.0.0] - Unreleased
+
+Prepared initial public release of the macOS menu bar memory monitor.
+
+### Added
+
+- RAM usage by user with a donut chart, including free and unattributed memory.
+- Memory pressure, swap usage and a bounded history chart.
+- Top applications and top processes from `top`, with process growth hints.
+- Configurable update intervals and row counts in Settings.
+- Open at Login and optional system-user visibility.
+- Check for Updates and Report a Bug links in Settings.
+- English, German, Spanish, French, Japanese, Korean, Simplified Chinese and Vietnamese localization.
+
+### Distribution
+
+- Supports macOS 14.0 or later on Apple Silicon and Intel.
+- Distributed outside the Mac App Store as an ad hoc signed, not notarized zip.
+- First launch may require Open Anyway in System Settings > Privacy & Security.

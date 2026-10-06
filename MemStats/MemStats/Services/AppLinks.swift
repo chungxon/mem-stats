@@ -11,7 +11,7 @@ nonisolated enum AppLinks {
   static let latestReleaseURL = releasesURL.appendingPathComponent("latest")
   static let sponsorURL = repositoryURL.appendingPathComponent("")
 
-  /// The app's own version, e.g. "1.0", and build number, e.g. "1".
+  /// The app's own version, e.g. "1.0.0", and build number, e.g. "1".
   static var appVersion: String {
     Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
   }
