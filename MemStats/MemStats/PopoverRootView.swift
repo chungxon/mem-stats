@@ -12,6 +12,10 @@ struct PopoverRootView: View {
   @ObservedObject private var memoryVM: MemoryViewModel
   @ObservedObject private var processVM: ProcessViewModel
   @StateObject private var accessibilityDisplaySettings: AccessibilityDisplaySettings
+  /// Leading edge of the visible history window.
+  @State private var historyScrollPosition = Date()
+  /// Whether the history window moves along with new samples.
+  @State private var historyFollowsLatest = true
 
   private let onOpenActivityMonitor: () -> Void
   private let onOpenOptionsMenu: () -> Void
@@ -111,6 +115,37 @@ struct PopoverRootView: View {
   private func listPlaceholder(empty: String) -> String {
     let key = appState.isWaitingForFirstProcessSample ? "Loading…" : empty
     return AppLocalization.string(key, language: settings.language)
+  }
+
+  /// Seconds of history visible at once; older samples are reached by scrolling.
+  private static let historyVisibleSeconds: TimeInterval = 120
+
+  /// Always at least one visible window wide, so short history grows in from the right.
+  private var historyXDomain: ClosedRange<Date> {
+    guard let first = memoryVM.history.first?.timestamp,
+      let lastMemory = memoryVM.history.last?.timestamp
+    else {
+      let now = Date()
+      return now.addingTimeInterval(-Self.historyVisibleSeconds)...now
+    }
+    // The selected user's samples come from the process timer and can be newer.
+    var last = lastMemory
+    if processVM.selectedUser != nil,
+      let lastUser = processVM.selectedUserHistory.last?.timestamp
+    {
+      last = max(last, lastUser)
+    }
+    return min(first, last.addingTimeInterval(-Self.historyVisibleSeconds))...last
+  }
+
+  /// Leading edge of the window that shows the newest sample.
+  private var historyLatestScrollPosition: Date {
+    historyXDomain.upperBound.addingTimeInterval(-Self.historyVisibleSeconds)
+  }
+
+  private func followLatestHistory() {
+    historyFollowsLatest = true
+    historyScrollPosition = historyLatestScrollPosition
   }
 
   private var historyScaleUpperBound: Double {
@@ -266,7 +301,16 @@ struct PopoverRootView: View {
           }
           .chartLegend(.hidden)
           .chartYScale(domain: 0...historyScaleUpperBound)
-          .chartXAxis(.hidden)
+          .chartXScale(domain: historyXDomain)
+          .chartScrollableAxes(.horizontal)
+          .chartXVisibleDomain(length: Self.historyVisibleSeconds)
+          .chartScrollPosition(x: $historyScrollPosition)
+          .chartXAxis {
+            AxisMarks(values: .stride(by: .second, count: 30)) { _ in
+              AxisGridLine()
+              AxisValueLabel(format: .dateTime.hour().minute().second())
+            }
+          }
           .chartYAxis {
             AxisMarks(
               position: .leading,
@@ -281,11 +325,31 @@ struct PopoverRootView: View {
               }
             }
           }
-          .frame(height: 130)
+          .frame(height: 145)
           // Hundreds of marks are noise for VoiceOver, so read the chart as one summary.
           .accessibilityElement(children: .ignore)
           .accessibilityLabel("Memory history")
           .accessibilityValue(historyAccessibilityValue)
+          .onAppear(perform: followLatestHistory)
+          // The popup window is reused, so reopening it switches to active sampling
+          // instead of firing onAppear again.
+          .onChange(of: appState.samplingMode) {
+            if appState.samplingMode == .active {
+              followLatestHistory()
+            }
+          }
+          .onChange(of: historyXDomain.upperBound) {
+            if historyFollowsLatest {
+              historyScrollPosition = historyLatestScrollPosition
+            }
+          }
+          .onChange(of: historyScrollPosition) {
+            // Scrolling back pauses following; scrolling to the newest sample resumes it.
+            // Capped so slow idle intervals don't turn most of the window into a dead zone.
+            let tolerance = min(max(appState.memorySamplingInterval, 2), 5)
+            historyFollowsLatest =
+              historyScrollPosition >= historyLatestScrollPosition.addingTimeInterval(-tolerance)
+          }
 
           // Items wrap one by one, so adding "Selected" only moves that item to the next row.
           LegendFlowLayout(horizontalSpacing: 10, verticalSpacing: 4) {

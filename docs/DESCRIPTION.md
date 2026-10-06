@@ -291,6 +291,10 @@ maxSamples = min(600, ceil(600 / memoryInterval)) // 120 at the default 5s
 
 * The selected user series uses the same rule with the process interval setting. While the popover is closed it gets one point per 60s, so that stretch of the line is coarser
 * Changing the interval trims the oldest samples that no longer fit
+* The chart shows the last 2 minutes at a time, like Activity Monitor; older samples are reached by scrolling horizontally
+  * The X axis is never shorter than 2 minutes, so short history grows in from the right
+  * The window follows the newest sample; scrolling back pauses that, and scrolling back to the end or reopening the popover resumes it
+  * The X axis labels the time every 30 seconds so a scrolled-back view shows when it is
 
 ### Behavior
 
