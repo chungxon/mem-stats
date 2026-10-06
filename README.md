@@ -88,3 +88,7 @@ Notes:
   1. Leave the app running for 30 to 60 minutes and confirm Real/Private Memory stays stable.
   2. Open and close the popover several times and confirm memory returns to its previous level.
   3. If memory keeps growing, use Instruments (Leaks / Allocations) or the Xcode Memory Graph Debugger.
+
+## License
+
+Released under the [MIT License](LICENSE).
