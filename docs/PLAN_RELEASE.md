@@ -209,6 +209,7 @@ GitHub Release:
 
 - [ ] Tạo tag `v1.0` và release trên `chungxon/mem-stats`, đính kèm `MemStats-1.0.zip` và ghi checksum.
 - [ ] Release notes: tính năng chính, yêu cầu macOS, hướng dẫn mở lần đầu (giống README).
+- [x] Đưa demo GIF vào `assets/output.gif` và nhúng vào README cho public release.
 
 Kiểm tra:
 

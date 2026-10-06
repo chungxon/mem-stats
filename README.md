@@ -2,7 +2,9 @@
 
 A lightweight macOS menu bar app focused on memory monitoring for multiple users: top users donut, top apps, top processes, memory pressure, swap and a short bounded history, all in one popover.
 
-See [docs/DESCRIPTION.md](docs/DESCRIPTION.md) for the full feature and architecture description.
+## Demo
+
+![MemStats menu bar app showing memory usage, history and top users](assets/output.gif)
 
 ## Requirements
 
