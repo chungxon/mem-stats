@@ -3,18 +3,114 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MemStats - Memory monitor for macOS</title>
+<title>MemStats: Free RAM Monitor for the Mac Menu Bar</title>
 <meta name="description" content="MemStats is a lightweight macOS menu bar app that shows who is using your RAM. Top users, top apps, memory pressure, swap and a short history in one popover.">
 <meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
 <link rel="canonical" href="https://memstats.chungxon.dev/">
-<meta property="og:title" content="MemStats - Memory monitor for macOS">
+<meta property="og:title" content="MemStats: Free RAM Monitor for the Mac Menu Bar">
 <meta property="og:description" content="See which user and which app is eating your RAM, right from the menu bar.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://memstats.chungxon.dev/">
 <meta property="og:site_name" content="MemStats">
-<meta property="og:image" content="https://memstats.chungxon.dev/assets/poster.png">
+<meta property="og:image" content="https://memstats.chungxon.dev/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="MemStats: Know who is using your RAM. A memory monitor for the Mac menu bar.">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="assets/icon.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "MemStats",
+      "alternateName": [
+        "Mem Stats",
+        "memstats"
+      ],
+      "description": "MemStats is a lightweight macOS menu bar app that shows who is using your RAM. Top users, top apps, memory pressure, swap and a short history in one popover.",
+      "url": "https://memstats.chungxon.dev/",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "macOS 14 Sonoma or later",
+      "softwareVersion": "1.0.0",
+      "downloadUrl": "https://github.com/chungxon/MemStats/releases/latest",
+      "image": "https://memstats.chungxon.dev/assets/og.png",
+      "screenshot": "https://memstats.chungxon.dev/assets/demo-poster.webp",
+      "license": "https://opensource.org/licenses/MIT",
+      "isAccessibleForFree": true,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "Chung Xon",
+        "url": "https://github.com/chungxon"
+      },
+      "sameAs": [
+        "https://github.com/chungxon/MemStats"
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why does macOS block the first launch?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The app is not notarized yet, so Gatekeeper asks for confirmation. Go to System Settings, Privacy and Security, and click Open Anyway. After that it opens normally."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why do the numbers differ from Activity Monitor?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "MemStats uses the same formula for Memory Used and the same pressure signal, but process memory comes from top, which reports in a different unit and accounts shared memory differently. Values are indicative. The gaps are documented in the repository."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it collect data or use the network?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Sampling is local, and history is kept in memory only. \"Check for Updates\" and \"Report a Bug\" just open your browser."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How much CPU does it use?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Memory sampling is cheap. Each process update runs top, about 1.4 seconds of work, so the process interval is the setting that matters. While the popover is closed, RAM updates at most every 15 seconds and processes every 60."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which languages are supported?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "English, German, Spanish, French, Japanese, Korean, Simplified Chinese and Vietnamese."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I update?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "There is no automatic update. Open Settings, click Check for Updates, then download the latest release and replace the app."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
 <script>
 (function () {
   try {
@@ -102,7 +198,7 @@ h1 { font-size: clamp(34px, 6vw, 54px); line-height: 1.08; letter-spacing: -0.02
 .btn:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .note { font-size: 14px; color: var(--muted); margin: 0; }
 .shot { justify-self: center; width: 100%; max-width: 380px; }
-.shot img {
+.shot video {
   display: block; width: 100%; height: auto; border-radius: var(--radius);
   border: 1px solid var(--line); background: var(--surface);
   box-shadow: 0 18px 40px rgba(0,0,0,0.14);
@@ -208,7 +304,10 @@ footer a.author { text-decoration: underline; text-underline-offset: 3px; text-d
       <p class="note">Version 1.0.0. Requires macOS 14 Sonoma or later. Apple Silicon and Intel.</p>
     </div>
     <div class="shot">
-      <img src="assets/demo.gif" alt="MemStats popover showing a donut of memory by user, a history chart, top apps and top processes" width="480" height="693">
+      <video id="demo" autoplay muted loop playsinline width="480" height="692" poster="assets/demo-poster.webp" aria-label="MemStats popover showing a donut of memory by user, a history chart, top apps and top processes">
+        <source src="assets/demo.webm" type="video/webm">
+        <source src="assets/demo.mp4" type="video/mp4">
+      </video>
     </div>
   </header>
 
@@ -349,6 +448,20 @@ document.querySelectorAll('.copy').forEach(function (btn) {
     }
   });
 });
+
+// Respect reduced motion: stop the demo on its poster frame.
+(function () {
+  var demo = document.getElementById('demo');
+  if (!demo || !window.matchMedia) return;
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var sync = function () {
+    if (reduce.matches) { demo.pause(); demo.currentTime = 0; return; }
+    var p = demo.play();
+    if (p && p.catch) p.catch(function () {});
+  };
+  sync();
+  if (reduce.addEventListener) reduce.addEventListener('change', sync);
+})();
 </script>
 </body>
 </html>
