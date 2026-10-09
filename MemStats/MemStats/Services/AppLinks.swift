@@ -3,7 +3,7 @@ import Foundation
 /// GitHub links for the project: releases (updates) and issues (bug reports).
 nonisolated enum AppLinks {
   static let owner = "chungxon"
-  static let repository = "mem-stats"
+  static let repository = "MemStats"
 
   static let repositoryURL = URL(string: "https://github.com/\(owner)/\(repository)")!
   static let releasesURL = repositoryURL.appendingPathComponent("releases")

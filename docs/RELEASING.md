@@ -73,7 +73,7 @@ git push origin v1.0.0
 
 ## 4. Create the GitHub Release
 
-On `https://github.com/chungxon/mem-stats/releases/new`:
+On `https://github.com/chungxon/MemStats/releases/new`:
 
 1. Select the pushed tag, for example `v1.0.0`.
 2. Set the release title to `MemStats 1.0.0`.

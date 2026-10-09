@@ -25,7 +25,7 @@ Shared rules:
 Objective:
 
 - Add a Support Us action that opens the exact GitHub Sponsors page:
-  `https://github.com/chungxon/mem-stats/`.
+  `https://github.com/chungxon/MemStats/`.
 
 Placement:
 

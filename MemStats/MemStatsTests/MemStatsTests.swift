@@ -1386,11 +1386,11 @@ struct MemStatsTests {
   @Test func latestReleaseURLPointsToGitHubReleases() {
     #expect(
       AppLinks.latestReleaseURL.absoluteString
-        == "https://github.com/chungxon/mem-stats/releases/latest")
+        == "https://github.com/chungxon/MemStats/releases/latest")
   }
 
   @Test func sponsorURLPointsToGitHubSponsors() {
-    #expect(AppLinks.sponsorURL.absoluteString == "https://github.com/chungxon/mem-stats/")
+    #expect(AppLinks.sponsorURL.absoluteString == "https://github.com/chungxon/MemStats/")
   }
 
   @Test func bugReportURLPrefillsTitleLabelAndEnvironment() throws {
@@ -1401,7 +1401,7 @@ struct MemStatsTests {
       model: "Mac15,6",
       architecture: "arm64"
     )
-    #expect(url.absoluteString.hasPrefix("https://github.com/chungxon/mem-stats/issues/new?"))
+    #expect(url.absoluteString.hasPrefix("https://github.com/chungxon/MemStats/issues/new?"))
 
     let items = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
     let values = Dictionary(uniqueKeysWithValues: items.map { ($0.name, $0.value ?? "") })
