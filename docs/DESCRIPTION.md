@@ -528,7 +528,7 @@ closes the popover. When the popup is open, ⌘, opens Settings directly and clo
 * Window: a self-managed `NSWindow` + `NSHostingController` (the app is an `LSUIElement` accessory, and opening a SwiftUI `Settings` scene from an `NSMenu` is not reliable). Opening it activates the app and brings the window to the front; reopening reuses the same window. ⌘Q and ⌘W close Settings only, without terminating the app. The popup handles the same shortcuts locally. The app is terminated from the context menu's Quit item, including its ⌘Q equivalent while the menu is open.
 * Layout: `Form` with `.formStyle(.grouped)` and `.menu` pickers in four sections (intervals, row counts, Open at Login + Show System Users, About).
 * About section: the app version and build, plus two buttons that only open the browser (the app makes no network request):
-  * Check for Updates… opens `github.com/chungxon/MemStats/releases/latest`. There is no version check; the user compares it with the version shown above.
+  * Check for Updates… opens `github.com/sown-oss/MemStats/releases/latest`. There is no version check; the user compares it with the version shown above.
   * Report a Bug… opens `issues/new` with a `[Bug] ` title, the `bug` label and a body template (description, steps, expected behavior) whose Environment part is filled in: app version and build, macOS version, Mac model and architecture.
 * Links live in `Services/AppLinks.swift`.
 * Rows in the About section are plain `HStack`s, not `LabeledContent`: inside this grouped `Form` with `.preferredContentSize` sizing, `LabeledContent` makes AppKit loop on Update Constraints and crash when the window opens. A unit test hosts the window to catch this.

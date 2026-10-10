@@ -184,7 +184,7 @@ Commit: `feat(settings): add settings window for update intervals and row counts
 
 Files: `Services/AppLinks.swift` (mới), `SettingsView.swift`, `MemStatsTests.swift`, `docs/DESCRIPTION.md`, `README.md`
 
-Repo: `https://github.com/chungxon/mem-stats`.
+Repo: `https://github.com/sown-oss/MemStats`.
 
 - [x] `AppLinks`: URL repo, trang Releases, `releases/latest`, trang tạo issue mới.
 - [x] Report a Bug: mở `issues/new` với title và body điền sẵn (mô tả, các bước tái hiện, kỳ vọng, môi trường: version app, macOS, model máy, kiến trúc).
@@ -210,7 +210,7 @@ Build và đóng gói:
 
 GitHub Release:
 
-- [ ] Push branch và tag `v1.0.0` lên `chungxon/mem-stats`, tạo release, đính kèm `dist/MemStats-1.0.0.zip` và ghi checksum.
+- [ ] Push branch và tag `v1.0.0` lên `sown-oss/MemStats`, tạo release, đính kèm `dist/MemStats-1.0.0.zip` và ghi checksum.
 - [ ] Làm theo quy trình đầy đủ trong [`docs/RELEASING.md`](RELEASING.md).
 - [ ] Release notes: tính năng chính, yêu cầu macOS, hướng dẫn mở lần đầu (giống README).
 - [x] Đưa demo GIF vào `assets/output.gif` và nhúng vào README cho public release.
@@ -328,3 +328,18 @@ Hiện trạng: khi popover đóng, `top` vẫn chạy mỗi `max(setting, 15s)`
 - [x] Thêm "xem Task 14" vào phần Hiện trạng và Task 15 chỗ ghi rule `5s/15s`, `max(interval, 15s)`.
 
 Commit: `perf(sampling): sample processes less often while the popover is closed`
+
+## Task 17 - Move Repo To sown-oss
+
+Repo chuyển từ `chungxon/MemStats` sang org `sown-oss` (2026-10-10). GitHub redirect mọi URL cũ, nên app 1.0.0 vẫn mở đúng Releases, Issues và trang repo.
+
+- [x] Transfer repo sang org, đổi tên org từ `SownOS` thành `sown-oss`. Kiểm tra `releases/latest`, `issues/new?...` và trang repo từ cả `chungxon/MemStats` lẫn `SownOS/MemStats` đều 301 sang `sown-oss/MemStats`.
+- [x] `AppLinks.owner` đổi thành `sown-oss`, cập nhật test URL.
+- [x] Cập nhật link trong README, `docs/DESCRIPTION.md`, `docs/PLAN_FEATURES.md`, `docs/RELEASING.md`, Task 16 và Task 7.
+- [x] Branch `page`: cập nhật link repo trong `index.html` (cả JSON-LD) và `404.html`. Giữ `author.url` là `github.com/chungxon`.
+- [x] Cập nhật `repo_url` và link OSS trong 2 PR awesome list (`open-source-mac-os-apps#1556`, `awesome-mac#3315`).
+- [ ] Phát hành bản sau 1.0.0 để app trỏ thẳng sang `sown-oss/MemStats`.
+
+Giữ nguyên: bundle id `com.chungxon.MemStats`, label `DispatchQueue` `com.chungxon.memstats.*`, `FUNDING.yml` (Sponsors theo tài khoản cá nhân), domain `memstats.chungxon.dev`. Không tạo hay fork repo tên `MemStats` dưới `chungxon` hoặc `SownOS`, vì sẽ phá redirect.
+
+Commit: `chore: move repo links to sown-oss/MemStats`

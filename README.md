@@ -15,7 +15,7 @@ Website: [memstats.chungxon.dev](https://memstats.chungxon.dev/)
 
 ## Install
 
-1. Download `MemStats-<version>.zip` from [GitHub Releases](https://github.com/chungxon/MemStats/releases).
+1. Download `MemStats-<version>.zip` from [GitHub Releases](https://github.com/sown-oss/MemStats/releases).
 2. Unzip it and drag `MemStats.app` into `/Applications`.
 3. Open it once as described in [First launch](#first-launch).
 
@@ -47,18 +47,18 @@ Short intervals use more CPU, mostly the top processes interval, since each upda
 
 ## Update
 
-There is no automatic update. Open Settings and click "Check for Updates…" to open the latest release on [GitHub Releases](https://github.com/chungxon/MemStats/releases), compare it with the version shown in Settings, then download and replace the app.
+There is no automatic update. Open Settings and click "Check for Updates…" to open the latest release on [GitHub Releases](https://github.com/sown-oss/MemStats/releases), compare it with the version shown in Settings, then download and replace the app.
 
 ## Report a Bug
 
-Open Settings and click "Report a Bug…". It opens a new GitHub issue with your MemStats version, macOS version and Mac model already filled in, so you only describe the problem. You can also [open an issue](https://github.com/chungxon/MemStats/issues/new) directly.
+Open Settings and click "Report a Bug…". It opens a new GitHub issue with your MemStats version, macOS version and Mac model already filled in, so you only describe the problem. You can also [open an issue](https://github.com/sown-oss/MemStats/issues/new) directly.
 
 ## Build From Source
 
 Requires Xcode 26 or later.
 
 ```bash
-git clone https://github.com/chungxon/MemStats.git
+git clone https://github.com/sown-oss/MemStats.git
 cd MemStats
 xcodebuild -project MemStats/MemStats.xcodeproj -scheme MemStats -configuration Release -derivedDataPath build build
 open build/Build/Products/Release/MemStats.app

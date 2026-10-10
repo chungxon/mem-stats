@@ -2,6 +2,12 @@
 
 All notable changes to MemStats are documented here.
 
+## [Unreleased]
+
+### Changed
+
+- Moved the repository to `sown-oss/MemStats`. Check for Updates, Report a Bug and Support now open the new location. Old `chungxon/MemStats` links still redirect.
+
 ## [1.0.0] - 06/10/2026
 
 Prepared initial public release of the macOS menu bar memory monitor.

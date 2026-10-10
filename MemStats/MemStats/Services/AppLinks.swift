@@ -2,7 +2,7 @@ import Foundation
 
 /// GitHub links for the project: releases (updates) and issues (bug reports).
 nonisolated enum AppLinks {
-  static let owner = "chungxon"
+  static let owner = "sown-oss"
   static let repository = "MemStats"
 
   static let repositoryURL = URL(string: "https://github.com/\(owner)/\(repository)")!
